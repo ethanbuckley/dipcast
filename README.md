@@ -2,6 +2,9 @@
 
 Probabilistic sewage-pollution risk for river and lake swim spots in England.
 
+Source: https://github.com/ethanbuckley/dipcast (MIT). Live verification of
+every forecast issued is published at `/verification` on any running instance.
+
 Click a point on a river or lake. dipcast traces the river network upstream,
 finds every monitored storm overflow whose water reaches that point, and combines
 (a) what those overflows are doing right now, from the water companies' live
