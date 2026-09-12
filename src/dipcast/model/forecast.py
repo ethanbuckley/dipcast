@@ -31,14 +31,30 @@ log = logging.getLogger(__name__)
 LOCAL_TZ = "Europe/London"   # swimmers think in local days, not UTC days
 
 
+import threading
+
+_LOAD_LOCK = threading.RLock()  # one loader at a time: two concurrent unpickles of the
+                                # 900 MB network would exceed a 2 GB machine
+
+
 @lru_cache(maxsize=1)
-def _net() -> RiverNetwork:
+def _net_uncached() -> RiverNetwork:
     return RiverNetwork.load()
 
 
+def _net() -> RiverNetwork:
+    with _LOAD_LOCK:
+        return _net_uncached()
+
+
 @lru_cache(maxsize=1)
-def _overflows() -> pd.DataFrame:
+def _overflows_uncached() -> pd.DataFrame:
     return load_overflows(_net())
+
+
+def _overflows() -> pd.DataFrame:
+    with _LOAD_LOCK:
+        return _overflows_uncached()
 
 
 @lru_cache(maxsize=1)
@@ -79,7 +95,9 @@ def _model() -> SpillModel | None:
 
 
 def reload_caches() -> None:
-    _net.cache_clear(); _overflows.cache_clear(); _model.cache_clear(); _lead_calibration.cache_clear()
+    with _LOAD_LOCK:
+        _overflows_uncached.cache_clear(); _model.cache_clear(); _lead_calibration.cache_clear()
+        # the network itself is immutable at runtime; keep it loaded
 
 
 def _clean(v):
