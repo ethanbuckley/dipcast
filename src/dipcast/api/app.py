@@ -24,8 +24,21 @@ if not logging.getLogger().handlers:
 NO_CACHE = {"Cache-Control": "no-cache"}
 
 
+def _warm_up() -> None:
+    """Load the river network, overflow table and model so the first visitor
+    does not pay the ~15 s cold-start cost. Runs in a thread; health stays green."""
+    try:
+        from dipcast.model.forecast import _model, _overflows
+        _net(); _overflows(); _model()
+        log.info("warm-up complete")
+    except Exception as e:  # noqa: BLE001 - warm-up is best effort
+        log.warning("warm-up failed: %s", e)
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    import threading
+    threading.Thread(target=_warm_up, name="dipcast-warmup", daemon=True).start()
     stop = None
     if config.REFRESH_MINUTES > 0:
         stop = start_scheduler(config.REFRESH_MINUTES, _net, reload_caches)
