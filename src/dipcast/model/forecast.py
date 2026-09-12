@@ -133,6 +133,7 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
             "form": None if pin.snap is None else pin.snap.form,
             "lake_area_km2": None if pin.lake_area_km2 is None else round(pin.lake_area_km2, 1),
             "lake_source": pin.lake_source,
+            "adopted_main_channel": pin.adopted_main_channel,
         },
         "river_state": None,
         "assumptions": {

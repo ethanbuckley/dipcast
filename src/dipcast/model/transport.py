@@ -23,7 +23,6 @@ import math
 from dataclasses import dataclass, field
 from functools import lru_cache
 
-import networkx as nx
 import numpy as np
 import pandas as pd
 from shapely.geometry import Point
@@ -63,10 +62,39 @@ class PinLocation:
     watercourse: str | None = None
     lake_area_km2: float | None = None
     lake_source: str | None = None     # 'polygon' (WFD) or 'centreline' (OS Open Rivers only)
+    adopted_main_channel: bool = False # pin was on a side channel; traced the main river instead
 
 
 PIN_SNAP_M = 1_500.0    # users click imprecisely; allow a wider search than for outfalls
 LAKE_BIAS = 0.5         # lake centrelines sit further from the shore than inflow becks do
+ADOPT_RADIUS_M = 500.0  # side channels: look this far for the main channel
+ADOPT_MIN_M = 5_000.0   # ...when the snapped link has less than this much network upstream
+ADOPT_RATIO = 5.0       # ...and the alternative has at least this many times more
+
+
+def _adopt_main_channel(net: RiverNetwork, x: float, y: float, river: Snap) -> tuple[Snap, bool]:
+    """A pin on a mill stream, leat or braided side channel is in main-channel
+    water, but OS Open Rivers often leaves such channels disconnected upstream.
+    If the snapped link has a tiny upstream network and a nearby river link has a
+    much larger one, snap to that link instead."""
+    own = net.link_upstream_m(river.link_id)
+    if own >= ADOPT_MIN_M:
+        return river, False
+    cand = net.candidates_xy(x, y, ADOPT_RADIUS_M)
+    cand = cand[cand["form"].isin(["inlandRiver", "tidalRiver"]) & (cand.index != river.link_id)]
+    if cand.empty:
+        return river, False
+    ups = cand["start_node"].map(net.upstream_m).fillna(0.0)
+    best = ups.idxmax()
+    if ups[best] < max(ADOPT_MIN_M, ADOPT_RATIO * own):
+        return river, False
+    row = cand.loc[best]
+    pt = Point(x, y)
+    frac = float(row.geometry.project(pt, normalized=True))
+    sp = row.geometry.interpolate(frac, normalized=True)
+    log.info("adopted main channel %s (%.0f km upstream) over side channel (%.1f km)",
+             row["watercourse_name"], ups[best] / 1000, own / 1000)
+    return Snap(link_id=best, frac=frac, dist_m=float(row["dist_m"]), form=row["form"], x=sp.x, y=sp.y), True
 
 
 def _lake_polygon_at(x: float, y: float):
@@ -128,16 +156,19 @@ def locate_pin(net: RiverNetwork, lon: float, lat: float) -> PinLocation:
                            watercourse=_link_name(net, lake.link_id), lake_source="centreline")
     if river is None:
         return PinLocation("none", x, y, None)
+    river, adopted = _adopt_main_channel(net, x, y, river)
     start, _ = net.link_nodes(river.link_id)
     return PinLocation("river", x, y, river, trace_node=start,
                        trace_offset_m=river.frac * net.links.loc[river.link_id, "length"],
-                       watercourse=_link_name(net, river.link_id))
+                       watercourse=_link_name(net, river.link_id), adopted_main_channel=adopted)
 
 
 def _link_name(net: RiverNetwork, link_id: str, max_steps: int = 12) -> str | None:
     """Name of the link, else the first named link downstream (the river it feeds)."""
     lid = link_id
     for _ in range(max_steps):
+        if lid not in net.links.index:
+            return None
         name = net.links.loc[lid, "watercourse_name"]
         if isinstance(name, str) and name:
             return name
@@ -168,25 +199,38 @@ def _lake_outlet(net: RiverNetwork, comp: set[str]) -> str:
 
 
 def upstream_lengths(net: RiverNetwork, root: str, cap_m: float) -> tuple[dict[str, float], dict[str, float]]:
-    """(link -> distance from link's downstream end to root, node -> upstream network length)
-    for the subgraph upstream of `root` within `cap_m` path distance."""
+    """(link -> distance from link's downstream end to root, node -> exact upstream
+    network length within the cap) for the subgraph upstream of `root`.
+    Exact means the total length of the *set* of links upstream, so braided
+    channels that split and rejoin are not counted twice."""
     link_dist = net.upstream_edges(root, cap_m)
     nodes = {root}
     for lid in link_dist:
-        s, e = net.link_nodes(lid)
-        nodes.update((s, e))
-    sub = net.graph.subgraph(nodes)
-    lup: dict[str, float] = {}
-    try:
-        order = list(nx.topological_sort(sub))
-    except nx.NetworkXUnfeasible:
-        order = None
-    if order is not None:
-        for n in order:
-            lup[n] = sum(lup.get(p, 0.0) + sub.edges[p, n]["length"] for p in sub.predecessors(n))
-    else:  # braided channels forming a cycle: fall back to memoised BFS
-        for n in nodes:
-            lup[n] = net.upstream_length(n, cap_m)
+        if lid.startswith("repair:"):
+            continue
+        s_, e_ = net.link_nodes(lid)
+        nodes.update((s_, e_))
+    length_of = {lid: (net.repairs.get(lid, 0.0) if lid.startswith("repair:") else net.links.loc[lid, "length"])
+                 for lid in link_dist}
+    g = net.graph
+    memo: dict[str, float] = {}
+
+    def total(n: str) -> float:
+        if n in memo:
+            return memo[n]
+        seen: set[str] = set()
+        stack = [n]
+        while stack:
+            m = stack.pop()
+            for p in g.predecessors(m):
+                lid = g.edges[p, m]["link"]
+                if lid in length_of and lid not in seen:
+                    seen.add(lid)
+                    stack.append(p)
+        memo[n] = float(sum(length_of[l] for l in seen))
+        return memo[n]
+
+    lup = {n: total(n) for n in nodes}
     return link_dist, lup
 
 
@@ -219,7 +263,7 @@ def _path_to_lake(net: RiverNetwork, link_id: str, frac: float, comp: set[str],
         if nxt is None:
             return None
         node, lid = nxt
-        d += links.loc[lid, "length"]
+        d += net.repairs.get(lid, 0.0) if lid.startswith("repair:") else links.loc[lid, "length"]
     return None
 
 

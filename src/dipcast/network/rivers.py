@@ -52,10 +52,73 @@ class Snap:
 
 
 class RiverNetwork:
-    def __init__(self, links: gpd.GeoDataFrame, graph: nx.DiGraph):
+    def __init__(self, links: gpd.GeoDataFrame, graph: nx.DiGraph, upstream_m: dict[str, float] | None = None,
+                 repairs: dict[str, float] | None = None):
         self.links = links            # indexed by link id, EPSG:27700
         self.graph = graph
         self._sindex = links.sindex   # STRtree, built lazily by geopandas
+        self.repairs = repairs if repairs is not None else self._repair_gaps()
+        self.upstream_m = upstream_m if upstream_m is not None else self._compute_upstream_m()
+
+    def node_points(self) -> gpd.GeoSeries:
+        """One point per hydro node, from the link ends (nodes carry no geometry of their own)."""
+        starts = pd.DataFrame({"node": self.links["start_node"].to_numpy(),
+                               "geom": [Point(l.coords[0]) for l in self.links.geometry]})
+        ends = pd.DataFrame({"node": self.links["end_node"].to_numpy(),
+                             "geom": [Point(l.coords[-1]) for l in self.links.geometry]})
+        pts = pd.concat([starts, ends]).drop_duplicates("node").set_index("node")["geom"]
+        return gpd.GeoSeries(pts.values, index=pts.index, crs=27700)
+
+    def _repair_gaps(self, max_gap_m: float = 60.0, min_upstream_m: float = 1_000.0) -> dict[str, float]:
+        """OS Open Rivers leaves small breaks at weirs, mills and culverts: a channel
+        ends in a dead-end node a few metres from where the next section starts as
+        a fresh 'headwater'. Join each headwater to a foreign dead-end within
+        `max_gap_m` that carries real upstream network. Adds graph edges with
+        form 'repair' and no geometry; returns {edge_id: length_m}."""
+        g = self.graph
+        pts = self.node_points()
+        heads = [n for n in g.nodes if g.in_degree(n) == 0 and n in pts.index]
+        sinks = {n for n in g.nodes if g.out_degree(n) == 0 and g.in_degree(n) > 0}
+        # provisional upstream lengths (before repairs) to judge which sinks matter
+        prov = self._compute_upstream_m(quiet=True)
+        sink_pts = pts[pts.index.isin([n for n in sinks if prov.get(n, 0.0) >= min_upstream_m])]
+        repairs: dict[str, float] = {}
+        if sink_pts.empty:
+            return repairs
+        for h in heads:
+            hp = pts[h]
+            idx = sink_pts.sindex.query(hp.buffer(max_gap_m), predicate="intersects")
+            if len(idx) == 0:
+                continue
+            cand = sink_pts.iloc[idx]
+            d = cand.distance(hp)
+            sink = d.idxmin()
+            if sink == h or g.has_edge(sink, h):
+                continue
+            eid = f"repair:{sink[:8]}->{h[:8]}"
+            g.add_edge(sink, h, link=eid, length=float(max(d.min(), 1.0)), form="repair")
+            repairs[eid] = float(max(d.min(), 1.0))
+        log.info("network repairs: %d gaps joined (<= %.0f m)", len(repairs), max_gap_m)
+        return repairs
+
+    def _compute_upstream_m(self, quiet: bool = False) -> dict[str, float]:
+        """Total network length upstream of every node, in one topological pass.
+        Cycles (braided channels with inconsistent directions) are broken by
+        treating their nodes as having no upstream contribution from the cycle."""
+        g = self.graph
+        up: dict[str, float] = {}
+        try:
+            order = list(nx.topological_sort(g))
+        except nx.NetworkXUnfeasible:
+            cyc = nx.condensation(g)
+            order = []
+            for comp in nx.topological_sort(cyc):
+                order.extend(cyc.nodes[comp]["members"])
+        for n in order:
+            up[n] = sum(up.get(p, 0.0) + g.edges[p, n]["length"] for p in g.predecessors(n) if p in up)
+        if not quiet:
+            log.info("upstream lengths computed for %d nodes", len(up))
+        return up
 
     # ------------------------------------------------------------------ build
     @classmethod
@@ -87,7 +150,8 @@ class RiverNetwork:
     def save(self, path: Path = config.PROCESSED / "river_network.pkl") -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb") as f:
-            pickle.dump({"links": self.links, "graph": self.graph}, f, protocol=5)
+            pickle.dump({"links": self.links, "graph": self.graph, "upstream_m": self.upstream_m,
+                         "repairs": self.repairs}, f, protocol=5)
 
     @classmethod
     def load(cls, path: Path = config.PROCESSED / "river_network.pkl") -> RiverNetwork:
@@ -176,8 +240,16 @@ class RiverNetwork:
 
     def upstream_length(self, node: str, max_length_m: float | None = None) -> float:
         """Total upstream network length (m): a proxy for catchment area / flow."""
+        if max_length_m is None:
+            return float(self.upstream_m.get(node, 0.0))
         edges = self.upstream_edges(node, max_length_m)
-        return float(self.links.loc[list(edges.keys()), "length"].sum()) if edges else 0.0
+        real = [e for e in edges if not e.startswith("repair:")]
+        total = float(self.links.loc[real, "length"].sum()) if real else 0.0
+        return total + sum(self.repairs.get(e, 0.0) for e in edges if e.startswith("repair:"))
+
+    def link_upstream_m(self, link_id: str) -> float:
+        """Upstream network length arriving at the upstream end of a link."""
+        return float(self.upstream_m.get(self.links.loc[link_id, "start_node"], 0.0))
 
     def downstream_nodes(self, node: str, max_length_m: float) -> dict[str, float]:
         """Nodes reachable downstream within a path distance, with distances."""
@@ -208,7 +280,7 @@ class RiverNetwork:
             for n in (s, e):
                 for a, b in list(self.graph.in_edges(n)) + list(self.graph.out_edges(n)):
                     nb = self.graph.edges[a, b]["link"]
-                    if nb not in seen and self.links.loc[nb, "form"] == "lake":
+                    if nb not in seen and nb in self.links.index and self.links.loc[nb, "form"] == "lake":
                         frontier.append(nb)
         return seen
 
