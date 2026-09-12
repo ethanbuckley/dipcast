@@ -1,0 +1,51 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dipcast · Verification</title><link rel="stylesheet" href="/static/page.css"></head><body><main>
+<nav><a href="/">Map</a><a href="/verification">Verification</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a></nav>
+<h1>How good is the forecast?</h1>
+<p class="lead">Every forecast dipcast issues is logged and scored later against what the overflows actually did. This page updates itself. It also shows the offline tests the model was built on.</p>
+
+<h2>Reading the numbers</h2>
+<p class="small muted">The Brier score is the mean squared difference between a probability and what happened (0 or 1). Lower is better; 0 is perfect. Climatology means always forecasting the long-run average. Skill is how far below climatology's Brier score the forecast gets, as a fraction: 0 is no better than the average, 1 is perfect. AUC is how well the forecast ranks spill days above dry days: 0.5 is random, 1 is perfect. A reliability table checks that days forecast at 30% happen about 30% of the time.</p>
+
+<div id="live"></div>
+<div id="offline"></div>
+
+<footer>Model and verification code: open source under MIT. Live scores use the water companies' published overflow status; an overflow counts as spilling on a day if any published event overlaps it. Days on which dipcast was not polling are excluded, so gaps do not read as dry days.</footer>
+</main>
+<script>
+const f = (x, d=4) => (x === null || x === undefined || Number.isNaN(x)) ? '–' : Number(x).toFixed(d);
+const pct = x => (x === null || x === undefined) ? '–' : (100*x).toFixed(1) + '%';
+async function main() {
+  const d = await (await fetch('/api/verification')).json();
+  let h = '<h2>Live scoring of issued forecasts</h2>';
+  const L = d.live;
+  if (!L || !L.n_scored) {
+    h += `<p class="muted">${L && L.n_point_forecasts ? L.n_point_forecasts + ' forecasts logged since ' + L.first_forecast_day + '. ' : 'No forecasts logged yet. '}Scores appear once forecast days have passed and the overflows' behaviour is known, usually within two days of the first forecasts.</p>`;
+  } else {
+    const o = L.overall;
+    h += `<p class="small muted">${L.n_scored.toLocaleString()} overflow-day forecasts scored since ${L.first_forecast_day}; updated ${new Date(L.generated_at).toLocaleString('en-GB')}.</p>`;
+    h += `<table><tr><th>Forecast</th><th class="num">Brier</th><th class="num">AUC</th><th class="num">Skill vs climatology</th></tr>`;
+    for (const [k, lab] of [['calibrated','dipcast (as shown on the map)'],['raw','dipcast before lead calibration']]) {
+      const s = o[k]; h += `<tr><td>${lab}</td><td class="num">${f(s.brier)}</td><td class="num">${f(s.auc,3)}</td><td class="num">${f(1 - s.brier/o.climatology_brier, 2)}</td></tr>`;
+    }
+    h += `<tr><td>climatology (base rate ${pct(o.calibrated.base_rate)})</td><td class="num">${f(o.climatology_brier)}</td><td class="num">0.500</td><td class="num">0.00</td></tr></table>`;
+    if (L.by_lead) { h += `<h2>By lead time</h2><table><tr><th>Lead (days)</th><th class="num">n</th><th class="num">Spill rate</th><th class="num">Brier</th></tr>`;
+      for (const r of L.by_lead) h += `<tr><td>${r.lead === 0 ? 'today' : r.lead === 1 ? 'tomorrow' : r.lead}</td><td class="num">${r.n}</td><td class="num">${pct(r.base_rate)}</td><td class="num">${f(r.brier_cal)}</td></tr>`; h += '</table>'; }
+    if (L.by_week) { h += `<h2>By week</h2><table><tr><th>Week starting</th><th class="num">n</th><th class="num">Spill rate</th><th class="num">Brier</th></tr>`;
+      for (const r of L.by_week) h += `<tr><td>${r.week}</td><td class="num">${r.n}</td><td class="num">${pct(r.base_rate)}</td><td class="num">${f(r.brier_cal)}</td></tr>`; h += '</table>'; }
+    if (L.reliability) { h += `<h2>Reliability</h2><table><tr><th>Forecast bin</th><th class="num">n</th><th class="num">Mean forecast</th><th class="num">Observed</th></tr>`;
+      for (const r of L.reliability) h += `<tr><td>${f(r.lo,1)}–${f(r.hi,1)}</td><td class="num">${r.n}</td><td class="num">${pct(r.forecast)}</td><td class="num">${pct(r.observed)}</td></tr>`; h += '</table>'; }
+  }
+  document.getElementById('live').innerHTML = h;
+
+  let o = '<h2>Offline test: held-out year</h2><p class="small muted">Trained on United Utilities overflows 2023–2024, tested on 2025 (826,725 overflow-days, 7.45% with a discharge). Rainfall from reanalysis, so this excludes weather-forecast error.</p>';
+  if (d.holdout) { o += `<table><tr><th>Model</th><th class="num">Brier</th><th class="num">Log loss</th><th class="num">AUC</th><th class="num">Skill</th></tr>`;
+    for (const r of d.holdout) o += `<tr><td>${r.model}</td><td class="num">${f(r.brier)}</td><td class="num">${f(r.log_loss,3)}</td><td class="num">${f(r.auc,3)}</td><td class="num">${f(r.brier_skill_vs_clim,2)}</td></tr>`; o += '</table>'; }
+  if (d.reliability) { o += `<h2>Reliability on the held-out year</h2><table><tr><th>Forecast bin</th><th class="num">n</th><th class="num">Mean forecast</th><th class="num">Observed</th></tr>`;
+    for (const r of d.reliability) o += `<tr><td>${f(r.lo,1)}–${f(r.hi,1)}</td><td class="num">${r.n}</td><td class="num">${pct(r.forecast)}</td><td class="num">${pct(r.observed)}</td></tr>`; o += '</table>'; }
+  if (d.leads) { o += `<h2>Offline test: with real weather forecasts</h2><p class="small muted">Same held-out year, but rainfall taken from Open-Meteo's archived forecasts as they were issued. Lead 0 is the latest run for the day; lead k was issued k days earlier. "Platt-calibrated" rows show the per-lead correction the map applies.</p><table><tr><th>Rainfall source</th><th class="num">Brier</th><th class="num">AUC</th><th class="num">Skill</th></tr>`;
+    for (const r of d.leads) o += `<tr><td>${r.source}</td><td class="num">${f(r.brier)}</td><td class="num">${f(r.auc,3)}</td><td class="num">${f(r.brier_skill_vs_clim,2)}</td></tr>`; o += '</table>'; }
+  document.getElementById('offline').innerHTML = o;
+}
+main().catch(e => { document.getElementById('live').innerHTML = `<p class="muted">Could not load verification data: ${e.message}</p>`; });
+</script></body></html>

@@ -173,9 +173,48 @@ uv run python scripts/train.py 2025
 uv run uvicorn dipcast.api.app:app --port 8000
 ```
 
-Open http://localhost:8000. `scripts/refresh.py` re-polls live status; schedule
-it every 15-30 minutes and call `POST /api/reload` afterwards
-(`deploy/com.ethanbuckley.dipcast.refresh.plist` does this on macOS). All raw
-pulls are cached under `data/cache/` so re-running the ingestion is cheap.
-`scripts/verify_leads.py 2025` reproduces the lead-time table. `Dockerfile`
-builds a runtime image from the processed data.
+Open http://localhost:8000. Live status refreshes in-process every
+`DIPCAST_REFRESH_MINUTES` (set it, e.g. `DIPCAST_REFRESH_MINUTES=20`); with it
+unset, run `scripts/refresh.py` on a schedule and call `POST /api/reload`
+(`deploy/com.ethanbuckley.dipcast.refresh.plist` does this on macOS). Mutable
+files (live polls, the overflow table, the forecast log, live scores) go to
+`DIPCAST_STATE` if set, else `data/processed`. All raw pulls are cached under
+`data/cache/` so re-running the ingestion is cheap. `scripts/verify_leads.py
+2025` reproduces the lead-time table.
+
+Every forecast is logged (coordinates, time, values; nothing about the user)
+and scored once its days have passed, using the accumulated live polls. The
+result is public at `/verification`, alongside the offline tests. `/terms` and
+`/privacy` hold the plain-English terms and privacy notice.
+
+## Deploy
+
+The app is one container plus a small volume for mutable state. `fly.toml` is
+set up for Fly.io in London; any host that runs a container works the same way.
+The river network needs about 1 GB of RAM at runtime, so the config asks for a
+2 GB machine (roughly £10 a month at 2026 prices; check Fly's pricing page).
+
+```bash
+brew install flyctl                 # or curl -L https://fly.io/install.sh | sh
+fly auth signup                     # or fly auth login
+fly launch --no-deploy --copy-config --name dipcast --region lhr
+fly volumes create dipcast_state --region lhr --size 1
+fly deploy                          # builds the Dockerfile remotely, ~10 min first time
+fly open /api/health
+```
+
+You will know it worked when `/api/health` returns `"refresh_minutes": 20` and
+the map loads at `https://dipcast.fly.dev`. The mistake to avoid is deploying
+before `data/processed` exists locally: the Dockerfile copies it into the
+image, and an empty directory produces a container that starts and then fails
+every forecast.
+
+Custom domain and HTTPS: buy a domain at any registrar, then
+
+```bash
+fly certs add dipcast.example.com
+```
+
+and create the DNS records `fly certs show` asks for (an A and an AAAA record,
+or a CNAME to `dipcast.fly.dev`). Fly issues and renews the certificate. The
+`.fly.dev` address is HTTPS already, so a domain is cosmetic.

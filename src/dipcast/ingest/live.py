@@ -62,15 +62,15 @@ def fetch_live(companies: dict[str, str] | None = None) -> pd.DataFrame:
 
 
 def save_live(df: pd.DataFrame) -> None:
-    write_parquet(df, config.PROCESSED / "live_latest.parquet")
-    hist_path = config.PROCESSED / "live_history.parquet"
+    write_parquet(df, config.state_write("live_latest.parquet"))
+    hist_read = config.state_read("live_history.parquet")
     keep = df[["site_id", "company", "status", "status_start", "latest_event_start",
                "latest_event_end", "fetched_at"]]
-    if hist_path.exists():
-        old = pd.read_parquet(hist_path)
+    if hist_read.exists():
+        old = pd.read_parquet(hist_read)
         keep = pd.concat([old, keep], ignore_index=True)
     keep = keep.drop_duplicates(subset=["site_id", "status", "status_start"], keep="last")
-    write_parquet(keep, hist_path)
+    write_parquet(keep, config.state_write("live_history.parquet"))
 
 
 if __name__ == "__main__":

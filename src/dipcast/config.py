@@ -18,7 +18,23 @@ RAW = DATA / "raw"
 PROCESSED = DATA / "processed"
 CACHE = DATA / "cache"
 RIVERS_GPKG = RAW / "Data" / "oprvrs_gb.gpkg"
-DUCKDB_PATH = PROCESSED / "dipcast.duckdb"
+# Mutable runtime files (live status, overflow table, forecast log, live
+# verification) go to STATE so a deployment can mount a volume there while the
+# built artefacts stay read-only in PROCESSED. Reads fall back to PROCESSED.
+STATE = Path(os.environ.get("DIPCAST_STATE", PROCESSED))
+DUCKDB_PATH = STATE / "dipcast.duckdb"
+# In-process refresh of live status every N minutes; 0 disables (use scripts/refresh.py).
+REFRESH_MINUTES = int(os.environ.get("DIPCAST_REFRESH_MINUTES", "0"))
+
+
+def state_write(name: str) -> Path:
+    STATE.mkdir(parents=True, exist_ok=True)
+    return STATE / name
+
+
+def state_read(name: str) -> Path:
+    p = STATE / name
+    return p if p.exists() else PROCESSED / name
 
 # ---------------------------------------------------------------------------
 # Live storm-overflow status feeds (one ArcGIS FeatureServer layer per company).

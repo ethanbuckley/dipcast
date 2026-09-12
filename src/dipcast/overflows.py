@@ -14,7 +14,7 @@ from dipcast.network.rivers import _TO_BNG, RiverNetwork
 
 log = logging.getLogger(__name__)
 
-PATH = config.PROCESSED / "overflows.parquet"
+NAME = "overflows.parquet"
 
 # Outfalls to the sea or an estuary are outside the inland network by design.
 MARINE = re.compile(r"\b(?:sea|channel|solent|estuary|estuarine|harbour|harbor|firth|bay|the wash|coast|coastal|"
@@ -73,7 +73,7 @@ def latest_annual_returns(ar: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_overflows(net: RiverNetwork) -> pd.DataFrame:
-    live = pd.read_parquet(config.PROCESSED / "live_latest.parquet")
+    live = pd.read_parquet(config.state_read("live_latest.parquet"))
     ar = latest_annual_returns(pd.read_parquet(config.PROCESSED / "annual_returns.parquet"))
     df = live.merge(ar, on="site_id", how="outer")
     df["company"] = df["company"].fillna(df["ar_company"])
@@ -99,13 +99,14 @@ def build_overflows(net: RiverNetwork) -> pd.DataFrame:
     log.info("overflows: %d total, %d with live feed, %d snapped to network (%.0f%%); confidence %s",
              len(df), int(df.has_live.sum()), int(snapped.sum()), 100 * snapped.mean(),
              df["snap_confidence"].value_counts(dropna=False).to_dict())
-    df.to_parquet(PATH, index=False)
+    df.to_parquet(config.state_write(NAME), index=False)
     return df
 
 
 def load_overflows(net: RiverNetwork | None = None, rebuild: bool = False) -> pd.DataFrame:
-    if PATH.exists() and not rebuild:
-        return pd.read_parquet(PATH)
+    path = config.state_read(NAME)
+    if path.exists() and not rebuild:
+        return pd.read_parquet(path)
     assert net is not None
     return build_overflows(net)
 

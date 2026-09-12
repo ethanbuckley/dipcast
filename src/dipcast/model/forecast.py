@@ -117,7 +117,7 @@ def spill_probabilities(ov: pd.DataFrame, days: pd.DatetimeIndex, model: SpillMo
 
 
 def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = config.MAX_UPSTREAM_KM,
-                   include_contributors: int = 25) -> dict:
+                   include_contributors: int = 25, log_to_store: bool = True) -> dict:
     net, ov_all, model = _net(), _overflows(), _model()
     now = pd.Timestamp.now(tz=LOCAL_TZ)
     # The EA gauge lookup is slow and optional: run it alongside everything else.
@@ -171,8 +171,8 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
     live_n = int(ov["has_live"].sum()) if not ov.empty else 0
 
     days = pd.date_range(now.floor("D") - pd.Timedelta(days=1), periods=days_ahead + 2, freq="D")
-    p = spill_probabilities(ov, days, model)
-    p = calibrate_by_lead(p, first_lead=-1)   # column 0 is yesterday, column 1 is today (lead 0)
+    p_raw = spill_probabilities(ov, days, model)
+    p = calibrate_by_lead(p_raw, first_lead=-1)   # column 0 is yesterday, column 1 is today (lead 0)
     weights = ov["weight"].to_numpy(dtype=float) if not ov.empty else np.zeros(0)
     travel = ov["travel_h"].to_numpy(dtype=float) if not ov.empty else np.zeros(0)
     risk = combine_daily(p, weights, travel)
@@ -232,6 +232,12 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
     if pin.snap is not None:
         slon, slat = bng_to_lonlat(pin.snap.x, pin.snap.y)
         out["location"]["snapped"] = {"lat": round(slat, 5), "lon": round(slon, 5)}
+    if log_to_store:
+        try:
+            from dipcast.forecast_log import log_forecast
+            log_forecast(now, lat, lon, pin.mode, pin.watercourse, now_risk, days, risk, ov, p_raw, p)
+        except Exception as e:  # noqa: BLE001 - logging must never fail a forecast
+            log.warning("forecast log failed: %s", e)
     return out
 
 

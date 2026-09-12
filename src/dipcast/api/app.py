@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
@@ -10,12 +11,30 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from dipcast import __version__, config
-from dipcast.model.forecast import forecast_point, overflows_geojson, reload_caches
+from dipcast.forecast_log import load_verification
+from dipcast.jobs import start_scheduler
+from dipcast.model.forecast import _net, forecast_point, overflows_geojson, reload_caches
 
 log = logging.getLogger(__name__)
 STATIC = Path(__file__).parent / "static"
+# uvicorn configures its own loggers only; make dipcast's INFO visible alongside them.
+logging.getLogger("dipcast").setLevel(logging.INFO)
+if not logging.getLogger().handlers:
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
+NO_CACHE = {"Cache-Control": "no-cache"}
 
-app = FastAPI(title="dipcast", version=__version__,
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    stop = None
+    if config.REFRESH_MINUTES > 0:
+        stop = start_scheduler(config.REFRESH_MINUTES, _net, reload_caches)
+    yield
+    if stop is not None:
+        stop.set()
+
+
+app = FastAPI(title="dipcast", version=__version__, lifespan=lifespan,
               description="Sewage-pollution risk forecasts for inland swim spots in England.")
 
 
@@ -47,14 +66,34 @@ def api_reload():
     return {"ok": True}
 
 
+@app.get("/api/verification")
+def api_verification():
+    return JSONResponse(load_verification())
+
+
 @app.get("/api/health")
 def health():
-    return {"ok": True, "version": __version__}
+    return {"ok": True, "version": __version__, "refresh_minutes": config.REFRESH_MINUTES}
 
 
 @app.get("/")
 def index():
-    return FileResponse(STATIC / "index.html", headers={"Cache-Control": "no-cache"})
+    return FileResponse(STATIC / "index.html", headers=NO_CACHE)
+
+
+@app.get("/verification")
+def verification_page():
+    return FileResponse(STATIC / "verification.html", headers=NO_CACHE)
+
+
+@app.get("/terms")
+def terms_page():
+    return FileResponse(STATIC / "terms.html", headers=NO_CACHE)
+
+
+@app.get("/privacy")
+def privacy_page():
+    return FileResponse(STATIC / "privacy.html", headers=NO_CACHE)
 
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
