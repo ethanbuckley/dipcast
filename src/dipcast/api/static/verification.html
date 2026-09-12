@@ -45,6 +45,15 @@ async function main() {
     for (const r of d.reliability) o += `<tr><td>${f(r.lo,1)}–${f(r.hi,1)}</td><td class="num">${r.n}</td><td class="num">${pct(r.forecast)}</td><td class="num">${pct(r.observed)}</td></tr>`; o += '</table>'; }
   if (d.leads) { o += `<h2>Offline test: with real weather forecasts</h2><p class="small muted">Same held-out year, but rainfall taken from Open-Meteo's archived forecasts as they were issued. Lead 0 is the latest run for the day; lead k was issued k days earlier. "Platt-calibrated" rows show the per-lead correction the map applies.</p><table><tr><th>Rainfall source</th><th class="num">Brier</th><th class="num">AUC</th><th class="num">Skill</th></tr>`;
     for (const r of d.leads) o += `<tr><td>${r.source}</td><td class="num">${f(r.brier)}</td><td class="num">${f(r.auc,3)}</td><td class="num">${f(r.brier_skill_vs_clim,2)}</td></tr>`; o += '</table>'; }
+  if (d.ecoli && d.ecoli.all_sites) {
+    const e = d.ecoli, c = d.ecoli_combined || {};
+    o += `<h2>Against measured E. coli</h2><p class="small muted">Environment Agency lab samples at ${e.n_sites} inland designated bathing waters, ${e.period[0]} to ${e.period[1]} (${e.n_samples.toLocaleString()} samples). For each sample day, what dipcast would have said from reanalysis rainfall, against the naive competitor: rain at the site in the previous 48 h. ρ is Spearman rank correlation with log E. coli; "within site" removes each site's average, so it measures which days are bad rather than which sites.</p>`;
+    o += `<table><tr><th>Predictor</th><th class="num">n</th><th class="num">ρ pooled</th><th class="num">ρ within site</th><th class="num">AUC &gt; 900</th></tr>`;
+    const lab = {rain_24h:'rain, previous 24 h', rain_48h:'rain, previous 48 h', risk_model:'dipcast spill risk', risk_observed:'actual spills through transport'};
+    for (const r of e.all_sites) o += `<tr><td>${lab[r.predictor] || r.predictor}</td><td class="num">${r.n}</td><td class="num">${f(r.spearman_pooled,2)}</td><td class="num">${f(r.spearman_within_site,2)}</td><td class="num">${f(r.auc_gt900,2)}</td></tr>`;
+    o += `</table>`;
+    if (c.between_site_rho_risk !== undefined) o += `<p class="small">Which sites are contaminated: site-mean dipcast risk ranks the sites' mean E. coli at ρ = ${f(c.between_site_rho_risk,2)}; site-mean rainfall does not (${f(c.between_site_rho_rain,2)}). Which days are bad at a site: rainfall is the stronger signal, and adding spill risk to it improves a leave-one-year-out fit only slightly (${f(c.loyo_within_site['rain only'].rho_within,3)} to ${f(c.loyo_within_site['rain + spill risk'].rho_within,3)}). dipcast currently models overflow exposure, not the diffuse runoff that rain washes in regardless; at inland bathing waters that runoff dominates the day-to-day variation. This is the next model.</p>`;
+  }
   document.getElementById('offline').innerHTML = o;
 }
 main().catch(e => { document.getElementById('live').innerHTML = `<p class="muted">Could not load verification data: ${e.message}</p>`; });

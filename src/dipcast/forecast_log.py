@@ -172,4 +172,7 @@ def load_verification() -> dict:
     q = config.PROCESSED / "lead_calibration.json"
     if q.exists():
         res["lead_calibration"] = json.loads(q.read_text())
+    for key, name in [("ecoli", "ecoli_validation.json"), ("ecoli_combined", "ecoli_validation_combined.json")]:
+        q = config.PROCESSED / name
+        res[key] = json.loads(q.read_text()) if q.exists() else None
     return res

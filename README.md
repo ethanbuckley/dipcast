@@ -118,11 +118,51 @@ calibration the lead-2 75% bin verifies at 72% and lead-4 Brier improves from
 0.0536 to 0.0524; the parameters are fitted on the same 2025 data, so treat
 those two figures as slightly optimistic.
 
+**Validation against measured E. coli.** The Environment Agency publishes weekly
+lab samples at 38 inland designated bathing waters (20 rivers, 18 lakes). For
+every sample from May 2023 to September 2026 (2,165 samples; 1,750 at the 32
+sites with monitored overflows upstream) `scripts/validate_ecoli.py` computes
+what dipcast would have said for that day from reanalysis rainfall, and
+compares it with the naive competitor, rainfall at the site in the previous
+48 hours. Results (Spearman rank correlation with log E. coli; AUC for samples
+over 900 cfu/100 ml, the inland "sufficient" threshold):
+
+| Predictor | Pooled ρ | Within-site ρ | AUC > 900 |
+|---|---|---|---|
+| rainfall, previous 48 h at the site | 0.09 | 0.35 | 0.65 |
+| dipcast spill risk (rain-driven spill model through transport) | 0.57 | 0.23 | 0.78 |
+
+Two different questions hide in that table. *Which sites* are contaminated:
+site-mean dipcast risk ranks the 32 sites' mean E. coli at ρ = 0.70, and
+site-mean rainfall does not (−0.25). The transport layer, the part of dipcast
+that is new, is what carries this. *Which days* are bad at a given site: rain
+in the last 48 hours is the stronger signal (0.35 against 0.23; on rivers 0.47
+against 0.35), and adding spill risk to rain in a leave-one-year-out fit
+improves it only slightly (0.337 to 0.343; rivers 0.474 to 0.488). At the nine
+United Utilities sites, where actual spill events are known, routing the real
+spills through the transport step correlates with E. coli at only 0.23 within
+site: at those lakes, bacterial spikes are mostly not overflow-driven.
+
+The honest reading: dipcast's forecast tells a swimmer how exposed a spot is
+and when the overflows above it are likely to spill; it does not yet capture
+the diffuse runoff (farms, roads, urban drainage) that rain washes into rivers
+regardless of overflows, and at inland bathing waters that runoff dominates the
+day-to-day variation. The next model should predict E. coli exceedance
+directly from both, which these 2,165 samples make possible. Full tables:
+`data/processed/ecoli_validation*.json|csv`.
+
 ## Known limits
 
 - The lead-time test approximates the features: the target day and the two
   before it use lead-appropriate forecasts; the 7-day, 30-day and antecedent
   windows use reanalysis, since on the issue day they are almost all observed.
+- OS Open Rivers has small breaks at weirs, mills and culverts, and side
+  channels (mill streams, leats) that are not connected upstream. dipcast joins
+  653 headwater nodes to a foreign dead-end within 60 m that carries real
+  network, and a pin on a channel with under 5 km upstream adopts a nearby
+  channel with at least five times more. Without this the Thames overflows
+  were invisible from Wolvercote Mill Stream and the Cam stopped 6 km above
+  Cambridge. Reported as `adopted_main_channel` in the API.
 - Snapping outfalls to the network: 85% sit within 750 m of a link ("high"
   confidence). A second pass to 1.5 km recovers 9% more, preferring a link whose
   name shares a distinctive word with the recorded receiving watercourse
@@ -154,13 +194,16 @@ in `deploy/` for the 20-minute live refresh (not installed automatically).
 
 Not done yet, in the order I would do them:
 
-1. A year-level calibration: the residual top-end overconfidence is a shift
+1. An E. coli exceedance model: predict P(E. coli > 900) at a point from
+   48-hour rainfall at the site, dipcast's spill exposure, water body type and
+   season, trained on the 2,165 bathing-water samples; show rainfall-driven
+   runoff risk alongside overflow risk on the map.
+2. A year-level calibration: the residual top-end overconfidence is a shift
    between years, so fit a single temperature or isotonic map on the most
    recent year's out-of-sample predictions each time the model is refit.
-2. Install the refresh schedule and let live history accumulate for the seven
-   companies without event feeds, then fit their site calibration.
-3. Per-lake residence time (needs volume; WFD gives area only).
-4. Deploy the container somewhere public.
+3. Let live history accumulate for the eight companies without event feeds,
+   then fit their site calibration.
+4. Per-lake residence time (needs volume; WFD gives area only).
 5. Dwr Cymru live status (no ArcGIS feed; would need their own map's API).
 
 ## Run
