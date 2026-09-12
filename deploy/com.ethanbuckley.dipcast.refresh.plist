@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Poll live overflow status every 20 minutes and tell the API to reload.
+     Install (not done automatically):
+       cp deploy/com.ethanbuckley.dipcast.refresh.plist ~/Library/LaunchAgents/
+       launchctl load ~/Library/LaunchAgents/com.ethanbuckley.dipcast.refresh.plist
+     Check: tail -f ~/Documents/Personal/dipcast/logs/refresh.log -->
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.ethanbuckley.dipcast.refresh</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>-c</string>
+    <string>cd /Users/ethanbuckley/Documents/Personal/dipcast &amp;&amp; /Users/ethanbuckley/.local/bin/uv run python scripts/refresh.py &amp;&amp; curl -s -X POST localhost:8765/api/reload</string>
+  </array>
+  <key>StartInterval</key><integer>1200</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/Users/ethanbuckley/Documents/Personal/dipcast/logs/refresh.log</string>
+  <key>StandardErrorPath</key><string>/Users/ethanbuckley/Documents/Personal/dipcast/logs/refresh.log</string>
+</dict>
+</plist>

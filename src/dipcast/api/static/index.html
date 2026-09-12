@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dipcast</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  :root { --ink:#1b1f23; --muted:#5b6470; --line:#e3e6ea; --bg:#fff; --accent:#0b5fff;
+          --low:#2e9e5b; --moderate:#d8a400; --high:#e06a1b; --veryhigh:#c81e1e; --unknown:#8a939e; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color:var(--ink); background:var(--bg);}
+  #app { display:grid; grid-template-columns: 1fr 380px; height:100%; }
+  #map { height:100%; }
+  #panel { border-left:1px solid var(--line); overflow:auto; padding:16px 18px; }
+  h1 { font-size:18px; margin:0 0 4px; letter-spacing:-.01em; }
+  .sub { color:var(--muted); margin:0 0 14px; }
+  .hint { color:var(--muted); font-size:13px; }
+  .card { border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin:10px 0; }
+  .risk { display:flex; align-items:baseline; gap:10px; }
+  .risk .val { font: 600 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .badge { display:inline-block; padding:2px 8px; border-radius:999px; color:#fff; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
+  .b-low{background:var(--low)} .b-moderate{background:var(--moderate)} .b-high{background:var(--high)} .b-veryhigh{background:var(--veryhigh)} .b-unknown{background:var(--unknown)}
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th,td { text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--muted); font-weight:600; }
+  td.num, th.num { text-align:right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .muted { color:var(--muted); }
+  .small { font-size:12px; }
+  details summary { cursor:pointer; color:var(--accent); }
+  .status-1{color:var(--veryhigh);font-weight:600} .status-0{color:var(--muted)} .status--1,.status--2{color:var(--unknown)}
+  .legend span { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; vertical-align:middle; }
+  @media (max-width: 800px) { #app { grid-template-columns:1fr; grid-template-rows: 55% 45%; } #panel{border-left:0;border-top:1px solid var(--line);} }
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="map"></div>
+  <aside id="panel">
+    <h1>dipcast</h1>
+    <p class="sub">Will sewage from upstream storm overflows reach this swim spot?</p>
+    <div id="result">
+      <p class="hint">Click a river or lake on the map. Storm overflows appear as dots when you zoom in:
+        <span class="legend"><span style="background:var(--veryhigh)"></span>discharging now</span>
+        <span class="legend"><span style="background:var(--muted)"></span>not discharging</span>
+        <span class="legend"><span style="background:var(--unknown)"></span>offline / no live feed</span>
+      </p>
+      <p class="hint">Covers all nine English water companies' live overflow status. Welsh Water areas show annual spill history only.</p>
+    </div>
+    <p class="hint small" style="margin-top:18px">Risk is the modelled chance that at least one upstream spill reaches this point after travel time, bacterial die-off and dilution. It is a forecast, not a measurement: a "low" reading is not a guarantee of clean water. Sources: water company live feeds via the National Storm Overflow Hub, EA annual returns, Open-Meteo rainfall, OS Open Rivers, EA river levels.</p>
+  </aside>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map = L.map('map', { zoomControl: true }).setView([54.05, -2.6], 8);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
+
+let pin = null, contribLayer = L.layerGroup().addTo(map), ovLayer = L.layerGroup().addTo(map);
+const fmt = (x, d=0) => (x === null || x === undefined) ? '–' : Number(x).toFixed(d);
+const cls = l => 'b-' + String(l||'unknown').replace(' ', '');
+const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+let serverToday = null;  // set from the forecast's issue time so labels follow the server's local day
+const addDays = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return localISO(d); };
+const dateLabel = iso => { const t = serverToday ?? localISO(new Date());
+  if (iso === t) return 'Today'; if (iso === addDays(t, 1)) return 'Tomorrow';
+  return new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'}); };
+const statusText = s => ({1:'discharging', 0:'not discharging', '-1':'monitor offline', '-2':'no live feed'})[s] ?? '?';
+const colourFor = s => s === 1 ? '#c81e1e' : s === 0 ? '#5b6470' : '#b3bac2';
+
+async function loadOverflows() {
+  if (map.getZoom() < 9) { ovLayer.clearLayers(); return; }
+  const b = map.getBounds();
+  const r = await fetch(`/api/overflows?bbox=${b.getWest()},${b.getSouth()},${b.getEast()},${b.getNorth()}`);
+  const gj = await r.json(); ovLayer.clearLayers();
+  L.geoJSON(gj, { pointToLayer: (f, ll) => L.circleMarker(ll, { radius: f.properties.status === 1 ? 7 : 4, color: colourFor(f.properties.status), fillColor: colourFor(f.properties.status), fillOpacity: .85, weight: 1 })
+    .bindPopup(`<b>${f.properties.site_name ?? f.properties.site_id}</b><br>${f.properties.company}<br>${f.properties.receiving_watercourse ?? ''}<br>Status: ${statusText(f.properties.status)}<br>Last spill ended: ${f.properties.latest_event_end ? new Date(f.properties.latest_event_end).toLocaleString('en-GB') : '–'}<br>Long-term avg spills/yr: ${fmt(f.properties.lta_spills,1)}`) }).addTo(ovLayer);
+}
+map.on('moveend', loadOverflows); loadOverflows();
+
+async function runForecast(lat, lng) {
+  if (pin) pin.remove(); pin = L.marker([lat, lng]).addTo(map); contribLayer.clearLayers();
+  history.replaceState(null, '', `?lat=${lat.toFixed(5)}&lon=${lng.toFixed(5)}`);
+  document.getElementById('result').innerHTML = '<p class="hint">Tracing the river network and fetching rainfall…</p>';
+  try {
+    const r = await fetch(`/api/forecast?lat=${lat.toFixed(5)}&lon=${lng.toFixed(5)}`);
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    render(await r.json());
+  } catch (err) { document.getElementById('result').innerHTML = `<p class="hint">Could not forecast: ${err.message}</p>`; }
+}
+map.on('click', e => runForecast(e.latlng.lat, e.latlng.lng));
+
+// Shareable links: /?lat=54.19950&lon=-2.59450 opens straight onto that spot.
+(() => {
+  const q = new URLSearchParams(location.search);
+  const lat = parseFloat(q.get('lat')), lon = parseFloat(q.get('lon'));
+  if (Number.isFinite(lat) && Number.isFinite(lon)) { map.setView([lat, lon], 13); runForecast(lat, lon); }
+})();
+
+function render(d) {
+  serverToday = (d.query && d.query.issued_at) ? d.query.issued_at.slice(0, 10) : null;
+  const loc = d.location, rs = d.river_state, now = d.now;
+  let h = '';
+  if (d.error) { document.getElementById('result').innerHTML = `<p class="hint">${d.error}</p>`; return; }
+  h += `<div class="card"><div class="muted small">${loc.mode === 'lake' ? 'Lake' : 'River'}${loc.watercourse ? ': ' + loc.watercourse : ''}${loc.lake_area_km2 ? ' (' + loc.lake_area_km2 + ' km²)' : ''} · snapped ${loc.snap_distance_m} m</div>`;
+  h += `<div class="risk" style="margin-top:6px"><span class="val">${Math.round(now.risk*100)}%</span><span class="badge ${cls(now.label)}">${now.label} right now</span></div>`;
+  h += `<div class="small muted" style="margin-top:6px">${now.discharging_upstream} upstream overflow${now.discharging_upstream===1?'':'s'} discharging now · ${now.recent_upstream} finished within ${d.assumptions.recent_spill_hours} h · ${now.monitored_upstream} of ${d.upstream_summary.overflows} upstream have a live feed</div></div>`;
+  h += `<div class="card"><table><tr><th>Day</th><th class="num">Risk</th><th></th><th class="num">Expected upstream spills</th></tr>`;
+  for (const day of d.days) h += `<tr><td>${dateLabel(day.date)}</td><td class="num">${Math.round(day.risk*100)}%</td><td><span class="badge ${cls(day.label)}">${day.label}</span></td><td class="num">${fmt(day.expected_spilling_overflows,1)}</td></tr>`;
+  h += `</table><div class="small muted" style="margin-top:6px">Forecast risk uses Open-Meteo rainfall and a spill model trained on 743,735 United Utilities discharge events (2023–25). Daily resolution; travel time shifts long-distance spills into the next day.</div></div>`;
+  if (rs) h += `<div class="card small"><b>River level</b> at ${rs.station}${rs.river ? ' (' + rs.river + ')' : ''}: ${fmt(rs.level_m,2)} m — <b>${rs.label}</b> (typical ${fmt(rs.typical_low_m,2)}–${fmt(rs.typical_high_m,2)} m)${rs.observed_at ? ', observed ' + new Date(rs.observed_at).toLocaleString('en-GB') : ''}. Assumed velocity ${d.assumptions.river_velocity_ms} m/s.</div>`;
+  if (d.contributors.length) {
+    h += `<div class="card"><b>Upstream overflows that matter most</b><table style="margin-top:6px"><tr><th>Overflow</th><th class="num">km</th><th class="num">h</th><th class="num">reach</th><th class="num">P(spill) today</th></tr>`;
+    for (const c of d.contributors) {
+      h += `<tr><td><span class="status-${c.status}">●</span> ${c.site_name ?? c.site_id}<div class="muted small">${c.company} · ${statusText(c.status)}${c.latest_event_end ? ' · last ended ' + new Date(c.latest_event_end).toLocaleDateString('en-GB') : ''}${c.snap_confidence && c.snap_confidence !== 'high' ? ' · river match: ' + c.snap_confidence : ''}</div></td><td class="num">${fmt(c.distance_km + c.lake_distance_km,1)}</td><td class="num">${fmt(c.travel_h,0)}</td><td class="num">${fmt(c.weight,2)}</td><td class="num">${Math.round(c.p_spill_today*100)}%</td></tr>`;
+      L.circleMarker([c.lat, c.lon], { radius: 5 + 8*c.weight, color: colourFor(c.status), fillColor: colourFor(c.status), fillOpacity: .5, weight: 2 })
+        .bindTooltip(`${c.site_name ?? c.site_id}: ${(c.distance_km + c.lake_distance_km).toFixed(1)} km, reach ${c.weight.toFixed(2)}`).addTo(contribLayer);
+    }
+    h += `</table><div class="small muted" style="margin-top:6px">“reach” = probability a spill there affects this spot: die-off over travel time × dilution by upstream network size.</div></div>`;
+  } else h += `<div class="card">No monitored overflows within ${d.assumptions.max_upstream_km} km upstream.</div>`;
+  h += `<p class="small muted">Share this spot: <a href="${location.href}">${location.host}${location.pathname}?lat=${d.query.lat.toFixed(5)}&amp;lon=${d.query.lon.toFixed(5)}</a></p>`;
+  h += `<details class="small"><summary>Assumptions</summary><pre style="white-space:pre-wrap">${JSON.stringify(d.assumptions, null, 1)}</pre></details>`;
+  document.getElementById('result').innerHTML = h;
+}
+</script>
+</body>
+</html>
