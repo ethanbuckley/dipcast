@@ -23,7 +23,8 @@ log = logging.getLogger(__name__)
 
 CACHE = config.CACHE / "rain"
 FORECAST_TTL_S = 3600
-BATCH = 10  # coordinates per Open-Meteo request
+BATCH = 10           # archive: coordinates per request (long series, keep small)
+FORECAST_BATCH = 50  # forecast: short series, so many cells per request; fewer handshakes
 
 
 def grid_cell(lat: float | np.ndarray, lon: float | np.ndarray) -> tuple:
@@ -110,8 +111,8 @@ def fetch_forecast(cells: list[tuple[float, float]],
             frames.append(pd.read_parquet(p))
         else:
             todo.append((cl, cn))
-    for i in range(0, len(todo), BATCH):
-        chunk = todo[i:i + BATCH]
+    for i in range(0, len(todo), FORECAST_BATCH):
+        chunk = todo[i:i + FORECAST_BATCH]
         params = {
             "latitude": ",".join(f"{c[0]:.3f}" for c in chunk),
             "longitude": ",".join(f"{c[1]:.3f}" for c in chunk),

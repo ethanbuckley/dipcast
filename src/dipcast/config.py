@@ -16,7 +16,7 @@ ROOT = Path(os.environ.get("DIPCAST_ROOT", Path(__file__).resolve().parents[2]))
 DATA = ROOT / "data"
 RAW = DATA / "raw"
 PROCESSED = DATA / "processed"
-CACHE = DATA / "cache"
+CACHE = Path(os.environ.get("DIPCAST_CACHE", DATA / "cache"))   # raw pulls; safe to lose
 RIVERS_GPKG = RAW / "Data" / "oprvrs_gb.gpkg"
 # Mutable runtime files (live status, overflow table, forecast log, live
 # verification) go to STATE so a deployment can mount a volume there while the

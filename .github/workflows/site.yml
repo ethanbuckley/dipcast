@@ -19,6 +19,7 @@ permissions:
 
 env:
   DIPCAST_STATE: ${{ github.workspace }}/state
+  DIPCAST_CACHE: ${{ github.workspace }}/state/cache   # rainfall cache persists with the state
   PYTHONUNBUFFERED: "1"
   GH_TOKEN: ${{ github.token }}
 
