@@ -1,0 +1,39 @@
+name,mode,watercourse,adopted,upstream,sum_w
+"Wharfe at Cromwheel, Ilkley",river,River Wharfe,False,15,4.03
+"Nidd at the Lido, Knaresborough",river,River Nidd,False,52,10.66
+Wharfe at Wilderness Carpark,river,River Wharfe,False,52,6.99
+Swale above Richmond Falls,river,River Swale,False,6,3.12
+Rutland Water Whitwell Creek,lake,Rutland Water,False,5,0.02
+Rutland Water Sykes Lane,lake,Rutland Water,False,5,0.01
+Colwick Country Park (West Lake),river,River Trent,False,293,19.14
+"Sheep's Green, River Cam",river,River Cam,False,22,1.04
+"Falcon Meadow, River Waveney",river,River Waveney,False,26,3.7
+"Friars Meadow, River Stour",river,River Stour,False,16,2.16
+Cotswold Country Park and Beach,river,Cerneywick Brook,False,0,0.0
+Hampstead Heath (Ladies Pond),lake,,False,0,0.0
+Hampstead Heath (Mens Pond),lake,,False,0,0.0
+Hampstead Heath (Mixed Pond),lake,The Fountains,False,0,0.0
+The Serpentine - Hyde Park,lake,The Westbourn,False,0,0.0
+"Pangbourne Meadow, River Thames",river,River Thames,False,31,0.81
+"Ham and Kingston, River Thames",river,River Thames,False,43,2.46
+Frensham Great Pond,lake,Frensham Great Pond,False,1,0.48
+Wolvercote Mill Stream,river,River Thames,True,29,1.18
+"Wallingford Beach, River Thames",river,River Thames,False,41,0.42
+River Avon at Fordingbridge,river,River Avon,False,26,1.88
+River Avon at Queen Elizabeth Gardens,river,River Avon,True,21,0.95
+River Tone at French Weir Park,river,River Tone,False,38,4.06
+Henleaze Lake,river,River Trym,False,0,0.0
+River Frome at Farleigh Hungerford,river,River Frome,False,38,5.87
+River Teme in Ludlow,river,Afon Tefeidiad,False,11,0.88
+River Severn at Ironbridge,river,Afon Hafren,False,87,1.99
+River Severn in Shrewsbury,river,Afon Hafren,False,15,7.1
+"Sandy Lane, Chester",river,River Dee,False,10,2.82
+"Windermere, Lakeside YMCA",lake,Windermere (S Basin),False,6,0.03
+"Windermere, Millerground Landing",lake,Windermere (N Basin),False,4,0.13
+"Windermere, Rayrigg Meadow",lake,Windermere (N Basin),False,4,0.15
+"Windermere, Fellfoot",lake,Windermere (S Basin),False,6,0.01
+"Coniston Water, Brown Howe",lake,Coniston Water,False,2,0.03
+"Coniston Water, Boating Centre",lake,Coniston Water,False,2,0.09
+"Coniston Water, Monk Coniston",lake,Coniston Water,False,2,0.06
+Derwent Water at Crow Park,lake,Derwent Water,False,3,0.12
+River Ribble at Edisford Bridge,river,River Ribble,False,25,1.42

@@ -1,0 +1,31 @@
+{
+ "loyo_within_site": {
+  "rain only": {
+   "rho_within": 0.337,
+   "rmse": 0.464,
+   "auc_gt900": 0.895
+  },
+  "spill risk only": {
+   "rho_within": 0.257,
+   "rmse": 0.476,
+   "auc_gt900": 0.881
+  },
+  "rain + spill risk": {
+   "rho_within": 0.343,
+   "rmse": 0.462,
+   "auc_gt900": 0.897
+  },
+  "rain + spill risk + season": {
+   "rho_within": 0.359,
+   "rmse": 0.46,
+   "auc_gt900": 0.895
+  }
+ },
+ "between_site_rho_risk": 0.697,
+ "between_site_rho_rain": -0.246,
+ "coef_rain48_rain24_logitrisk": [
+  0.14,
+  0.001,
+  0.057
+ ]
+}

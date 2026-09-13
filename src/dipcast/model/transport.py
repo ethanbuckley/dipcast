@@ -122,7 +122,11 @@ def _snap_to_links(net: RiverNetwork, x: float, y: float, link_ids: set[str]) ->
     return Snap(link_id=lid, frac=frac, dist_m=float(d.min()), form=sub.loc[lid, "form"], x=sp.x, y=sp.y)
 
 
-def locate_pin(net: RiverNetwork, lon: float, lat: float) -> PinLocation:
+def locate_pin(net: RiverNetwork, lon: float, lat: float, kind_hint: str | None = None) -> PinLocation:
+    """`kind_hint` = 'lake' says the caller knows this is a lake (e.g. a designated
+    lake bathing water or a curated spot). A lake with no WFD polygon and no lake
+    centreline nearby is then treated as isolated rather than snapped to whatever
+    river passes closest, which would credit it with that river's overflows."""
     x, y = lonlat_to_bng(lon, lat)
 
     # 1. Inside (or on the shore of) a WFD lake polygon: the lake's centreline
@@ -146,14 +150,20 @@ def locate_pin(net: RiverNetwork, lon: float, lat: float) -> PinLocation:
     # 2. Otherwise decide between river and (small, unmapped) lake by centreline distance.
     river = net.snap_xy(x, y, max_m=PIN_SNAP_M)
     lake = net.snap_xy(x, y, max_m=LAKE_SNAP_M, forms=("lake",))
-    use_lake = lake is not None and (
-        river is None or river.form == "lake" or lake.dist_m * LAKE_BIAS < river.dist_m
-    )
+    if kind_hint == "lake":
+        if lake is None:
+            return PinLocation("isolated", x, y, None, watercourse=None, lake_source="none")
+        use_lake = True
+    else:
+        use_lake = lake is not None and (
+            river is None or river.form == "lake" or lake.dist_m * LAKE_BIAS < river.dist_m
+        )
     if use_lake:
         comp = net.lake_component(lake.link_id)
         outlet = _lake_outlet(net, comp)
+        own = net.links.loc[lake.link_id, "watercourse_name"]  # do not borrow the outflow river's name
         return PinLocation("lake", x, y, lake, comp, outlet, trace_node=outlet,
-                           watercourse=_link_name(net, lake.link_id), lake_source="centreline")
+                           watercourse=str(own) if isinstance(own, str) and own else None, lake_source="centreline")
     if river is None:
         return PinLocation("none", x, y, None)
     river, adopted = _adopt_main_channel(net, x, y, river)

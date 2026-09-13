@@ -135,13 +135,14 @@ def spill_probabilities(ov: pd.DataFrame, days: pd.DatetimeIndex, model: SpillMo
 
 
 def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = config.MAX_UPSTREAM_KM,
-                   include_contributors: int = 25, log_to_store: bool = True) -> dict:
+                   include_contributors: int = 25, log_to_store: bool = True, gauge: bool = True,
+                   kind_hint: str | None = None) -> dict:
     net, ov_all, model = _net(), _overflows(), _model()
     now = pd.Timestamp.now(tz=LOCAL_TZ)
     # The EA gauge lookup is slow and optional: run it alongside everything else.
     pool = ThreadPoolExecutor(max_workers=1)
-    state_future = pool.submit(nearest_level_station, lat, lon)
-    pin = locate_pin(net, lon, lat)
+    state_future = pool.submit(nearest_level_station, lat, lon) if gauge else None
+    pin = locate_pin(net, lon, lat, kind_hint=kind_hint)
 
     out: dict = {
         "query": {"lat": lat, "lon": lon, "issued_at": now.isoformat()},
@@ -162,21 +163,23 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
             "lead_calibration": bool(_lead_calibration()),
         },
     }
-    if pin.mode == "none":
+    if pin.mode in ("none", "isolated"):
         pool.shutdown(wait=False)
-        out["error"] = "No river or lake within 1.5 km of this point."
+        out["error"] = ("No river or lake within 1.5 km of this point." if pin.mode == "none" else
+                        "An isolated lake with no river connection in the network: storm overflows cannot reach it "
+                        "by water, so dipcast has nothing to say about it. Risk from wildlife, runoff and bathers is not modelled.")
         out["now"] = {"risk": 0.0, "label": "unknown"}
         out["days"] = []
         out["contributors"] = []
         return out
 
-    try:
-        state = state_future.result(timeout=12)
-    except Exception as e:  # noqa: BLE001
-        log.warning("river state unavailable: %s", e)
-        state = None
-    finally:
-        pool.shutdown(wait=False)
+    state = None
+    if state_future is not None:
+        try:
+            state = state_future.result(timeout=12)
+        except Exception as e:  # noqa: BLE001
+            log.warning("river state unavailable: %s", e)
+    pool.shutdown(wait=False)
     v = river_velocity(state.index if state else None)
     out["river_state"] = None if state is None else {
         "station": state.station, "river": state.river, "level_m": state.level_m,

@@ -18,7 +18,6 @@ from __future__ import annotations
 
 import json
 import logging
-import sys
 
 import numpy as np
 import pandas as pd
@@ -166,7 +165,7 @@ def main() -> None:
     print(per_df.round(2).to_string(index=False))
     per_df.to_csv(config.PROCESSED / "ecoli_validation_per_site.csv", index=False)
     summary = {k: v.round(4).reset_index().to_dict("records") for k, v in results.items()}
-    summary["n_samples"] = int(len(df)); summary["n_sites"] = int(df.bw_id.nunique())
+    summary["n_samples"] = len(df); summary["n_sites"] = int(df.bw_id.nunique())
     summary["period"] = [str(df.sample_time.min().date()), str(df.sample_time.max().date())]
     (config.PROCESSED / "ecoli_validation.json").write_text(json.dumps(summary, indent=1, default=str))
     log.info("saved ecoli_validation.json / _rows.parquet / _per_site.csv")

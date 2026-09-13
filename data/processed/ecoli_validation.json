@@ -1,0 +1,126 @@
+{
+ "all_sites": [
+  {
+   "predictor": "rain_24h",
+   "n": 1750,
+   "sites": 32,
+   "spearman_pooled": 0.0882,
+   "spearman_within_site": 0.2931,
+   "auc_gt500": 0.5924,
+   "rate_gt500": 0.2097,
+   "auc_gt900": 0.6197,
+   "rate_gt900": 0.1246
+  },
+  {
+   "predictor": "rain_48h",
+   "n": 1750,
+   "sites": 32,
+   "spearman_pooled": 0.0938,
+   "spearman_within_site": 0.3542,
+   "auc_gt500": 0.6112,
+   "rate_gt500": 0.2097,
+   "auc_gt900": 0.6537,
+   "rate_gt900": 0.1246
+  },
+  {
+   "predictor": "risk_model",
+   "n": 1750,
+   "sites": 32,
+   "spearman_pooled": 0.5652,
+   "spearman_within_site": 0.2328,
+   "auc_gt500": 0.7828,
+   "rate_gt500": 0.2097,
+   "auc_gt900": 0.7794,
+   "rate_gt900": 0.1246
+  }
+ ],
+ "river": [
+  {
+   "predictor": "rain_48h",
+   "n": 947,
+   "sites": 20,
+   "spearman_pooled": 0.4283,
+   "spearman_within_site": 0.4749,
+   "auc_gt500": 0.7254,
+   "rate_gt500": 0.3527,
+   "auc_gt900": 0.749,
+   "rate_gt900": 0.2133
+  },
+  {
+   "predictor": "risk_model",
+   "n": 947,
+   "sites": 20,
+   "spearman_pooled": 0.421,
+   "spearman_within_site": 0.3503,
+   "auc_gt500": 0.7156,
+   "rate_gt500": 0.3527,
+   "auc_gt900": 0.7074,
+   "rate_gt900": 0.2133
+  }
+ ],
+ "lake": [
+  {
+   "predictor": "rain_48h",
+   "n": 803,
+   "sites": 12,
+   "spearman_pooled": 0.2577,
+   "spearman_within_site": 0.2675,
+   "auc_gt500": 0.5712,
+   "rate_gt500": 0.0411,
+   "auc_gt900": 0.5554,
+   "rate_gt900": 0.0199
+  },
+  {
+   "predictor": "risk_model",
+   "n": 803,
+   "sites": 12,
+   "spearman_pooled": 0.2099,
+   "spearman_within_site": 0.1067,
+   "auc_gt500": 0.5993,
+   "rate_gt500": 0.0411,
+   "auc_gt900": 0.6105,
+   "rate_gt900": 0.0199
+  }
+ ],
+ "uu_observed": [
+  {
+   "predictor": "rain_48h",
+   "n": 601,
+   "sites": 9,
+   "spearman_pooled": 0.2963,
+   "spearman_within_site": 0.3976,
+   "auc_gt500": 0.6438,
+   "rate_gt500": 0.0998,
+   "auc_gt900": 0.6241,
+   "rate_gt900": 0.0682
+  },
+  {
+   "predictor": "risk_model",
+   "n": 601,
+   "sites": 9,
+   "spearman_pooled": 0.4337,
+   "spearman_within_site": 0.2895,
+   "auc_gt500": 0.8114,
+   "rate_gt500": 0.0998,
+   "auc_gt900": 0.8118,
+   "rate_gt900": 0.0682
+  },
+  {
+   "predictor": "risk_observed",
+   "n": 601,
+   "sites": 9,
+   "spearman_pooled": 0.2227,
+   "spearman_within_site": 0.2269,
+   "auc_gt500": 0.625,
+   "rate_gt500": 0.0998,
+   "auc_gt900": 0.6145,
+   "rate_gt900": 0.0682
+  }
+ ],
+ "n_samples": 2165,
+ "n_sites": 38,
+ "period": [
+  "2023-05-03",
+  "2026-09-07"
+ ]
+}

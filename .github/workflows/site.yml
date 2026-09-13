@@ -1,0 +1,97 @@
+name: Build and publish site
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"        # every 30 minutes; GitHub may delay by a few minutes
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: [spots.csv, "src/**", scripts/build_site.py, .github/workflows/site.yml]
+
+concurrency:
+  group: site
+  cancel-in-progress: false
+
+permissions:
+  contents: write     # release assets for state, monthly heartbeat commit
+  pages: write
+  id-token: write
+
+env:
+  DIPCAST_STATE: ${{ github.workspace }}/state
+  PYTHONUNBUFFERED: "1"
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --frozen --no-dev
+
+      - name: Restore mutable state (live history, forecast log)
+        id: state-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: state
+          key: dipcast-state-${{ github.run_id }}
+          restore-keys: dipcast-state-
+
+      - name: Fetch state from the rolling release if the cache was cold
+        if: steps.state-cache.outputs.cache-matched-key == ''
+        run: |
+          mkdir -p state
+          gh release download state -D state --clobber || echo "no state release yet"
+
+      - name: Fetch the river network (113 MB, too large for git)
+        run: |
+          test -f data/processed/river_network.pkl || gh release download data-v1 -p river_network.pkl -D data/processed
+
+      - name: Build forecasts and site
+        run: uv run python scripts/build_site.py
+
+      - name: Save mutable state
+        uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: state
+          key: dipcast-state-${{ github.run_id }}
+
+      - name: Publish state to the rolling release (durable copy, twice a day)
+        continue-on-error: true
+        run: |
+          H=$(date -u +%H); M=$(date -u +%M)
+          if [ "$M" -lt 30 ] && { [ "$H" = "03" ] || [ "$H" = "15" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; }; then
+            gh release view state >/dev/null 2>&1 || gh release create state --title "Rolling state" --notes "Live polls, forecast log and live scores. Replaced twice a day by the site workflow." --latest=false
+            gh release upload state state/live_history.parquet state/live_latest.parquet state/dipcast.duckdb state/verification_live.json --clobber
+          fi
+
+      - name: Monthly heartbeat commit (keeps the schedule enabled)
+        if: github.event_name == 'schedule'
+        continue-on-error: true
+        run: |
+          if [ "$(date -u +%d)" = "01" ] && [ "$(date -u +%H)" = "03" ] && [ "$(date -u +%M)" -lt 30 ]; then
+            git config user.name "dipcast-bot"; git config user.email "bot@dipcast.invalid"
+            date -u +"%Y-%m-%d %H:%M UTC" > HEARTBEAT.md && git add HEARTBEAT.md && git commit -m "Monthly heartbeat" && git push
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

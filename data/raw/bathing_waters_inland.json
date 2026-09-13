@@ -1,0 +1,382 @@
+[
+ {
+  "id": "uke4100-08901",
+  "name": "Wharfe at Cromwheel, Ilkley",
+  "kind": "river",
+  "lat": 53.93188669519488,
+  "lon": -1.816182633584011,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2021",
+  "undertaker": "Yorkshire Water Services Limited"
+ },
+ {
+  "id": "uke2203-08903",
+  "name": "Nidd at the Lido, Knaresborough",
+  "kind": "river",
+  "lat": 53.9982,
+  "lon": -1.45145,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "Yorkshire Water Services Limited"
+ },
+ {
+  "id": "uke4200-08904",
+  "name": "Wharfe at Wilderness Carpark",
+  "kind": "river",
+  "lat": 53.92655,
+  "lon": -1.38542,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "Yorkshire Water Services Limited"
+ },
+ {
+  "id": "uke2204-08905",
+  "name": "Swale above Richmond Falls",
+  "kind": "river",
+  "lat": 54.40057771187233,
+  "lon": -1.734679072511629,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2026",
+  "undertaker": "Yorkshire Water Services Limited"
+ },
+ {
+  "id": "ukf2208-09701",
+  "name": "Rutland Water Whitwell Creek",
+  "kind": "lake",
+  "lat": 52.663507,
+  "lon": -0.631862,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2023",
+  "undertaker": "Anglian Water Services Limited"
+ },
+ {
+  "id": "ukf2208-09702",
+  "name": "Rutland Water Sykes Lane",
+  "kind": "lake",
+  "lat": 52.66320858080605,
+  "lon": -0.61313993149942,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2023",
+  "undertaker": "Anglian Water Services Limited"
+ },
+ {
+  "id": "ukf1400-09750",
+  "name": "Colwick Country Park (West Lake)",
+  "kind": "lake",
+  "lat": 52.94516380152393,
+  "lon": -1.098153763924492,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2013",
+  "undertaker": "Severn Trent Water Limited"
+ },
+ {
+  "id": "ukh1201-09801",
+  "name": "Sheep's Green, River Cam",
+  "kind": "river",
+  "lat": 52.19607,
+  "lon": 0.11683,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "Anglian Water Services Limited"
+ },
+ {
+  "id": "ukh1406-10712",
+  "name": "Falcon Meadow, River Waveney",
+  "kind": "river",
+  "lat": 52.45647770491852,
+  "lon": 1.443042065642678,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2026",
+  "undertaker": "Anglian Water Services Limited"
+ },
+ {
+  "id": "ukh1401-11051",
+  "name": "Friars Meadow, River Stour",
+  "kind": "river",
+  "lat": 52.03408,
+  "lon": 0.73489,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "Anglian Water Services Limited"
+ },
+ {
+  "id": "ukk1302-11760",
+  "name": "Cotswold Country Park and Beach",
+  "kind": "lake",
+  "lat": 51.66097999799158,
+  "lon": -1.960909719962519,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/1998",
+  "undertaker": "Thames Water Utilities Limited"
+ },
+ {
+  "id": "uki1101-11910",
+  "name": "Hampstead Heath (Ladies Pond)",
+  "kind": "lake",
+  "lat": 51.56672374875844,
+  "lon": -0.160094351971831,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/1998",
+  "undertaker": "Thames Water Utilities Limited"
+ },
+ {
+  "id": "uki1101-11920",
+  "name": "Hampstead Heath (Mens Pond)",
+  "kind": "lake",
+  "lat": 51.563342095736694,
+  "lon": -0.15662381451985,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/1998",
+  "undertaker": "Thames Water Utilities Limited"
+ },
+ {
+  "id": "uki1101-11930",
+  "name": "Hampstead Heath (Mixed Pond)",
+  "kind": "lake",
+  "lat": 51.560705232062936,
+  "lon": -0.166252403338055,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/1998",
+  "undertaker": "Thames Water Utilities Limited"
+ },
+ {
+  "id": "uki1106-11940",
+  "name": "The Serpentine - Hyde Park",
+  "kind": "lake",
+  "lat": 51.50490501476789,
+  "lon": -0.169070691536189,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/1998",
+  "undertaker": "Thames Water Utilities Limited"
+ },
+ {
+  "id": "ukj1102-11941",
+  "name": "Pangbourne Meadow, River Thames",
+  "kind": "river",
+  "lat": 51.48682521935274,
+  "lon": -1.083940641648369,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2026",
+  "undertaker": "Thames Water Utilities Limited"
+ },
+ {
+  "id": "uki2203-11942",
+  "name": "Ham and Kingston, River Thames",
+  "kind": "river",
+  "lat": 51.42702402293735,
+  "lon": -0.310741348239147,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2026",
+  "undertaker": "Thames Water Utilities Limited"
+ },
+ {
+  "id": "ukj2310-11945",
+  "name": "Frensham Great Pond",
+  "kind": "lake",
+  "lat": 51.15730922324361,
+  "lon": -0.791803740453079,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/1998",
+  "undertaker": "Thames Water Utilities Limited"
+ },
+ {
+  "id": "ukj1402-11946",
+  "name": "Wolvercote Mill Stream",
+  "kind": "river",
+  "lat": 51.78081990807167,
+  "lon": -1.295961521722681,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2022",
+  "undertaker": "Thames Water Utilities Limited"
+ },
+ {
+  "id": "ukj1403-11947",
+  "name": "Wallingford Beach, River Thames",
+  "kind": "river",
+  "lat": 51.60005,
+  "lon": -1.12032,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "Thames Water Utilities Limited"
+ },
+ {
+  "id": "ukj3308-19001",
+  "name": "River Avon at Fordingbridge",
+  "kind": "river",
+  "lat": 50.92632,
+  "lon": -1.78854,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "Wessex Water Services Limited"
+ },
+ {
+  "id": "ukk1500-19002",
+  "name": "River Avon at Queen Elizabeth Gardens",
+  "kind": "river",
+  "lat": 51.067665274192855,
+  "lon": -1.802179259170573,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2026",
+  "undertaker": "Wessex Water Services Limited"
+ },
+ {
+  "id": "ukk2304-35201",
+  "name": "River Tone at French Weir Park",
+  "kind": "river",
+  "lat": 51.01809,
+  "lon": -3.11285,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "Wessex Water Services Limited"
+ },
+ {
+  "id": "ukk1100-36050",
+  "name": "Henleaze Lake",
+  "kind": "lake",
+  "lat": 51.49462281893482,
+  "lon": -2.605706908746493,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2014",
+  "undertaker": "Wessex Water Services Limited"
+ },
+ {
+  "id": "ukk2301-36051",
+  "name": "River Frome at Farleigh Hungerford",
+  "kind": "river",
+  "lat": 51.31791,
+  "lon": -2.28093,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "Wessex Water Services Limited"
+ },
+ {
+  "id": "ukg2200-36060",
+  "name": "River Teme in Ludlow",
+  "kind": "river",
+  "lat": 52.36643,
+  "lon": -2.72537,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "Severn Trent Water Limited"
+ },
+ {
+  "id": "ukg2100-36070",
+  "name": "River Severn at Ironbridge",
+  "kind": "river",
+  "lat": 52.62933,
+  "lon": -2.49179,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "Severn Trent Water Limited"
+ },
+ {
+  "id": "ukg2200-36071",
+  "name": "River Severn in Shrewsbury",
+  "kind": "river",
+  "lat": 52.710372,
+  "lon": -2.7567062,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "Severn Trent Water Limited"
+ },
+ {
+  "id": "ukd6300-40752",
+  "name": "Sandy Lane, Chester",
+  "kind": "river",
+  "lat": 53.1874391898726,
+  "lon": -2.87006710945084,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2026",
+  "undertaker": "Dwr Cymru Cyfyngedig"
+ },
+ {
+  "id": "ukd1203-45625",
+  "name": "Windermere, Lakeside YMCA",
+  "kind": "lake",
+  "lat": 54.30040358552448,
+  "lon": -2.961464279216157,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/1998",
+  "undertaker": "United Utilities Water Limited"
+ },
+ {
+  "id": "ukd1203-45650",
+  "name": "Windermere, Millerground Landing",
+  "kind": "lake",
+  "lat": 54.380713971346744,
+  "lon": -2.922541305375967,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/1998",
+  "undertaker": "United Utilities Water Limited"
+ },
+ {
+  "id": "ukd1203-45675",
+  "name": "Windermere, Rayrigg Meadow",
+  "kind": "lake",
+  "lat": 54.3781618660443,
+  "lon": -2.922499452360544,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2015",
+  "undertaker": "United Utilities Water Limited"
+ },
+ {
+  "id": "ukd1203-45700",
+  "name": "Windermere, Fellfoot",
+  "kind": "lake",
+  "lat": 54.274517826926775,
+  "lon": -2.953765741222596,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/1998",
+  "undertaker": "United Utilities Water Limited"
+ },
+ {
+  "id": "ukd1230-45725",
+  "name": "Coniston Water, Brown Howe",
+  "kind": "lake",
+  "lat": 54.31134,
+  "lon": -3.09122,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "United Utilities Water Limited"
+ },
+ {
+  "id": "ukd1230-45750",
+  "name": "Coniston Water, Boating Centre",
+  "kind": "lake",
+  "lat": 54.36396,
+  "lon": -3.06608,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "United Utilities Water Limited"
+ },
+ {
+  "id": "ukd1230-45775",
+  "name": "Coniston Water, Monk Coniston",
+  "kind": "lake",
+  "lat": 54.37179,
+  "lon": -3.05435,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "United Utilities Water Limited"
+ },
+ {
+  "id": "ukd1101-45800",
+  "name": "Derwent Water at Crow Park",
+  "kind": "lake",
+  "lat": 54.59499,
+  "lon": -3.14218,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "United Utilities Water Limited"
+ },
+ {
+  "id": "ukd4308-46501",
+  "name": "River Ribble at Edisford Bridge",
+  "kind": "river",
+  "lat": 53.86847,
+  "lon": -2.41728,
+  "rain_impacted": false,
+  "year_designated": "http://reference.data.gov.uk/id/year/2024",
+  "undertaker": "United Utilities Water Limited"
+ }
+]

@@ -1,0 +1,89 @@
+id,name,lat,lon,kind,source,notes
+bw-uke4100-08901,"Wharfe at Cromwheel, Ilkley",53.93189,-1.81618,river,designated,Environment Agency designated bathing water
+bw-uke2203-08903,"Nidd at the Lido, Knaresborough",53.9982,-1.45145,river,designated,Environment Agency designated bathing water
+bw-uke4200-08904,Wharfe at Wilderness Carpark,53.92655,-1.38542,river,designated,Environment Agency designated bathing water
+bw-uke2204-08905,Swale above Richmond Falls,54.40058,-1.73468,river,designated,Environment Agency designated bathing water
+bw-ukf2208-09701,Rutland Water Whitwell Creek,52.66351,-0.63186,lake,designated,Environment Agency designated bathing water
+bw-ukf2208-09702,Rutland Water Sykes Lane,52.66321,-0.61314,lake,designated,Environment Agency designated bathing water
+bw-ukf1400-09750,Colwick Country Park (West Lake),52.94516,-1.09815,lake,designated,Environment Agency designated bathing water
+bw-ukh1201-09801,"Sheep's Green, River Cam",52.19607,0.11683,river,designated,Environment Agency designated bathing water
+bw-ukh1406-10712,"Falcon Meadow, River Waveney",52.45648,1.44304,river,designated,Environment Agency designated bathing water
+bw-ukh1401-11051,"Friars Meadow, River Stour",52.03408,0.73489,river,designated,Environment Agency designated bathing water
+bw-ukk1302-11760,Cotswold Country Park and Beach,51.66098,-1.96091,lake,designated,Environment Agency designated bathing water
+bw-uki1101-11910,Hampstead Heath (Ladies Pond),51.56672,-0.16009,lake,designated,Environment Agency designated bathing water
+bw-uki1101-11920,Hampstead Heath (Mens Pond),51.56334,-0.15662,lake,designated,Environment Agency designated bathing water
+bw-uki1101-11930,Hampstead Heath (Mixed Pond),51.56071,-0.16625,lake,designated,Environment Agency designated bathing water
+bw-uki1106-11940,The Serpentine - Hyde Park,51.50491,-0.16907,lake,designated,Environment Agency designated bathing water
+bw-ukj1102-11941,"Pangbourne Meadow, River Thames",51.48683,-1.08394,river,designated,Environment Agency designated bathing water
+bw-uki2203-11942,"Ham and Kingston, River Thames",51.42702,-0.31074,river,designated,Environment Agency designated bathing water
+bw-ukj2310-11945,Frensham Great Pond,51.15731,-0.7918,lake,designated,Environment Agency designated bathing water
+bw-ukj1402-11946,Wolvercote Mill Stream,51.78082,-1.29596,river,designated,Environment Agency designated bathing water
+bw-ukj1403-11947,"Wallingford Beach, River Thames",51.60005,-1.12032,river,designated,Environment Agency designated bathing water
+bw-ukj3308-19001,River Avon at Fordingbridge,50.92632,-1.78854,river,designated,Environment Agency designated bathing water
+bw-ukk1500-19002,River Avon at Queen Elizabeth Gardens,51.06767,-1.80218,river,designated,Environment Agency designated bathing water
+bw-ukk2304-35201,River Tone at French Weir Park,51.01809,-3.11285,river,designated,Environment Agency designated bathing water
+bw-ukk1100-36050,Henleaze Lake,51.49462,-2.60571,lake,designated,Environment Agency designated bathing water
+bw-ukk2301-36051,River Frome at Farleigh Hungerford,51.31791,-2.28093,river,designated,Environment Agency designated bathing water
+bw-ukg2200-36060,River Teme in Ludlow,52.36643,-2.72537,river,designated,Environment Agency designated bathing water
+bw-ukg2100-36070,River Severn at Ironbridge,52.62933,-2.49179,river,designated,Environment Agency designated bathing water
+bw-ukg2200-36071,River Severn in Shrewsbury,52.71037,-2.75671,river,designated,Environment Agency designated bathing water
+bw-ukd6300-40752,"Sandy Lane, Chester",53.18744,-2.87007,river,designated,Environment Agency designated bathing water
+bw-ukd1203-45625,"Windermere, Lakeside YMCA",54.3004,-2.96146,lake,designated,Environment Agency designated bathing water
+bw-ukd1203-45650,"Windermere, Millerground Landing",54.38071,-2.92254,lake,designated,Environment Agency designated bathing water
+bw-ukd1203-45675,"Windermere, Rayrigg Meadow",54.37816,-2.9225,lake,designated,Environment Agency designated bathing water
+bw-ukd1203-45700,"Windermere, Fellfoot",54.27452,-2.95377,lake,designated,Environment Agency designated bathing water
+bw-ukd1230-45725,"Coniston Water, Brown Howe",54.31134,-3.09122,lake,designated,Environment Agency designated bathing water
+bw-ukd1230-45750,"Coniston Water, Boating Centre",54.36396,-3.06608,lake,designated,Environment Agency designated bathing water
+bw-ukd1230-45775,"Coniston Water, Monk Coniston",54.37179,-3.05435,lake,designated,Environment Agency designated bathing water
+bw-ukd1101-45800,Derwent Water at Crow Park,54.59499,-3.14218,lake,designated,Environment Agency designated bathing water
+bw-ukd4308-46501,River Ribble at Edisford Bridge,53.86847,-2.41728,river,designated,Environment Agency designated bathing water
+lune-devils-bridge,"River Lune, Devil's Bridge, Kirkby Lonsdale",54.1995,-2.5945,river,curated,
+lune-crook-o-lune,"River Lune, Crook o' Lune, Caton",54.068,-2.729,river,curated,
+wharfe-bolton-abbey,"River Wharfe, Bolton Abbey (Cavendish Pavilion)",53.987,-1.889,river,curated,"Do not swim at the Strid, 1 km upstream"
+wharfe-burnsall,"River Wharfe, Burnsall",54.047,-1.953,river,curated,
+wharfe-appletreewick,"River Wharfe, Appletreewick",54.017,-1.904,river,curated,
+wharfe-linton-falls,"River Wharfe, Linton Falls, Grassington",54.068,-2.0,river,curated,
+ure-aysgarth,"River Ure, Aysgarth Falls",54.2915,-1.9985,river,curated,
+ribble-stainforth-force,"River Ribble, Stainforth Force",54.102,-2.279,river,curated,
+gordale-janets-foss,"Janet's Foss, Gordale Beck, Malham",54.068,-2.137,river,curated,
+semerwater,Semerwater,54.279,-2.133,lake,curated,
+ullswater-glenridding,"Ullswater, Glenridding",54.544,-2.948,lake,curated,
+ullswater-pooley-bridge,"Ullswater, Pooley Bridge",54.61,-2.816,lake,curated,
+buttermere,Buttermere,54.539,-3.268,lake,curated,
+crummock-water,Crummock Water,54.558,-3.302,lake,curated,
+wastwater,Wastwater,54.439,-3.296,lake,curated,
+grasmere,Grasmere (lake),54.45,-3.02,lake,curated,
+rydal-water,Rydal Water,54.447,-2.989,lake,curated,
+loughrigg-tarn,Loughrigg Tarn,54.4372,-3.0093,lake,curated,
+derwent-water-calfclose,"Derwent Water, Calfclose Bay",54.586,-3.133,lake,curated,
+elter-water,Elter Water,54.43,-3.033,lake,curated,
+blea-tarn,"Blea Tarn, Langdale",54.42,-3.087,lake,curated,
+duddon-birks-bridge,"River Duddon, Birks Bridge",54.372,-3.19,river,curated,
+eden-armathwaite,"River Eden, Armathwaite",54.809,-2.773,river,curated,
+eden-lazonby,"River Eden, Lazonby",54.755,-2.702,river,curated,
+tees-low-force,"River Tees, Low Force",54.65,-2.147,river,curated,
+coquet-rothbury,"River Coquet, Rothbury",55.309,-1.911,river,curated,
+allen-plankey-mill,"River Allen, Plankey Mill",54.935,-2.363,river,curated,
+derwent-slippery-stones,"River Derwent, Slippery Stones (Howden)",53.4337,-1.7263,river,curated,
+dove-dovedale,"River Dove, Dovedale stepping stones",53.054,-1.786,river,curated,
+hatchmere,"Hatchmere, Delamere",53.245,-2.672,lake,curated,
+wye-hereford,"River Wye, Bishop's Meadow, Hereford",52.051,-2.717,river,curated,
+wye-symonds-yat,"River Wye, Symonds Yat",51.844,-2.642,river,curated,
+avon-warleigh-weir,"River Avon, Warleigh Weir, Bath",51.3897,-2.2913,river,curated,
+frome-tellisford-weir,"River Frome, Tellisford Weir",51.3063,-2.2851,river,curated,
+dart-spitchwick,"River Dart, Spitchwick (Deeper Marsh)",50.5395,-3.8289,river,curated,
+dart-sharrah-pool,"River Dart, Sharrah Pool",50.556,-3.856,river,curated,
+plym-cadover-bridge,"River Plym, Cadover Bridge",50.464,-4.028,river,curated,
+teign-fingle-bridge,"River Teign, Fingle Bridge",50.696,-3.778,river,curated,
+barle-tarr-steps,"River Barle, Tarr Steps",51.077,-3.618,river,curated,
+cam-grantchester,"River Cam, Grantchester Meadows",52.188,0.098,river,curated,
+great-ouse-houghton,"River Great Ouse, Houghton Mill",52.3283,-0.1143,river,curated,
+waveney-outney-common,"River Waveney, Outney Common, Bungay",52.459,1.43,river,curated,
+stour-dedham,"River Stour, Dedham",51.96,0.995,river,curated,
+thames-lechlade,"River Thames, Lechlade",51.692,-1.689,river,curated,
+thames-buscot-weir,"River Thames, Buscot Weir",51.679,-1.665,river,curated,
+thames-clifton-hampden,"River Thames, Clifton Hampden",51.654,-1.21,river,curated,
+thames-hurley,"River Thames, Hurley",51.549,-0.812,river,curated,
+thames-port-meadow,"River Thames, Port Meadow, Oxford",51.7715,-1.2905,river,curated,
+ouse-barcombe-mills,"River Ouse (Sussex), Barcombe Mills",50.9086,0.0298,river,curated,
+medway-tonbridge,"River Medway, Tonbridge",51.196,0.274,river,curated,

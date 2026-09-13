@@ -1,0 +1,31 @@
+name: Request a swim spot
+description: Ask for a river or lake spot to be added to dipcast's forecasts
+title: "Spot request: "
+labels: [spot-request]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Spot name
+      description: River or lake and the place, e.g. "River Wharfe, Bolton Abbey"
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Location
+      description: Latitude and longitude (right-click in Google Maps to copy them), a what3words address, or a description precise to about 100 m
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Water body
+      options: [river, lake]
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Anything else
+      description: Access notes, hazards worth flagging, or why this spot matters

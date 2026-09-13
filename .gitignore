@@ -9,3 +9,25 @@ data/cache/
 logs/
 *.egg-info/
 .DS_Store
+
+# Small built artefacts the site workflow needs (the 113 MB river network lives in a release)
+!data/processed/
+data/processed/*
+!data/processed/annual_returns.parquet
+!data/processed/id_lookup.parquet
+!data/processed/lakes.parquet
+!data/processed/spill_model.pkl
+!data/processed/spill_model_holdout_2025.pkl
+!data/processed/lead_calibration.json
+!data/processed/verification_2025.csv
+!data/processed/reliability_2025.csv
+!data/processed/verification_leads_2025.csv
+!data/processed/ecoli_validation.json
+!data/processed/ecoli_validation_combined.json
+!data/processed/ecoli_validation_per_site.csv
+!data/processed/validation_sites.csv
+!data/raw/
+data/raw/*
+!data/raw/bathing_waters_inland.json
+site/
+state/
