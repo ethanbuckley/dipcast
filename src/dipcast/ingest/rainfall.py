@@ -40,13 +40,16 @@ def cell_key(cell_lat: float, cell_lon: float) -> str:
 def _request(url: str, params: dict, timeout: float = 120) -> list[dict] | dict:
     for attempt in range(5):
         try:
-            r = httpx.get(url, params=params, timeout=httpx.Timeout(timeout, connect=15))
+            r = httpx.get(url, params=params, timeout=httpx.Timeout(timeout, connect=8))
             if r.status_code == 429:
                 raise httpx.HTTPStatusError("rate limited", request=r.request, response=r)
             r.raise_for_status()
             return r.json()
         except httpx.HTTPError as e:
-            wait = 5 * 2**attempt
+            # TLS handshake and connect timeouts are common from shared CI runners and
+            # clear on retry; rate limits need the longer back-off.
+            transient = isinstance(e, (httpx.TimeoutException, httpx.NetworkError))
+            wait = 2 * 2**attempt if transient else 5 * 2**attempt
             log.warning("open-meteo %s; retry in %ss", e, wait)
             time.sleep(wait)
     raise RuntimeError("open-meteo request failed")
