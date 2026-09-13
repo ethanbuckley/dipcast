@@ -36,10 +36,10 @@ def cell_key(cell_lat: float, cell_lon: float) -> str:
     return f"{cell_lat:.3f}_{cell_lon:.3f}"
 
 
-def _request(url: str, params: dict) -> list[dict] | dict:
+def _request(url: str, params: dict, timeout: float = 120) -> list[dict] | dict:
     for attempt in range(5):
         try:
-            r = httpx.get(url, params=params, timeout=120)
+            r = httpx.get(url, params=params, timeout=httpx.Timeout(timeout, connect=15))
             if r.status_code == 429:
                 raise httpx.HTTPStatusError("rate limited", request=r.request, response=r)
             r.raise_for_status()
@@ -120,7 +120,7 @@ def fetch_forecast(cells: list[tuple[float, float]],
             "forecast_days": forecast_days,
             "timezone": "UTC",
         }
-        res = _request(config.OPEN_METEO_FORECAST, params)
+        res = _request(config.OPEN_METEO_FORECAST, params, timeout=30)  # small payload; fail fast on a bad handshake
         results = res if isinstance(res, list) else [res]
         for (cl, cn), r in zip(chunk, results, strict=True):
             df = _to_frame(r, cl, cn)

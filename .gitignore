@@ -29,5 +29,5 @@ data/processed/*
 !data/raw/
 data/raw/*
 !data/raw/bathing_waters_inland.json
-site/
-state/
+/site/
+/state/
