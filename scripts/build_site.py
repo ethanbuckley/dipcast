@@ -19,7 +19,9 @@ import pandas as pd
 from dipcast import __version__, config
 from dipcast.forecast_log import load_verification
 from dipcast.jobs import refresh_all
-from dipcast.model.forecast import _net, forecast_point, overflows_geojson, reload_caches
+from dipcast.ingest.rainfall import cells_for_sites, fetch_forecast
+from dipcast.model.forecast import _net, _overflows, forecast_point, overflows_geojson, reload_caches
+from dipcast.model.transport import locate_pin, river_velocity, upstream_overflows
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -36,12 +38,32 @@ REWRITES = [('href="/verification"', 'href="verification.html"'), ('href="/terms
             ('href="/static/page.css"', 'href="page.css"'), ("fetch('/api/verification')", "fetch('data/verification.json')")]
 
 
+def prefetch_rain(spots: pd.DataFrame) -> None:
+    """One pass over every spot's upstream overflows to collect the rainfall cells,
+    then a handful of 50-cell requests. Per-spot fetching meant up to one request
+    per spot, and each one risked a slow TLS handshake on shared CI runners."""
+    net, ov = _net(), _overflows()
+    lat, lon = list(spots["lat"]), list(spots["lon"])
+    for r in spots.itertuples(index=False):
+        try:
+            pin = locate_pin(net, float(r.lon), float(r.lat), kind_hint=(r.kind if r.kind in ("lake", "river") else None))
+            up = upstream_overflows(net, pin, ov, velocity_ms=river_velocity(None))
+            lat += list(up["lat"]); lon += list(up["lon"])
+        except Exception as e:  # noqa: BLE001
+            log.warning("prefetch: %s: %s", r.name, e)
+    cells = cells_for_sites(pd.Series(lat, dtype=float), pd.Series(lon, dtype=float))
+    t0 = time.time()
+    df = fetch_forecast(cells)
+    log.info("rainfall prefetched: %d cells, %d rows, %.0fs", len(cells), len(df), time.time() - t0)
+
+
 def build(refresh: bool = True) -> dict:
     t0 = time.time()
     if refresh:
         refresh_all(_net())
         reload_caches()
     spots = pd.read_csv(ROOT / "spots.csv").fillna("")
+    prefetch_rain(spots)
     results = []
     for r in spots.itertuples(index=False):
         try:
