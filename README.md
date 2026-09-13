@@ -2,8 +2,11 @@
 
 Probabilistic sewage-pollution risk for river and lake swim spots in England.
 
-Source: https://github.com/ethanbuckley/dipcast (MIT). Live verification of
-every forecast issued is published at `/verification` on any running instance.
+Live site: https://ethanbuckley.github.io/dipcast/ (forecasts for 88 named
+spots, refreshed every 30 minutes by a scheduled GitHub Actions job; free to
+run, never sleeps). Source: https://github.com/ethanbuckley/dipcast (MIT).
+Every forecast issued is scored later and published on the site's
+verification page.
 
 Click a point on a river or lake. dipcast traces the river network upstream,
 finds every monitored storm overflow whose water reaches that point, and combines
@@ -233,7 +236,29 @@ and scored once its days have passed, using the accumulated live polls. The
 result is public at `/verification`, alongside the offline tests. `/terms` and
 `/privacy` hold the plain-English terms and privacy notice.
 
-## Deploy
+## How the free site works
+
+`spots.csv` lists the spots: the 38 Environment Agency designated inland
+bathing waters and about 50 well-known river and lake spots. Add one by pull
+request, or ask for one with the "Request a spot" issue template; it appears
+in the next run. Inclusion is not a statement that a spot is safe.
+
+`.github/workflows/site.yml` runs every 30 minutes and on every push. It
+restores the mutable state (live polls, forecast log, rainfall cache) from
+the Actions cache, or from the rolling `state` release if the cache is cold;
+downloads the river network from the `data-v1` release (113 MB, too big for
+git); runs `scripts/build_site.py`, which polls the nine live feeds, rebuilds
+the overflow table, forecasts every spot with `forecast_point`, scores logged
+forecasts against the accumulated polls, and writes `site/`; saves the state
+back to the cache and, twice a day, to the release; and deploys `site/` to
+GitHub Pages. Nothing is committed by the job except a monthly heartbeat, so
+the repository does not grow.
+
+The click-anywhere API (below) is the same code behind a FastAPI server. It
+is what to run when someone needs forecasts for arbitrary points or an API,
+and it costs about £8 a month on Fly.io; the static site costs nothing.
+
+## Deploy the click-anywhere API (optional)
 
 The app is one container plus a small volume for mutable state. `fly.toml` is
 set up for Fly.io in London; any host that runs a container works the same way.
@@ -250,7 +275,9 @@ fly open /api/health
 ```
 
 You will know it worked when `/api/health` returns `"refresh_minutes": 20` and
-the map loads at `https://dipcast.fly.dev`. The mistake to avoid is deploying
+the map loads at the app's `.fly.dev` address. The API process needs about
+1 GB; loading is serialised because two concurrent loads of the network
+exceeded a 2 GB machine. The mistake to avoid is deploying
 before `data/processed` exists locally: the Dockerfile copies it into the
 image, and an empty directory produces a container that starts and then fails
 every forecast.
