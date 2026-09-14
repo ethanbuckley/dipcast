@@ -26,7 +26,7 @@ from sklearn.metrics import roc_auc_score
 
 from dipcast import config
 from dipcast.model.features import ALL_FEATURES, build_site_days, daily_rain_features
-from dipcast.model.forecast import calibrate_by_lead
+from dipcast.model.forecast import calibrate_at_lead
 from dipcast.model.spill_model import SpillModel
 from dipcast.model.transport import combine_daily, locate_pin, river_velocity, upstream_overflows
 from dipcast.network.rivers import RiverNetwork
@@ -73,21 +73,24 @@ def main() -> None:
             site_rain = hourly.loc[(cl, cn)].set_index("time")["precip_mm"].sort_index()
         except KeyError:
             log.warning("%s: no rainfall for site cell", s["name"]); continue
-        # Model hindcast: spill probabilities for every sample day at every upstream overflow.
-        days = pd.DatetimeIndex(sorted(g["day"].unique()))
+        # Model hindcast: spill probabilities at every upstream overflow on every day of the
+        # sampling period (a continuous daily grid: combine_daily shifts by array position, so
+        # it must see consecutive days, not just sample days), then pick out the sample days.
+        sample_days = pd.DatetimeIndex(sorted(g["day"].unique()))
         p_by_day = {}
         if len(up):
+            lead_days = int(np.ceil(up["travel_h"].max() / 24.0)) + 1
+            days = pd.date_range(sample_days.min() - pd.Timedelta(days=lead_days), sample_days.max(), freq="D")
             sd = build_site_days(up[["site_id", "lat", "lon", "company", "lta_spills", "spill_hours", "edm_operational_pct"]],
                                  daily, days)
             sd = sd.astype({f: np.float32 for f in ALL_FEATURES}).fillna({f: 0.0 for f in ALL_FEATURES})
             sd["p"] = model.predict(sd)
             mat = sd.pivot(index="site_id", columns="day", values="p").reindex(index=up["site_id"], columns=days)
             pm = np.nan_to_num(mat.to_numpy(dtype=float))
-            pm = calibrate_by_lead(pm, first_lead=0)
+            pm = calibrate_at_lead(pm, lead=0)  # a hindcast: every day is lead 0
             w = up["weight"].to_numpy(dtype=float); tr = up["travel_h"].to_numpy(dtype=float)
-            # Risk for day d uses spills on d and d-1 via travel-time shift; add a leading day.
-            risk = combine_daily(np.hstack([pm[:, :1], pm]), w, tr)[1:]
-            p_by_day = dict(zip(days, risk, strict=True))
+            risk = pd.Series(combine_daily(pm, w, tr), index=days)
+            p_by_day = risk.reindex(sample_days).to_dict()
         for _, r in g.iterrows():
             t = r["sample_time"]
             win = site_rain.loc[t - pd.Timedelta(hours=48): t]

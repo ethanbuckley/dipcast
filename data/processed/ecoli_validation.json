@@ -26,11 +26,11 @@
    "predictor": "risk_model",
    "n": 1750,
    "sites": 32,
-   "spearman_pooled": 0.5652,
-   "spearman_within_site": 0.2328,
-   "auc_gt500": 0.7828,
+   "spearman_pooled": 0.5722,
+   "spearman_within_site": 0.2925,
+   "auc_gt500": 0.7933,
    "rate_gt500": 0.2097,
-   "auc_gt900": 0.7794,
+   "auc_gt900": 0.7967,
    "rate_gt900": 0.1246
   }
  ],
@@ -50,11 +50,11 @@
    "predictor": "risk_model",
    "n": 947,
    "sites": 20,
-   "spearman_pooled": 0.421,
-   "spearman_within_site": 0.3503,
-   "auc_gt500": 0.7156,
+   "spearman_pooled": 0.4769,
+   "spearman_within_site": 0.407,
+   "auc_gt500": 0.7459,
    "rate_gt500": 0.3527,
-   "auc_gt900": 0.7074,
+   "auc_gt900": 0.7472,
    "rate_gt900": 0.2133
   }
  ],
@@ -74,11 +74,11 @@
    "predictor": "risk_model",
    "n": 803,
    "sites": 12,
-   "spearman_pooled": 0.2099,
-   "spearman_within_site": 0.1067,
-   "auc_gt500": 0.5993,
+   "spearman_pooled": 0.283,
+   "spearman_within_site": 0.2133,
+   "auc_gt500": 0.6155,
    "rate_gt500": 0.0411,
-   "auc_gt900": 0.6105,
+   "auc_gt900": 0.6016,
    "rate_gt900": 0.0199
   }
  ],
@@ -98,11 +98,11 @@
    "predictor": "risk_model",
    "n": 601,
    "sites": 9,
-   "spearman_pooled": 0.4337,
-   "spearman_within_site": 0.2895,
-   "auc_gt500": 0.8114,
+   "spearman_pooled": 0.5138,
+   "spearman_within_site": 0.3976,
+   "auc_gt500": 0.8336,
    "rate_gt500": 0.0998,
-   "auc_gt900": 0.8118,
+   "auc_gt900": 0.8155,
    "rate_gt900": 0.0682
   },
   {

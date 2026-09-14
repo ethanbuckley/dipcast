@@ -133,26 +133,43 @@ over 900 cfu/100 ml, the inland "sufficient" threshold):
 | Predictor | Pooled ρ | Within-site ρ | AUC > 900 |
 |---|---|---|---|
 | rainfall, previous 48 h at the site | 0.09 | 0.35 | 0.65 |
-| dipcast spill risk (rain-driven spill model through transport) | 0.57 | 0.23 | 0.78 |
+| dipcast spill risk (rain-driven spill model through transport) | 0.57 | 0.29 | 0.80 |
 
 Two different questions hide in that table. *Which sites* are contaminated:
-site-mean dipcast risk ranks the 32 sites' mean E. coli at ρ = 0.70, and
+site-mean dipcast risk ranks the 32 sites' mean E. coli at ρ = 0.68, and
 site-mean rainfall does not (−0.25). The transport layer, the part of dipcast
-that is new, is what carries this. *Which days* are bad at a given site: rain
-in the last 48 hours is the stronger signal (0.35 against 0.23; on rivers 0.47
-against 0.35), and adding spill risk to rain in a leave-one-year-out fit
-improves it only slightly (0.337 to 0.343; rivers 0.474 to 0.488). At the nine
-United Utilities sites, where actual spill events are known, routing the real
-spills through the transport step correlates with E. coli at only 0.23 within
-site: at those lakes, bacterial spikes are mostly not overflow-driven.
+that is new, is what carries this. *Which days* are bad at a given site: on the
+raw scale rain in the last 48 hours leads (0.35 against 0.29; on rivers 0.48
+against 0.41), but a within-site comparison depends on the scale the site mean
+is removed on. On the logit scale, the scale dipcast combines contributions on,
+spill risk is level with rain (0.35 against 0.35; rivers 0.47 against 0.48).
+Leave-one-year-out linear fits on that scale
+(`scripts/validate_ecoli_combined.py`) give within-site ρ of 0.35 for rain
+alone, 0.36 for spill risk alone, 0.37 for both and 0.39 with season added
+(rivers 0.50, 0.51, 0.53, 0.53), so the two carry partly different
+information but neither explains most of the day-to-day variation. At the nine
+United Utilities sites, where actual spill events are known (601 samples, 542
+of them on lakes), routing the real spills through the transport step
+correlates with E. coli at only 0.23 within site, and a spill had reached the
+spot within the previous 48 hours for 29% of samples: at those lakes,
+bacterial spikes are mostly not overflow-driven.
 
 The honest reading: dipcast's forecast tells a swimmer how exposed a spot is
-and when the overflows above it are likely to spill; it does not yet capture
-the diffuse runoff (farms, roads, urban drainage) that rain washes into rivers
-regardless of overflows, and at inland bathing waters that runoff dominates the
-day-to-day variation. The next model should predict E. coli exceedance
-directly from both, which these 2,165 samples make possible. Full tables:
-`data/processed/ecoli_validation*.json|csv`.
+and when the overflows above it are likely to spill, and on rivers its
+day-to-day signal is as good as recent rainfall; it does not yet capture the
+diffuse runoff (farms, roads, urban drainage) that rain washes into rivers
+regardless of overflows, and at inland bathing waters neither signal captures
+most of the day-to-day variation. The next model should predict E. coli
+exceedance directly from both, which these 2,165 samples make possible. Full
+tables: `data/processed/ecoli_validation*.json|csv`.
+
+Correction (14 Sep 2026): the first run of this validation (12 Sep) reported a
+within-site ρ of 0.23 for dipcast. That run fed only the sample days into the
+travel-time shift, which assumes consecutive days, so a fifth of each
+overflow's contribution landed on the following week's sample; it also applied
+the lead-4 rather than lead-0 Platt calibration. The hindcast now runs on a
+continuous daily grid and the figures above are from the corrected run. The
+observed-spill result was computed differently and did not change.
 
 ## Known limits
 
@@ -229,7 +246,8 @@ unset, run `scripts/refresh.py` on a schedule and call `POST /api/reload`
 files (live polls, the overflow table, the forecast log, live scores) go to
 `DIPCAST_STATE` if set, else `data/processed`. All raw pulls are cached under
 `data/cache/` so re-running the ingestion is cheap. `scripts/verify_leads.py
-2025` reproduces the lead-time table.
+2025` reproduces the lead-time table; `scripts/validate_ecoli.py` then
+`scripts/validate_ecoli_combined.py` reproduce the E. coli tables.
 
 Every forecast is logged (coordinates, time, values; nothing about the user)
 and scored once its days have passed, using the accumulated live polls. The

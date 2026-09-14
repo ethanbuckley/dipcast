@@ -86,6 +86,16 @@ def calibrate_by_lead(p: np.ndarray, first_lead: int) -> np.ndarray:
     return out
 
 
+def calibrate_at_lead(p: np.ndarray, lead: int) -> np.ndarray:
+    """Apply one lead's Platt parameters to every column (hindcasts: every day is lead 0)."""
+    cal = _lead_calibration()
+    if not cal or p.size == 0:
+        return p
+    a, b = cal[min(lead, max(cal))]
+    q = np.clip(p, 1e-6, 1 - 1e-6)
+    return 1 / (1 + np.exp(-(a + b * np.log(q / (1 - q)))))
+
+
 @lru_cache(maxsize=1)
 def _model() -> SpillModel | None:
     if MODEL_PATH.exists():
