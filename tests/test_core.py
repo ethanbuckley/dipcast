@@ -50,3 +50,23 @@ def test_labels_and_velocity():
     assert risk_label(0.05) == "low" and risk_label(0.9) == "very high"
     assert river_velocity(None) == 0.5
     assert abs(river_velocity(0.0) - 0.3) < 1e-9 and abs(river_velocity(1.0) - 1.0) < 1e-9 and abs(river_velocity(5.0) - 1.35) < 1e-9
+
+
+def test_ecoli_features_and_rain_windows():
+    from dipcast.model.ecoli import EcoliModel, FEATURES, features, rain_windows
+
+    t = pd.date_range("2025-06-01", periods=24 * 4, freq="h", tz="Europe/London")
+    p = np.zeros(len(t)); p[30] = 5.0; p[60] = 7.0     # day 2 06:00 and day 3 12:00
+    hourly = pd.Series(p, index=t)
+    ends = pd.DatetimeIndex([pd.Timestamp("2025-06-03 12:00", tz="Europe/London"),
+                             pd.Timestamp("2025-06-04 12:00", tz="Europe/London")])
+    r48, r24 = rain_windows(hourly, ends)
+    # windows are closed at both ends, as in validate_ecoli.py, so the 12:00 burst sits on the edge of both
+    assert np.allclose(r48, [12.0, 7.0]) and np.allclose(r24, [7.0, 7.0])
+    X = features([0.0, 20.0], [0.0, 10.0], [0.1, 0.1], [0.0, 0.0], ends)
+    assert list(X.columns) == FEATURES
+    # a positive rain coefficient must raise the probability with more rain, all else equal
+    m = EcoliModel({f: 0.0 for f in FEATURES} | {"lrain48": 1.0}, -2.0,
+                   {f: 0.0 for f in FEATURES}, {f: 1.0 for f in FEATURES}, {})
+    q = m.predict(X)
+    assert q[1] > q[0] and 0 < q[0] < 1

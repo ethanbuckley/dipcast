@@ -69,7 +69,7 @@ jobs:
         continue-on-error: true
         run: |
           H=$(date -u +%H); M=$(date -u +%M)
-          if [ "$M" -lt 30 ] && { [ "$H" = "03" ] || [ "$H" = "15" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; }; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || { [ "$M" -lt 30 ] && { [ "$H" = "03" ] || [ "$H" = "15" ]; }; }; then
             gh release view state >/dev/null 2>&1 || gh release create state --title "Rolling state" --notes "Live polls, forecast log and live scores. Replaced twice a day by the site workflow." --latest=false
             gh release upload state state/live_history.parquet state/live_latest.parquet state/dipcast.duckdb state/verification_live.json --clobber
           fi

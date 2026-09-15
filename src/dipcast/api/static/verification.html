@@ -31,6 +31,8 @@ async function main() {
     h += `<tr><td>climatology (base rate ${pct(o.calibrated.base_rate)})</td><td class="num">${f(o.climatology_brier)}</td><td class="num">0.500</td><td class="num">0.00</td></tr></table>`;
     if (L.by_lead) { h += `<h2>By lead time</h2><table><tr><th>Lead (days)</th><th class="num">n</th><th class="num">Spill rate</th><th class="num">Brier</th></tr>`;
       for (const r of L.by_lead) h += `<tr><td>${r.lead === 0 ? 'today' : r.lead === 1 ? 'tomorrow' : r.lead}</td><td class="num">${r.n}</td><td class="num">${pct(r.base_rate)}</td><td class="num">${f(r.brier_cal)}</td></tr>`; h += '</table>'; }
+    if (L.by_company) { h += `<h2>By water company</h2><p class="small muted">The spill model was trained on United Utilities overflows only. This is the check that it transfers: each company's live-feed overflows scored with the same forecasts. AUC needs at least 30 scored days and both outcomes.</p><table><tr><th>Company</th><th class="num">Overflows</th><th class="num">n</th><th class="num">Spill rate</th><th class="num">Brier</th><th class="num">Skill</th><th class="num">AUC</th></tr>`;
+      for (const r of L.by_company) h += `<tr><td>${r.company}</td><td class="num">${r.sites}</td><td class="num">${r.n}</td><td class="num">${pct(r.base_rate)}</td><td class="num">${f(r.brier_cal)}</td><td class="num">${r.climatology_brier > 0 ? f(1 - r.brier_cal/r.climatology_brier, 2) : '–'}</td><td class="num">${f(r.auc,3)}</td></tr>`; h += '</table>'; }
     if (L.by_week) { h += `<h2>By week</h2><table><tr><th>Week starting</th><th class="num">n</th><th class="num">Spill rate</th><th class="num">Brier</th></tr>`;
       for (const r of L.by_week) h += `<tr><td>${r.week}</td><td class="num">${r.n}</td><td class="num">${pct(r.base_rate)}</td><td class="num">${f(r.brier_cal)}</td></tr>`; h += '</table>'; }
     if (L.reliability) { h += `<h2>Reliability</h2><table><tr><th>Forecast bin</th><th class="num">n</th><th class="num">Mean forecast</th><th class="num">Observed</th></tr>`;
@@ -53,6 +55,16 @@ async function main() {
     for (const r of e.all_sites) o += `<tr><td>${lab[r.predictor] || r.predictor}</td><td class="num">${r.n}</td><td class="num">${f(r.spearman_pooled,2)}</td><td class="num">${f(r.spearman_within_site,2)}</td><td class="num">${f(r.auc_gt900,2)}</td></tr>`;
     o += `</table>`;
     if (c.between_site_rho_risk !== undefined) o += `<p class="small">Which sites are contaminated: site-mean dipcast risk ranks the sites' mean E. coli at ρ = ${f(c.between_site_rho_risk,2)}; site-mean rainfall does not (${f(c.between_site_rho_rain,2)}). Which days are bad at a site: in leave-one-year-out fits within site, rainfall alone scores ρ = ${f(c.loyo_within_site['rain only'].rho_within,2)}, spill risk alone ${f(c.loyo_within_site['spill risk only'].rho_within,2)}, and both together ${f(c.loyo_within_site['rain + spill risk'].rho_within,2)}. dipcast currently models overflow exposure, not the diffuse runoff that rain washes in regardless, and at inland bathing waters neither signal explains most of the day-to-day variation. An E. coli model using both is the next step.</p>`;
+  }
+  if (d.ecoli_model && d.ecoli_model.loyo) {
+    const m = d.ecoli_model;
+    o += `<h2>E. coli exceedance model</h2><p class="small muted">The "E. coli &gt; 900" column on the map. A logistic regression fitted to ${m.n_samples.toLocaleString()} samples at ${m.n_sites} bathing waters (${m.years[0]}–${m.years[m.years.length-1]}, ${pct(m.base_rate)} exceed), from rain at the spot in the previous 48 and 24 h, dipcast's overflow exposure for the day, lake or river, and season. Scored leave-one-year-out: each year predicted by a model that never saw it.</p>`;
+    o += `<table><tr><th>Model</th><th class="num">Brier</th><th class="num">AUC</th><th class="num">Skill</th><th class="num">Brier, rivers</th><th class="num">AUC, rivers</th></tr>`;
+    for (const r of m.loyo) o += `<tr><td>${r.model}</td><td class="num">${f(r.brier,3)}</td><td class="num">${f(r.auc,3)}</td><td class="num">${f(r.skill_vs_clim,2)}</td><td class="num">${f(r.brier_river,3)}</td><td class="num">${f(r.auc_river,3)}</td></tr>`;
+    o += `</table>`;
+    if (m.reliability) { o += `<h3>Reliability</h3><table><tr><th>Forecast bin</th><th class="num">n</th><th class="num">Mean forecast</th><th class="num">Observed</th></tr>`;
+      for (const r of m.reliability) o += `<tr><td>${f(r.lo,1)}–${f(r.hi,1)}</td><td class="num">${r.n}</td><td class="num">${pct(r.forecast)}</td><td class="num">${pct(r.observed)}</td></tr>`; o += '</table>'; }
+    o += `<p class="small muted">On lakes the model has no ranking skill (16 exceedances in 803 samples) and falls back to the lake base rate of about 2%.</p>`;
   }
   document.getElementById('offline').innerHTML = o;
 }

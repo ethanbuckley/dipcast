@@ -1,0 +1,161 @@
+{
+ "n_samples": 1750,
+ "n_sites": 32,
+ "threshold": 900,
+ "base_rate": 0.12457142857142857,
+ "years": [
+  2023,
+  2024,
+  2025,
+  2026
+ ],
+ "loyo": [
+  {
+   "model": "climatology by type",
+   "brier": 0.1054,
+   "log_loss": 0.3451,
+   "auc": 0.6481,
+   "skill_vs_clim": 0.0,
+   "brier_river": 0.1781,
+   "auc_river": 0.3571,
+   "brier_lake": 0.0197,
+   "auc_lake": 0.2976
+  },
+  {
+   "model": "rain only",
+   "brier": 0.0885,
+   "log_loss": 0.2995,
+   "auc": 0.8089,
+   "skill_vs_clim": 0.1604,
+   "brier_river": 0.1468,
+   "auc_river": 0.7075,
+   "brier_lake": 0.0197,
+   "auc_lake": 0.3724
+  },
+  {
+   "model": "rain + season",
+   "brier": 0.0884,
+   "log_loss": 0.2976,
+   "auc": 0.8164,
+   "skill_vs_clim": 0.1617,
+   "brier_river": 0.1465,
+   "auc_river": 0.7258,
+   "brier_lake": 0.0197,
+   "auc_lake": 0.3618
+  },
+  {
+   "model": "spill exposure only",
+   "brier": 0.0916,
+   "log_loss": 0.3067,
+   "auc": 0.8011,
+   "skill_vs_clim": 0.1305,
+   "brier_river": 0.1513,
+   "auc_river": 0.6906,
+   "brier_lake": 0.0212,
+   "auc_lake": 0.4944
+  },
+  {
+   "model": "rain + spill exposure",
+   "brier": 0.0857,
+   "log_loss": 0.2921,
+   "auc": 0.8209,
+   "skill_vs_clim": 0.1873,
+   "brier_river": 0.1414,
+   "auc_river": 0.7345,
+   "brier_lake": 0.0199,
+   "auc_lake": 0.4316
+  },
+  {
+   "model": "rain + spill exposure + season (dipcast)",
+   "brier": 0.0856,
+   "log_loss": 0.2907,
+   "auc": 0.8245,
+   "skill_vs_clim": 0.1883,
+   "brier_river": 0.1411,
+   "auc_river": 0.7422,
+   "brier_lake": 0.02,
+   "auc_lake": 0.4398
+  }
+ ],
+ "reliability": [
+  {
+   "n": 1158,
+   "forecast": 0.034,
+   "observed": 0.039,
+   "lo": 0.0,
+   "hi": 0.1
+  },
+  {
+   "n": 226,
+   "forecast": 0.143,
+   "observed": 0.19,
+   "lo": 0.1,
+   "hi": 0.2
+  },
+  {
+   "n": 125,
+   "forecast": 0.249,
+   "observed": 0.176,
+   "lo": 0.2,
+   "hi": 0.3
+  },
+  {
+   "n": 81,
+   "forecast": 0.345,
+   "observed": 0.296,
+   "lo": 0.3,
+   "hi": 0.4
+  },
+  {
+   "n": 80,
+   "forecast": 0.445,
+   "observed": 0.388,
+   "lo": 0.4,
+   "hi": 0.5
+  },
+  {
+   "n": 46,
+   "forecast": 0.546,
+   "observed": 0.565,
+   "lo": 0.5,
+   "hi": 0.6
+  },
+  {
+   "n": 23,
+   "forecast": 0.649,
+   "observed": 0.739,
+   "lo": 0.6,
+   "hi": 0.7
+  },
+  {
+   "n": 8,
+   "forecast": 0.741,
+   "observed": 0.875,
+   "lo": 0.7,
+   "hi": 0.8
+  },
+  {
+   "n": 2,
+   "forecast": 0.813,
+   "observed": 1.0,
+   "lo": 0.8,
+   "hi": 0.9
+  },
+  {
+   "n": 1,
+   "forecast": 0.93,
+   "observed": 1.0,
+   "lo": 0.9,
+   "hi": 1.0
+  }
+ ],
+ "coef_per_sd": {
+  "lrain48": 0.8712669652911056,
+  "lrain24": -0.1306433219327584,
+  "logit_risk": 0.51610605889635,
+  "lake": -0.555844758463759,
+  "lake_x_lrain48": -0.8132974005303697,
+  "doy_sin": 0.0016918897388147696,
+  "doy_cos": 0.19817240734976568
+ }
+}

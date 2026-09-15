@@ -13,6 +13,7 @@ import pandas as pd
 from dipcast import config
 from dipcast.ingest.flows import nearest_level_station
 from dipcast.ingest.rainfall import cells_for_sites, fetch_forecast
+from dipcast.model import ecoli
 from dipcast.model.features import ALL_FEATURES, build_site_days, daily_rain_features
 from dipcast.model.spill_model import MODEL_PATH, SpillModel
 from dipcast.model.transport import (
@@ -106,7 +107,7 @@ def _model() -> SpillModel | None:
 
 def reload_caches() -> None:
     with _LOAD_LOCK:
-        _overflows_uncached.cache_clear(); _model.cache_clear(); _lead_calibration.cache_clear()
+        _overflows_uncached.cache_clear(); _model.cache_clear(); _lead_calibration.cache_clear(); ecoli.load.cache_clear()
         # the network itself is immutable at runtime; keep it loaded
 
 
@@ -219,6 +220,26 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
             "date": d.date().isoformat(), "risk": round(float(risk[j]), 3),
             "label": risk_label(float(risk[j])), "expected_spilling_overflows": round(float(exp_spills[j]), 1),
         })
+
+    # E. coli exceedance: rain at the spot itself (not at the overflows) plus the day's exposure.
+    em = ecoli.load()
+    if em is not None:
+        try:
+            spot_rain = fetch_forecast(cells_for_sites(pd.Series([lat]), pd.Series([lon])))
+            hourly = spot_rain.assign(time=spot_rain["time"].dt.tz_convert(LOCAL_TZ)).set_index("time")["precip_mm"].sort_index()
+            ends = pd.DatetimeIndex([d + pd.Timedelta(hours=ecoli.SAMPLE_HOUR) for d in days])
+            r48, r24 = ecoli.rain_windows(hourly, ends)
+            X = ecoli.features(r48, r24, risk, np.full(len(days), 1.0 if pin.mode == "lake" else 0.0), days)
+            p_ec = em.predict(X)
+            for row in day_rows:
+                j = days.get_loc(pd.Timestamp(row["date"], tz=LOCAL_TZ))
+                row["rain_48h_mm"] = None if np.isnan(r48[j]) else round(float(r48[j]), 1)
+                row["p_ecoli_gt900"] = None if np.isnan(r48[j]) else round(float(p_ec[j]), 3)
+            out["assumptions"]["ecoli_model"] = {"target": em.meta.get("target"), "fitted_on": em.meta.get("sites"),
+                                                 "n_samples": em.meta.get("n_samples"), "loyo_brier": em.meta.get("loyo", {}).get(
+                                                     "rain + spill exposure + season (dipcast)", {}).get("brier")}
+        except Exception as e:  # noqa: BLE001 - an optional layer must not fail the forecast
+            log.warning("E. coli model skipped: %s", e)
 
     out["now"] = {
         "risk": round(now_risk, 3), "label": risk_label(now_risk),

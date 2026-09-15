@@ -23,6 +23,7 @@ from datetime import date, timedelta
 import duckdb
 import numpy as np
 import pandas as pd
+from sklearn.metrics import roc_auc_score
 
 from dipcast import config
 from dipcast.model.verify import reliability_table, scores
@@ -144,6 +145,19 @@ def verify_live(as_of: date | None = None) -> dict:
                         "brier_raw": float(np.mean((g["p_raw"].to_numpy() - yy) ** 2)),
                         "brier_cal": float(np.mean((g["p_cal"].to_numpy() - yy) ** 2))})
     out["by_lead"] = by_lead
+    # By water company: the spill model was trained on United Utilities only, so this is
+    # the geographic-transfer check. Companies with too few scored days are pooled as "other".
+    comp = _site_companies()
+    if comp is not None:
+        fc["company"] = fc["site_id"].map(comp).fillna("unknown")
+        by_company = []
+        for c, g in fc.groupby("company"):
+            yy = g["y"].to_numpy(); pc = g["p_cal"].to_numpy()
+            by_company.append({"company": c, "n": len(g), "sites": int(g["site_id"].nunique()), "base_rate": float(yy.mean()),
+                               "brier_cal": float(np.mean((pc - yy) ** 2)),
+                               "climatology_brier": float(np.mean((yy.mean() - yy) ** 2)),
+                               "auc": float(roc_auc_score(yy, pc)) if 0 < yy.mean() < 1 and len(g) >= 30 else None})
+        out["by_company"] = sorted(by_company, key=lambda r: -r["n"])
     fc["week"] = pd.to_datetime(fc["target_day"]).dt.to_period("W").dt.start_time.dt.date.astype(str)
     out["by_week"] = [{"week": w, "n": len(g), "base_rate": float(g["y"].mean()),
                        "brier_cal": float(np.mean((g["p_cal"].to_numpy() - g["y"].to_numpy()) ** 2))}
@@ -152,6 +166,14 @@ def verify_live(as_of: date | None = None) -> dict:
         out["reliability"] = reliability_table(y, fc["p_cal"].to_numpy()).round(4).to_dict("records")
     _write(out)
     return out
+
+
+def _site_companies() -> pd.Series | None:
+    p = config.state_read("overflows.parquet")
+    if not p.exists():
+        return None
+    ov = pd.read_parquet(p, columns=["site_id", "company"]).drop_duplicates("site_id")
+    return ov.set_index("site_id")["company"]
 
 
 def _write(out: dict) -> None:
@@ -172,7 +194,8 @@ def load_verification() -> dict:
     q = config.PROCESSED / "lead_calibration.json"
     if q.exists():
         res["lead_calibration"] = json.loads(q.read_text())
-    for key, name in [("ecoli", "ecoli_validation.json"), ("ecoli_combined", "ecoli_validation_combined.json")]:
+    for key, name in [("ecoli", "ecoli_validation.json"), ("ecoli_combined", "ecoli_validation_combined.json"),
+                      ("ecoli_model", "ecoli_model_eval.json"), ("sampling_plan", "sampling_plan_test.json")]:
         q = config.PROCESSED / name
         res[key] = json.loads(q.read_text()) if q.exists() else None
     return res

@@ -171,6 +171,47 @@ the lead-4 rather than lead-0 Platt calibration. The hindcast now runs on a
 continuous daily grid and the figures above are from the corrected run. The
 observed-spill result was computed differently and did not change.
 
+**Would forecast-led sampling catch more?** A question for anyone who pays for
+water samples: if you could only afford half your sampling days, would choosing
+them from the rain forecast catch more of the failures? `scripts/sampling_plan_test.py`
+ranks each site's sampled days by rain in the previous 48 h and keeps the wettest
+half. On rivers (947 sampled days, 202 exceedances of 900) that keeps 77% of the
+exceedances with rain as it fell, 75% with the forecast issued that day, 68% with
+the forecast issued two days earlier, and 68% four days earlier; a fixed schedule
+keeps 50%. A "sample only if more than 5 mm is forecast" rule keeps a quarter of
+the days and half the exceedances (43% exceedance rate on the days it picks, 14%
+on those it skips). The skill is lost between same-day and one-day-ahead
+decisions, not after, so a plan made four days out is as good as one made the day
+before. It is the rain forecast doing this work, not the transport layer; on lakes
+(16 exceedances) there is nothing to plan around. Archived forecasts by lead
+come from `scripts/fetch_rain_leads_bathing.py`; results in
+`data/processed/sampling_plan_test.json`. The test can only choose among days the
+EA happened to sample, so it measures ranking skill, not the value of sampling on
+days nobody did.
+
+**E. coli exceedance model.** The map's "E. coli > 900" column. `scripts/train_ecoli.py`
+fits a logistic regression to the same 1,750 samples from things dipcast can
+compute anywhere: rain at the spot in the previous 48 and 24 h, dipcast's overflow
+exposure for the day, lake or river, and season. Leave-one-year-out (each year
+predicted by a model that never saw it):
+
+| Model | Brier | AUC | Skill vs climatology | Rivers: Brier / AUC |
+|---|---|---|---|---|
+| climatology by water-body type | 0.105 | 0.65 | 0.00 | 0.178 / 0.36 |
+| rain only | 0.088 | 0.81 | 0.16 | 0.147 / 0.71 |
+| spill exposure only | 0.092 | 0.80 | 0.13 | 0.151 / 0.69 |
+| rain + spill exposure + season (the map) | 0.086 | 0.82 | 0.19 | 0.141 / 0.74 |
+
+Reliability is close to the diagonal (days forecast at 30-40% exceed 30% of the
+time). Overflow exposure adds a small, consistent gain over rain alone. On lakes
+the model has no ranking skill (16 exceedances in 803 samples) and effectively
+returns the lake base rate of about 2%, which is the honest answer. Coefficients
+are stored as JSON (`data/processed/ecoli_model.json`); `dipcast/model/ecoli.py`
+computes the features live from the spot's own rainfall cell, with the rain window
+ending at midday to match when the EA samples. The training risk used reanalysis
+rain and the live risk uses forecast rain, so expect the live figure to be a
+little less sharp than the table.
+
 ## Known limits
 
 - The lead-time test approximates the features: the target day and the two
@@ -190,15 +231,23 @@ observed-spill result was computed differently and did not change.
   scaled by 0.7). 475 outfalls to the sea or estuaries are excluded by design and
   335 inland ones (2%) remain more than 1.5 km from any link. Confidence is
   reported per contributor.
+- The overflow-exposure percentage combines verified spill probabilities with
+  die-off and dilution weights that are physical estimates, not calibrated
+  against water samples, and it treats upstream spills as independent when they
+  share the same rain. The site labels it an exposure index for that reason;
+  the E. coli column is the calibrated quantity.
 - Dilution uses network length as a proxy for flow. Lake volume is not modelled;
   lake crossing uses a fixed slow advection speed.
 - Daily resolution. Sub-daily timing of a plume is not resolved.
 - Annual returns before 2024 carry old or no overflow IDs; `dipcast/ids.py` resolves 93% of rows (100% of UU 2023, 92% of UU 2021-22) via the Hub lookup, then site name and grid reference.
 - Only United Utilities publishes event-level history on ArcGIS, so the site
   calibration layer covers their overflows. Others use the pooled model with
-  annual-return covariates, and the live poller accumulates their history.
+  annual-return covariates, and the live poller accumulates their history. The
+  spill model was trained on United Utilities only; the live verification page
+  scores every company's live-feed overflows separately ("By water company"),
+  which is the running check that it transfers.
 
-## Status (12 Sep 2026)
+## Status (15 Sep 2026)
 
 Working end to end on a local machine: click anywhere on a river or lake in
 England and get a "right now" risk from live status plus a five-day forecast,
@@ -207,24 +256,20 @@ held-out year (table above). Unit tests cover the label exploder, rainfall
 features and the risk combination.
 
 Done since v1: Southern Water live feed (all nine English companies now live);
-second-pass outfall snapping (85% to 94%); shareable URLs; WFD lake polygons with a lake-size dilution term; recency
+E. coli exceedance model on the map (15 Sep); second-pass outfall snapping (85% to 94%); shareable URLs; WFD lake polygons with a lake-size dilution term; recency
 weighting in the site calibration; production refit on all years; verification
 against archived forecasts by lead time (below); `Dockerfile`; a launchd plist
 in `deploy/` for the 20-minute live refresh (not installed automatically).
 
 Not done yet, in the order I would do them:
 
-1. An E. coli exceedance model: predict P(E. coli > 900) at a point from
-   48-hour rainfall at the site, dipcast's spill exposure, water body type and
-   season, trained on the 2,165 bathing-water samples; show rainfall-driven
-   runoff risk alongside overflow risk on the map.
-2. A year-level calibration: the residual top-end overconfidence is a shift
+1. A year-level calibration: the residual top-end overconfidence is a shift
    between years, so fit a single temperature or isotonic map on the most
    recent year's out-of-sample predictions each time the model is refit.
-3. Let live history accumulate for the eight companies without event feeds,
+2. Let live history accumulate for the eight companies without event feeds,
    then fit their site calibration.
-4. Per-lake residence time (needs volume; WFD gives area only).
-5. Dwr Cymru live status (no ArcGIS feed; would need their own map's API).
+3. Per-lake residence time (needs volume; WFD gives area only).
+4. Dwr Cymru live status (no ArcGIS feed; would need their own map's API).
 
 ## Run
 
