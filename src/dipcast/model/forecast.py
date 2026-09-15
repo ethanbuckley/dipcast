@@ -59,14 +59,23 @@ def _overflows() -> pd.DataFrame:
 
 
 @lru_cache(maxsize=1)
-def _lead_calibration() -> dict[int, tuple[float, float]]:
-    """Per-lead Platt parameters from scripts/verify_leads.py, if present."""
+def _lead_calibration() -> dict[int, dict]:
+    """Per-lead calibration from scripts/verify_leads.py, if present: Platt (a, b) and,
+    when fitted, an isotonic map as knots (iso_x -> iso_y). The isotonic map is used
+    when present; it is the year-level correction for the top-end over-confidence."""
     import json
     p = config.PROCESSED / "lead_calibration.json"
     if not p.exists():
         return {}
     d = json.loads(p.read_text())
-    return {int(k): (v["a"], v["b"]) for k, v in d.get("leads", {}).items()}
+    return {int(k): v for k, v in d.get("leads", {}).items()}
+
+
+def _apply(cal: dict, p: np.ndarray) -> np.ndarray:
+    if "iso_x" in cal:
+        return np.interp(p, np.asarray(cal["iso_x"], dtype=float), np.asarray(cal["iso_y"], dtype=float))
+    q = np.clip(p, 1e-6, 1 - 1e-6)
+    return 1 / (1 + np.exp(-(cal["a"] + cal["b"] * np.log(q / (1 - q)))))
 
 
 def calibrate_by_lead(p: np.ndarray, first_lead: int) -> np.ndarray:
@@ -81,20 +90,16 @@ def calibrate_by_lead(p: np.ndarray, first_lead: int) -> np.ndarray:
         k = first_lead + j
         if k < 0:
             continue
-        a, b = cal[min(k, kmax)]
-        z = np.log(np.clip(out[:, j], 1e-6, 1 - 1e-6) / (1 - np.clip(out[:, j], 1e-6, 1 - 1e-6)))
-        out[:, j] = 1 / (1 + np.exp(-(a + b * z)))
+        out[:, j] = _apply(cal[min(k, kmax)], out[:, j])
     return out
 
 
 def calibrate_at_lead(p: np.ndarray, lead: int) -> np.ndarray:
-    """Apply one lead's Platt parameters to every column (hindcasts: every day is lead 0)."""
+    """Apply one lead's calibration to every column (hindcasts: every day is lead 0)."""
     cal = _lead_calibration()
     if not cal or p.size == 0:
         return p
-    a, b = cal[min(lead, max(cal))]
-    q = np.clip(p, 1e-6, 1 - 1e-6)
-    return 1 / (1 + np.exp(-(a + b * np.log(q / (1 - q)))))
+    return _apply(cal[min(lead, max(cal))], p)
 
 
 @lru_cache(maxsize=1)
@@ -223,6 +228,7 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
 
     # E. coli exceedance: rain at the spot itself (not at the overflows) plus the day's exposure.
     em = ecoli.load()
+    p_ec = r48 = None
     if em is not None:
         try:
             spot_rain = fetch_forecast(cells_for_sites(pd.Series([lat]), pd.Series([lon])))
@@ -288,7 +294,8 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
     if log_to_store:
         try:
             from dipcast.forecast_log import log_forecast
-            log_forecast(now, lat, lon, pin.mode, pin.watercourse, now_risk, days, risk, ov, p_raw, p)
+            log_forecast(now, lat, lon, pin.mode, pin.watercourse, now_risk, days, risk, ov, p_raw, p,
+                         p_ecoli=p_ec, rain_48h=r48)
         except Exception as e:  # noqa: BLE001 - logging must never fail a forecast
             log.warning("forecast log failed: %s", e)
     return out

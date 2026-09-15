@@ -89,3 +89,31 @@ def test_observed_spill_days_and_date_join():
     fc["target_day"] = pd.to_datetime(fc["target_day"]).dt.date
     m = fc.merge(obs.assign(y=1), left_on=["site_id", "target_day"], right_on=["site_id", "day"], how="left")
     assert m["y"].fillna(0).tolist() == [1, 0]
+
+
+def test_ecoli_live_scoring_round_trip(tmp_path, monkeypatch):
+    """Log a point forecast with an E. coli probability, plant a matching EA sample, score it."""
+    import json
+
+    from dipcast import config
+    from dipcast import forecast_log as fl
+
+    monkeypatch.setattr(config, "STATE", tmp_path)
+    monkeypatch.setattr(config, "DUCKDB_PATH", tmp_path / "t.duckdb")
+    sites = json.loads((config.RAW / "bathing_waters_inland.json").read_text())
+    s = sites[0]
+    issued = pd.Timestamp("2026-09-10 08:00", tz="Europe/London")
+    days = pd.date_range("2026-09-09", periods=3, freq="D", tz="Europe/London")   # yesterday, today, tomorrow
+    fl.log_forecast(issued, round(s["lat"], 5), round(s["lon"], 5), "river", "R", 0.1, days, np.array([0.1, 0.2, 0.3]),
+                    pd.DataFrame(), np.zeros((0, 3)), np.zeros((0, 3)),
+                    p_ecoli=np.array([np.nan, 0.6, 0.4]), rain_48h=np.array([np.nan, 12.0, 3.0]))
+    samples = pd.DataFrame({"bw_id": [s["id"], s["id"]], "name": s["name"], "kind": s["kind"],
+                            "sample_time": pd.to_datetime(["2026-09-10 11:00", "2026-09-11 11:00"]).tz_localize("Europe/London"),
+                            "ecoli": [1500, 200]})
+    samples.to_parquet(tmp_path / fl.ECOLI_SAMPLES, index=False)   # fresh file: no network fetch
+    out = fl.verify_ecoli(as_of=pd.Timestamp("2026-09-12").date())
+    assert out["n_scored"] == 2 and out["n_samples"] == 2
+    by_lead = {r["lead"]: r for r in out["by_lead"]}
+    assert by_lead[0]["base_rate"] == 1.0 and abs(by_lead[0]["brier"] - 0.16) < 1e-9     # 0.6 vs exceedance
+    assert by_lead[1]["base_rate"] == 0.0 and abs(by_lead[1]["brier"] - 0.16) < 1e-9     # 0.4 vs clean
+    assert out["recent"][0]["ecoli"] == 200 and out["recent"][1]["forecast"] == 0.6

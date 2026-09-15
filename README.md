@@ -115,11 +115,17 @@ ahead of the rain rule (0.0621) four days out. The daily rainfall itself has a
 mean absolute error of 2.0 mm at lead 0 rising to 3.1 mm at lead 4, and catches
 67% of days over 10 mm at lead 0 against 45% at lead 4. Treating forecast rain
 as certain makes longer leads over-confident (at lead 2 a 75% forecast verifies
-at 65%), so a two-parameter Platt scaling is fitted per lead and applied in the
-API; `data/processed/lead_calibration.json` holds the parameters. After
-calibration the lead-2 75% bin verifies at 72% and lead-4 Brier improves from
-0.0536 to 0.0524; the parameters are fitted on the same 2025 data, so treat
-those two figures as slightly optimistic.
+at 65%), and the model is also over-confident at the top end even with today's
+rain (an 85% forecast verifies at 82%, a 93% one at 86%), a shift between years
+that a two-parameter Platt scaling cannot remove. So an isotonic map (monotone,
+piecewise, about 50 knots) is fitted per lead on the held-out year's forecasts
+and applied in the API; `data/processed/lead_calibration.json` holds the knots,
+with the Platt parameters kept alongside for comparison. After calibration every
+lead-2 bin sits on the diagonal (the 75% bin verifies at 75%, the 82% bin at
+82%) and lead-4 Brier improves from 0.0536 to 0.0522. The map is fitted on the
+same 2025 data it is scored on, so treat those figures as slightly optimistic;
+the live "By lead time" table shows raw and calibrated Brier side by side, which
+is the check that the 2025 map still fits later years.
 
 **Validation against measured E. coli.** The Environment Agency publishes weekly
 lab samples at 38 inland designated bathing waters (20 rivers, 18 lakes). For
@@ -192,25 +198,38 @@ days nobody did.
 **E. coli exceedance model.** The map's "E. coli > 900" column. `scripts/train_ecoli.py`
 fits a logistic regression to the same 1,750 samples from things dipcast can
 compute anywhere: rain at the spot in the previous 48 and 24 h, dipcast's overflow
-exposure for the day, lake or river, and season. Leave-one-year-out (each year
-predicted by a model that never saw it):
+exposure for the day, lake or river, and season. The rain is Open-Meteo's archived
+lead-0 forecast, the same source the map uses for "today", rather than reanalysis:
+fitted and scored that way it does slightly better (Brier 0.082 against 0.086),
+consistent with the 2 km forecast model beating 10 km ERA5-Land above.
+Leave-one-year-out (each year predicted by a model that never saw it):
 
 | Model | Brier | AUC | Skill vs climatology | Rivers: Brier / AUC |
 |---|---|---|---|---|
 | climatology by water-body type | 0.105 | 0.65 | 0.00 | 0.178 / 0.36 |
-| rain only | 0.088 | 0.81 | 0.16 | 0.147 / 0.71 |
+| rain only | 0.085 | 0.81 | 0.20 | 0.140 / 0.72 |
 | spill exposure only | 0.092 | 0.80 | 0.13 | 0.151 / 0.69 |
-| rain + spill exposure + season (the map) | 0.086 | 0.82 | 0.19 | 0.141 / 0.74 |
+| rain + spill exposure + season (the map) | 0.082 | 0.83 | 0.22 | 0.135 / 0.76 |
 
-Reliability is close to the diagonal (days forecast at 30-40% exceed 30% of the
-time). Overflow exposure adds a small, consistent gain over rain alone. On lakes
-the model has no ranking skill (16 exceedances in 803 samples) and effectively
-returns the lake base rate of about 2%, which is the honest answer. Coefficients
-are stored as JSON (`data/processed/ecoli_model.json`); `dipcast/model/ecoli.py`
-computes the features live from the spot's own rainfall cell, with the rain window
-ending at midday to match when the EA samples. The training risk used reanalysis
-rain and the live risk uses forecast rain, so expect the live figure to be a
-little less sharp than the table.
+Scored with the rain forecast issued two days earlier instead, the full model's
+Brier is 0.089 (skill 0.16), and four days earlier 0.089, so the column is
+worth reading out to the end of the forecast. Reliability is close to the
+diagonal. Overflow exposure adds a small, consistent gain over rain alone. On
+lakes the model has no ranking skill (16 exceedances in 803 samples) and
+effectively returns the lake base rate of about 2%, which is the honest answer.
+Coefficients are stored as JSON (`data/processed/ecoli_model.json`);
+`dipcast/model/ecoli.py` computes the features live from the spot's own rainfall
+cell, with the rain window ending at midday to match when the EA samples.
+
+**Live scoring of the E. coli column.** From 15 September 2026 every spot's daily
+exceedance forecast is logged with the rain it used, and once a day the build
+fetches this season's EA samples at the 38 designated bathing waters into the
+state directory. Each sample is matched to the forecasts for that spot and day
+at every lead and scored the same way as the spill forecasts: Brier and AUC
+against the training-period exceedance rate for rivers and lakes, with the most
+recent samples listed against what the map said. It appears on the verification
+page as results arrive, usually within a week of sampling. The 2026 season ends
+in September, so the first real read of this table is next May.
 
 ## Known limits
 
@@ -258,20 +277,17 @@ held-out year (table above). Unit tests cover the label exploder, rainfall
 features and the risk combination.
 
 Done since v1: Southern Water live feed (all nine English companies now live);
-E. coli exceedance model on the map (15 Sep); second-pass outfall snapping (85% to 94%); shareable URLs; WFD lake polygons with a lake-size dilution term; recency
+E. coli exceedance model on the map, logged and scored live against new EA samples (15 Sep); per-lead isotonic calibration replacing Platt (15 Sep); second-pass outfall snapping (85% to 94%); shareable URLs; WFD lake polygons with a lake-size dilution term; recency
 weighting in the site calibration; production refit on all years; verification
 against archived forecasts by lead time (below); `Dockerfile`; a launchd plist
 in `deploy/` for the 20-minute live refresh (not installed automatically).
 
 Not done yet, in the order I would do them:
 
-1. A year-level calibration: the residual top-end overconfidence is a shift
-   between years, so fit a single temperature or isotonic map on the most
-   recent year's out-of-sample predictions each time the model is refit.
-2. Let live history accumulate for the eight companies without event feeds,
+1. Let live history accumulate for the eight companies without event feeds,
    then fit their site calibration.
-3. Per-lake residence time (needs volume; WFD gives area only).
-4. Dwr Cymru live status (no ArcGIS feed; would need their own map's API).
+2. Per-lake residence time (needs volume; WFD gives area only).
+3. Dwr Cymru live status (no ArcGIS feed; would need their own map's API).
 
 ## Run
 

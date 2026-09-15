@@ -38,6 +38,20 @@ async function main() {
     if (L.reliability) { h += `<h2>Reliability</h2><table><tr><th>Forecast bin</th><th class="num">n</th><th class="num">Mean forecast</th><th class="num">Observed</th></tr>`;
       for (const r of L.reliability) h += `<tr><td>${f(r.lo,1)}–${f(r.hi,1)}</td><td class="num">${r.n}</td><td class="num">${pct(r.forecast)}</td><td class="num">${pct(r.observed)}</td></tr>`; h += '</table>'; }
   }
+  const E = L && L.ecoli_live;
+  if (E && E.n_scored) {
+    const eo = E.overall;
+    h += `<h2>Live scoring: E. coli forecasts against new lab samples</h2><p class="small muted">The map's "E. coli &gt; 900" column, checked against Environment Agency samples taken on the forecast day at the designated bathing waters. ${E.n_samples} samples at ${E.n_sites} sites so far; ${E.n_scored} forecast-sample pairs across lead times. Climatology is the training-period exceedance rate for rivers and lakes.</p>`;
+    h += `<table><tr><th>Forecast</th><th class="num">n</th><th class="num">Exceedance rate</th><th class="num">Brier</th><th class="num">Skill</th><th class="num">AUC</th></tr>`;
+    h += `<tr><td>dipcast, all leads</td><td class="num">${E.n_scored}</td><td class="num">${pct(eo.base_rate)}</td><td class="num">${f(eo.brier,3)}</td><td class="num">${eo.climatology_brier > 0 ? f(1 - eo.brier/eo.climatology_brier, 2) : '–'}</td><td class="num">${f(eo.auc,3)}</td></tr>`;
+    h += `<tr><td>climatology by type</td><td class="num">${E.n_scored}</td><td class="num"></td><td class="num">${f(eo.climatology_brier,3)}</td><td class="num">0.00</td><td class="num">–</td></tr></table>`;
+    if (E.by_lead) { h += `<table style="margin-top:8px"><tr><th>Lead (days)</th><th class="num">n</th><th class="num">Exceedance rate</th><th class="num">Brier</th></tr>`;
+      for (const r of E.by_lead) h += `<tr><td>${r.lead === 0 ? 'today' : r.lead === 1 ? 'tomorrow' : r.lead}</td><td class="num">${r.n}</td><td class="num">${pct(r.base_rate)}</td><td class="num">${f(r.brier,3)}</td></tr>`; h += '</table>'; }
+    if (E.recent && E.recent.length) { h += `<h3>Most recent samples</h3><table><tr><th>Site</th><th>Sampled</th><th class="num">Forecast (lead)</th><th class="num">Rain 48 h</th><th class="num">Measured E. coli</th></tr>`;
+      for (const r of E.recent) h += `<tr><td>${r.site}</td><td>${r.day}</td><td class="num">${pct(r.forecast)} (${r.lead})</td><td class="num">${r.rain_48h === null ? '–' : r.rain_48h + ' mm'}</td><td class="num"${r.ecoli > 900 ? ' style="font-weight:600"' : ''}>${r.ecoli.toLocaleString()}</td></tr>`; h += '</table><p class="small muted">Bold: over 900 cfu/100 ml, the inland "sufficient" threshold.</p>'; }
+  } else if (L && L.n_scored) {
+    h += `<h2>Live scoring: E. coli forecasts against new lab samples</h2><p class="muted">Forecasts of the "E. coli &gt; 900" column are logged from 15 September 2026 and scored against Environment Agency samples as they are published, usually within a week of sampling. Nothing to show yet.</p>`;
+  }
   document.getElementById('live').innerHTML = h;
 
   let o = '<h2>Offline test: held-out year</h2><p class="small muted">Trained on United Utilities overflows 2023–2024, tested on 2025 (826,725 overflow-days, 7.45% with a discharge). Rainfall from reanalysis, so this excludes weather-forecast error.</p>';
@@ -45,7 +59,7 @@ async function main() {
     for (const r of d.holdout) o += `<tr><td>${r.model}</td><td class="num">${f(r.brier)}</td><td class="num">${f(r.log_loss,3)}</td><td class="num">${f(r.auc,3)}</td><td class="num">${f(r.brier_skill_vs_clim,2)}</td></tr>`; o += '</table>'; }
   if (d.reliability) { o += `<h2>Reliability on the held-out year</h2><table><tr><th>Forecast bin</th><th class="num">n</th><th class="num">Mean forecast</th><th class="num">Observed</th></tr>`;
     for (const r of d.reliability) o += `<tr><td>${f(r.lo,1)}–${f(r.hi,1)}</td><td class="num">${r.n}</td><td class="num">${pct(r.forecast)}</td><td class="num">${pct(r.observed)}</td></tr>`; o += '</table>'; }
-  if (d.leads) { o += `<h2>Offline test: with real weather forecasts</h2><p class="small muted">Same held-out year, but rainfall taken from Open-Meteo's archived forecasts as they were issued. Lead 0 is the latest run for the day; lead k was issued k days earlier. "Platt-calibrated" rows show the per-lead correction the map applies.</p><table><tr><th>Rainfall source</th><th class="num">Brier</th><th class="num">AUC</th><th class="num">Skill</th></tr>`;
+  if (d.leads) { o += `<h2>Offline test: with real weather forecasts</h2><p class="small muted">Same held-out year, but rainfall taken from Open-Meteo's archived forecasts as they were issued. Lead 0 is the latest run for the day; lead k was issued k days earlier. The map applies the "isotonic-calibrated" correction per lead (a monotone map fitted on this year, which also removes the top-end over-confidence a two-parameter Platt scaling cannot); the Platt rows are kept for comparison. Both are fitted on the same year they are scored on, so treat them as slightly optimistic.</p><table><tr><th>Rainfall source</th><th class="num">Brier</th><th class="num">AUC</th><th class="num">Skill</th></tr>`;
     for (const r of d.leads) o += `<tr><td>${r.source}</td><td class="num">${f(r.brier)}</td><td class="num">${f(r.auc,3)}</td><td class="num">${f(r.brier_skill_vs_clim,2)}</td></tr>`; o += '</table>'; }
   if (d.ecoli && d.ecoli.all_sites) {
     const e = d.ecoli, c = d.ecoli_combined || {};

@@ -106,12 +106,26 @@ def main() -> None:
         a, b = float(lr.intercept_[0]), float(lr.coef_[0][0])
         pc = 1 / (1 + np.exp(-(a + b * z[:, 0])))
         sc = scores(y[ok], pc); rows.append({"source": f"forecast lead {k}, Platt-calibrated", **sc})
-        calib[str(k)] = {"a": a, "b": b, "brier_before": s["brier"], "brier_after": sc["brier"]}
+        # Isotonic map: monotone, piecewise, fitted on the same out-of-sample year. Platt's
+        # two parameters cannot fix over-confidence at the top end alone (0.85 verified at
+        # 0.78 on the held-out year); this can. Stored as ~40 knots on the quantiles of p.
+        from sklearn.isotonic import IsotonicRegression
+        iso = IsotonicRegression(y_min=0.001, y_max=0.99, out_of_bounds="clip").fit(pk[ok], y[ok])
+        grid = np.unique(np.concatenate([[0.0, 1.0], np.quantile(pk[ok], np.linspace(0, 1, 41)),
+                                         np.linspace(0.5, 1.0, 11)]))
+        knots_y = iso.predict(grid)
+        pi = np.interp(pk[ok], grid, knots_y)
+        si = scores(y[ok], pi); rows.append({"source": f"forecast lead {k}, isotonic-calibrated", **si})
+        calib[str(k)] = {"a": a, "b": b, "brier_before": s["brier"], "brier_after": sc["brier"],
+                         "iso_x": [round(float(v), 5) for v in grid], "iso_y": [round(float(v), 5) for v in knots_y],
+                         "brier_isotonic": si["brier"]}
         if k in (0, 2):
             print(f"\n--- reliability, lead {k} (raw) ---")
             print(reliability_table(y[ok], pk[ok]).round(3).to_string())
-            print(f"--- reliability, lead {k} (calibrated) ---")
+            print(f"--- reliability, lead {k} (Platt) ---")
             print(reliability_table(y[ok], pc).round(3).to_string())
+            print(f"--- reliability, lead {k} (isotonic) ---")
+            print(reliability_table(y[ok], pi).round(3).to_string())
     from dipcast.model.verify import brier_skill
     res = pd.DataFrame(rows).set_index("source")
     clim = 0.0669  # site climatology Brier on the same year from train.py
@@ -122,7 +136,7 @@ def main() -> None:
     res.to_csv(config.PROCESSED / f"verification_leads_{YEAR}.csv")
     import json
     (config.PROCESSED / "lead_calibration.json").write_text(json.dumps(
-        {"fitted_on": YEAR, "model": model.trained_on, "leads": calib}, indent=1))
+        {"fitted_on": YEAR, "model": model.trained_on, "method": "isotonic", "leads": calib}, indent=1))
     log.info("saved per-lead calibration -> %s", config.PROCESSED / "lead_calibration.json")
 
 
