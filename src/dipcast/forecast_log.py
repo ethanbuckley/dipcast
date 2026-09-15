@@ -122,6 +122,11 @@ def verify_live(as_of: date | None = None) -> dict:
         _write(out)
         return out
     hist = pd.read_parquet(hist_path)
+    # DuckDB hands DATE columns back as datetime64; the polled-day filter and the
+    # spill-day join below compare against Python dates, so normalise first.
+    # (Without this nothing ever scored: the filter silently emptied the frame.)
+    for c in ("target_day", "issue_day"):
+        fc[c] = pd.to_datetime(fc[c]).dt.date
     # Only score days on which we were actually polling, so a gap in polling does
     # not read as 'no spill'.
     polled_days = set(pd.to_datetime(hist["fetched_at"], utc=True).dt.tz_convert(LOCAL_TZ).dt.date.unique())
@@ -135,9 +140,13 @@ def verify_live(as_of: date | None = None) -> dict:
     fc["y"] = fc["y"].fillna(0).astype(int)
     y = fc["y"].to_numpy()
     out["n_scored"] = len(fc)
+    # Baseline: each overflow's long-run spill-day rate from the annual returns, as in
+    # the offline tests. The in-period mean would be an in-sample, hindsight baseline
+    # and over a few dry days it makes any forecast look bad.
+    fc["p_clim"] = _site_climatology(fc["site_id"])
     out["overall"] = {"raw": scores(y, fc["p_raw"].to_numpy()), "calibrated": scores(y, fc["p_cal"].to_numpy())}
-    clim = np.full(len(y), y.mean()) if len(y) else np.array([])
-    out["overall"]["climatology_brier"] = float(np.mean((clim - y) ** 2)) if len(y) else None
+    out["overall"]["climatology_brier"] = float(np.mean((fc["p_clim"].to_numpy() - y) ** 2))
+    out["overall"]["period_base_rate_brier"] = float(np.mean((y.mean() - y) ** 2))
     by_lead = []
     for k, g in fc.groupby("lead"):
         yy = g["y"].to_numpy()
@@ -153,9 +162,10 @@ def verify_live(as_of: date | None = None) -> dict:
         by_company = []
         for c, g in fc.groupby("company"):
             yy = g["y"].to_numpy(); pc = g["p_cal"].to_numpy()
+            cb = float(np.mean((g["p_clim"].to_numpy() - yy) ** 2))
             by_company.append({"company": c, "n": len(g), "sites": int(g["site_id"].nunique()), "base_rate": float(yy.mean()),
-                               "brier_cal": float(np.mean((pc - yy) ** 2)),
-                               "climatology_brier": float(np.mean((yy.mean() - yy) ** 2)),
+                               "brier_cal": float(np.mean((pc - yy) ** 2)), "climatology_brier": cb,
+                               "skill": float(1 - np.mean((pc - yy) ** 2) / cb) if cb > 0 else None,
                                "auc": float(roc_auc_score(yy, pc)) if 0 < yy.mean() < 1 and len(g) >= 30 else None})
         out["by_company"] = sorted(by_company, key=lambda r: -r["n"])
     fc["week"] = pd.to_datetime(fc["target_day"]).dt.to_period("W").dt.start_time.dt.date.astype(str)
@@ -166,6 +176,18 @@ def verify_live(as_of: date | None = None) -> dict:
         out["reliability"] = reliability_table(y, fc["p_cal"].to_numpy()).round(4).to_dict("records")
     _write(out)
     return out
+
+
+def _site_climatology(site_ids: pd.Series) -> np.ndarray:
+    """Long-run daily spill probability per overflow from the annual returns
+    (spill-days per year / 365), the same baseline as the offline tests."""
+    p = config.state_read("overflows.parquet")
+    default = 20.0 / 365.0
+    if not p.exists():
+        return np.full(len(site_ids), default)
+    ov = pd.read_parquet(p, columns=["site_id", "lta_spills"]).drop_duplicates("site_id").set_index("site_id")["lta_spills"]
+    clim = site_ids.map(ov).astype(float).fillna(default * 365.0).to_numpy() / 365.0
+    return np.clip(clim, 0.001, 0.95)
 
 
 def _site_companies() -> pd.Series | None:

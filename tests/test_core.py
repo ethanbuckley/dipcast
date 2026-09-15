@@ -53,7 +53,7 @@ def test_labels_and_velocity():
 
 
 def test_ecoli_features_and_rain_windows():
-    from dipcast.model.ecoli import EcoliModel, FEATURES, features, rain_windows
+    from dipcast.model.ecoli import FEATURES, EcoliModel, features, rain_windows
 
     t = pd.date_range("2025-06-01", periods=24 * 4, freq="h", tz="Europe/London")
     p = np.zeros(len(t)); p[30] = 5.0; p[60] = 7.0     # day 2 06:00 and day 3 12:00
@@ -70,3 +70,22 @@ def test_ecoli_features_and_rain_windows():
                    {f: 0.0 for f in FEATURES}, {f: 1.0 for f in FEATURES}, {})
     q = m.predict(X)
     assert q[1] > q[0] and 0 < q[0] < 1
+
+
+def test_observed_spill_days_and_date_join():
+    """A forecast log day (timestamp, as DuckDB returns DATE) must join to observed spill days (date)."""
+    from dipcast.forecast_log import observed_spill_days
+
+    hist = pd.DataFrame({
+        "site_id": ["A", "B"], "status": [0, 1],
+        "latest_event_start": pd.to_datetime(["2026-09-12 22:00", "2026-09-14 09:00"], utc=True),
+        "latest_event_end": [pd.Timestamp("2026-09-13 03:00", tz="UTC"), pd.NaT],
+        "fetched_at": pd.to_datetime(["2026-09-13 06:00", "2026-09-14 12:00"], utc=True),
+    })
+    obs = observed_spill_days(hist)
+    assert sorted(map(str, obs[obs.site_id == "A"].day)) == ["2026-09-12", "2026-09-13"]
+    assert sorted(map(str, obs[obs.site_id == "B"].day)) == ["2026-09-14"]   # open-ended: ends at poll time
+    fc = pd.DataFrame({"site_id": ["A", "A"], "target_day": pd.to_datetime(["2026-09-13", "2026-09-14"])})
+    fc["target_day"] = pd.to_datetime(fc["target_day"]).dt.date
+    m = fc.merge(obs.assign(y=1), left_on=["site_id", "target_day"], right_on=["site_id", "day"], how="left")
+    assert m["y"].fillna(0).tolist() == [1, 0]

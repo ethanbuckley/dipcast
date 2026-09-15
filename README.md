@@ -245,7 +245,9 @@ little less sharp than the table.
   annual-return covariates, and the live poller accumulates their history. The
   spill model was trained on United Utilities only; the live verification page
   scores every company's live-feed overflows separately ("By water company"),
-  which is the running check that it transfers.
+  which is the running check that it transfers. (Until 15 Sep 2026 the live
+  scorer scored nothing: DuckDB returned its DATE columns as timestamps and the
+  join to observed spill days silently matched no rows. Fixed, with a test.)
 
 ## Status (15 Sep 2026)
 
