@@ -203,43 +203,62 @@ river, and season. The rain is Open-Meteo's archived lead-0 forecast, the same
 source the map uses for "today". The competitor that matters is rain alone: the
 question is whether the overflow exposure adds anything a rain gauge would not.
 
-Rebuilt on 16 Sep 2026 after the rain-window fix: 1,548 samples at 32 bathing
-waters, 2024-2026 (the 202 samples from 2023 are gone, because Open-Meteo's
-previous-runs archive has no lead-1 to lead-4 rain for 2023 and the old code had
-been summing those nulls to 0 mm and scoring them as dry). Three tests, each
-scored on data the model never saw:
+Rebuilt on 16-17 Sep 2026 after the rain-window fixes: 1,548 samples at 32
+bathing waters, 2024-2026 (the 202 samples from 2023 are gone, because
+Open-Meteo's previous-runs archive has no lead-1 to lead-4 rain for 2023 and the
+old code had been summing those nulls to 0 mm and scoring them as dry). Three
+tests, each scored on data the model never saw:
 
 | Test | Model | Brier | AUC | Rivers: Brier / AUC | Lakes: Brier / AUC |
 |---|---|---|---|---|---|
 | leave one year out | climatology by type | 0.116 | 0.62 | 0.181 / 0.35 | 0.025 / 0.38 |
-| | rain only | 0.093 | 0.80 | 0.141 / 0.72 | 0.025 / 0.35 |
-| | spill exposure only | 0.097 | 0.80 | 0.146 / 0.72 | 0.026 / 0.51 |
-| | rain + exposure + season (the map) | 0.090 | 0.82 | 0.137 / 0.75 | 0.025 / 0.46 |
-| leave one site out | rain only | 0.092 | 0.79 | 0.139 / 0.72 | 0.025 / 0.06 |
-| | rain + exposure + season | 0.090 | 0.81 | 0.135 / 0.76 | 0.026 / 0.19 |
-| forward: fit 2024, score 2025-26 | rain only | 0.087 | 0.79 | 0.124 / 0.77 | 0.031 / 0.51 |
-| | rain + exposure + season | 0.082 | 0.81 | 0.116 / 0.81 | 0.031 / 0.54 |
+| | rain only | 0.093 | 0.80 | 0.142 / 0.71 | 0.025 / 0.35 |
+| | rain + season | 0.094 | 0.80 | 0.143 / 0.73 | 0.025 / 0.37 |
+| | spill exposure only | 0.097 | 0.80 | 0.147 / 0.72 | 0.026 / 0.51 |
+| | rain + exposure + season (the map) | 0.091 | 0.82 | 0.138 / 0.75 | 0.025 / 0.47 |
+| leave one site out | rain only | 0.092 | 0.79 | 0.140 / 0.72 | 0.025 / 0.06 |
+| | rain + exposure + season | 0.090 | 0.81 | 0.136 / 0.76 | 0.026 / 0.18 |
+| forward: fit 2024, score 2025-26 | rain only | 0.087 | 0.79 | 0.125 / 0.77 | 0.031 / 0.52 |
+| | rain + season | 0.087 | 0.79 | 0.125 / 0.77 | 0.031 / 0.52 |
+| | rain + exposure + season | 0.083 | 0.81 | 0.117 / 0.81 | 0.031 / 0.53 |
 
 The forward test uses the overflow exposure from the spill model fitted on
 2023-24 only, without the 2025-fitted calibration map, so nothing downstream of
-the cut-off saw the test years.
+the cut-off saw the test years. The season term on its own adds nothing (rain +
+season is level with or slightly worse than rain only), so the gain of the full
+model is the exposure term.
 
-**Is the gain over rain alone real?** A cluster bootstrap over site-weeks (samples
-at one site in one week share weather and water body) on the out-of-sample
-predictions. Brier gain in thousandths, 95% intervals:
+**Is the gain over rain alone real?** Cluster bootstraps on the out-of-sample
+river predictions under three dependence assumptions: resampling site-weeks
+(samples at one site in one week share weather and water body), whole sites
+(every week at a site moves together; 20 clusters), and calendar weeks across all
+sites (one storm hits many sites at once; 40-62 clusters, the most demanding).
+Brier gain in thousandths, 95% intervals, rivers (n = 907; forward n = 617):
 
-| Test | n | Brier gain ×1000 | P(gain ≤ 0) | AUC gain |
+| Test | Reference | by site-weeks | by whole sites | by calendar weeks |
 |---|---|---|---|---|
-| leave-one-year-out, rivers | 907 | +4.4 [+0.2, +8.5] | 0.02 | +0.033 [+0.011, +0.057] |
-| leave-one-site-out, rivers | 907 | +3.6 [−0.2, +7.4] | 0.03 | +0.038 [+0.016, +0.062] |
-| leave-one-year-out, all | 1,548 | +2.5 [+0.0, +5.0] | 0.02 | +0.018 [+0.006, +0.030] |
-| leave-one-site-out, all | 1,548 | +1.8 [−0.5, +3.9] | 0.07 | +0.018 [+0.006, +0.030] |
-| leave-one-year-out, lakes | 641 | −0.2 [−0.6, +0.1] | 0.92 | (no skill either way) |
+| leave one year out | rain only | +4.6 [+0.3, +8.8], P 0.02 | +4.6 [+0.9, +8.7], P 0.01 | +4.6 [−2.0, +11.6], P 0.09 |
+| leave one site out | rain only | +3.8 [−0.0, +7.7], P 0.03 | +3.8 [−0.5, +8.2], P 0.04 | +3.8 [−1.1, +9.1], P 0.07 |
+| forward in time | rain only | +8.3 [+3.1, +13.2], P 0.001 | +8.3 [+1.8, +15.3], P 0.005 | +8.3 [−0.4, +17.7], P 0.03 |
+| leave one year out | rain + season | +5.6 [+2.3, +9.1], P 0.001 | +5.6 [+2.2, +9.3], P <0.001 | +5.6 [+1.9, +9.4], P 0.001 |
+| leave one site out | rain + season | +4.4 [+1.1, +7.9], P 0.004 | +4.4 [+0.6, +8.6], P 0.01 | +4.4 [+0.9, +8.1], P 0.007 |
 
-So: on rivers the exposure term is a real but small improvement on a rain gauge,
-about a 3% lower Brier score and 0.03-0.04 more AUC, with the lower end of the
-interval near zero. On lakes there is nothing, and the column is not shown for
-lakes on the map.
+P is the share of resamples in which the full model was no better. Against rain
+alone the gain is small (3-6% of the Brier score, 0.03-0.04 AUC) and survives
+resampling by site but not, at conventional confidence, resampling by storm
+week; the forward test is the strongest. Against rain + season, which isolates
+the exposure term, the gain holds under every grouping. On lakes there is
+nothing under any grouping, and the column is not shown for lakes on the map.
+Rain windows: 100% of the accepted 48 h windows at lead 0 are complete, so the
+90% rule changed no total in the fitting data; at leads 1-4, 88.5% are.
+
+**Would the site have shown a figure?** Under the production rule (a figure is
+withheld when more than 10% of transport weight comes from overflow-days
+without rain data) the replayed pipeline would have shown one on 100% of sample
+days at lead 0, 93% at lead 1 and 88.5% at leads 2-4; on wet days (48 h rain
+over 10 mm) 95% and 90%, and on exceedance days 97% at every lead from 1 to 4.
+So the abstentions fall mostly on dry, clean days, not the hard ones; the gaps
+are Open-Meteo previous-runs outages, not the model declining.
 
 **By lead, replayed.** The earlier lead-time figures changed only the spot rain
 and kept the lead-0 exposure at every lead. `scripts/replay_ecoli_leads.py` now
@@ -249,16 +268,20 @@ the full model against rain only, all sites (rivers in brackets):
 
 | Lead | replayed exposure | rain only | fixed lead-0 exposure (old test) |
 |---|---|---|---|
-| 0 | 0.0905 (0.137) | 0.0930 (0.141) | 0.0905 (0.137) |
+| 0 | 0.0908 (0.138) | 0.0934 (0.142) | 0.0908 (0.138) |
 | 1 | 0.0972 (0.148) | 0.1012 (0.155) | 0.0952 (0.145) |
-| 2 | 0.0986 (0.151) | 0.1020 (0.157) | 0.0957 (0.146) |
-| 3 | 0.1025 (0.157) | 0.1064 (0.164) | 0.0985 (0.151) |
-| 4 | 0.1001 (0.153) | 0.1045 (0.161) | 0.0961 (0.146) |
+| 2 | 0.0987 (0.151) | 0.1022 (0.157) | 0.0957 (0.146) |
+| 3 | 0.1024 (0.157) | 0.1065 (0.164) | 0.0984 (0.150) |
+| 4 | 0.1000 (0.153) | 0.1045 (0.161) | 0.0960 (0.146) |
 
 The old test was optimistic by about 0.004 at four days; the full model still
-beats rain alone at every lead. Reliability is close to the diagonal below 0.2 and
-above 0.4; the 0.2-0.4 bins over-forecast (forecast 0.25 and 0.35, observed 0.20
-and 0.22, on 180 samples). Coefficients are stored as JSON
+beats rain alone at every lead. The replay applies production's missing-data
+rule (at most 10% of transport weight without rain data) rather than rejecting
+any missing value, so its availability matches what the site would show; its
+remaining approximations are the analysis series for the 30-day and antecedent
+features and the stitched previous-runs fields. Reliability is close to the
+diagonal below 0.2 and above 0.4; the 0.2-0.4 bins over-forecast (forecast 0.25
+and 0.35, observed 0.21 and 0.20, on 179 samples). Coefficients are stored as JSON
 (`data/processed/ecoli_model.json`); `dipcast/model/ecoli.py` computes the
 features live from the spot's own rainfall cell, with the rain window ending at
 midday to match when the EA samples.
@@ -275,29 +298,48 @@ most recent samples listed against what the map said. It appears on the
 verification page as results arrive, usually within a week of sampling. The 2026
 season ends in September, so the first real read of this table is next May.
 
-**Live scoring rules for the spill forecasts (16 Sep 2026).** The forecast scored
-for each overflow and day is the latest one issued by 08:00 local time on the
-issue day, so "today" is the forecast a swimmer had at breakfast, not the
-end-of-day estimate the earlier rule (latest issue of the day) produced. An
-overflow-day counts as "no spill" only if the poller recorded that overflow with
-a known status at least six times that day and once the next day
-(`live_coverage.parquet`, one row per overflow per day, written by
-`ingest.live.save_live`; `poll_log.parquet` records each poll's per-company row
-count so feed outages are visible). Before this, any polling at all on a day
-counted as coverage for every overflow, and the history file, which keeps one
-row per distinct status, could not say which overflows had actually been seen.
-Scores from before the rule change are withdrawn; the table restarts as coverage
-accumulates. The climatology baseline divides each overflow's annual spill count
-by 365; the returns count spills by the 12/24-hour block method, so
-`scripts/spill_day_ratio.py` measures spill-days per counted spill on United
-Utilities event history (1.00 pooled over 5,886 site-years) and the baseline
-applies that ratio.
+**Live scoring rules for the spill forecasts (16-17 Sep 2026).** The forecast
+scored for each overflow and day is the latest one issued by 08:00 local time on
+the issue day, so "today" is the forecast a swimmer had at breakfast, not the
+end-of-day estimate the earlier rule (latest issue of the day) produced. Issue
+days with no forecast by 08:00 are missed deadlines: counted and listed on the
+verification page, not scored. An overflow-day counts as "no spill" only if the
+poller recorded that overflow with a known status at least six times that day,
+from a feed whose freshest `LastUpdated` was under 6 h old, with no unobserved
+stretch longer than 6 h (counting midnight to the first poll and the last poll
+to midnight), and once the next day. `live_coverage.parquet` holds one row per
+overflow per day: known, unknown and stale poll counts and a 48-bit mask of the
+half-hour slots observed, from which the scorer derives first and last
+observation and the longest gap; a repeated poll in the same slot adds nothing.
+`poll_log.parquet` records each poll's per-company row count and feed age, so
+outages and stale feeds are visible (six companies re-stamp every record each
+refresh; Northumbrian and Southern stamp a record only when it changes; South
+West Water publishes no stamp). Before this, any polling at all on a day counted
+as coverage for every overflow, and the history file, which keeps one row per
+distinct status, could not say which overflows had actually been seen. Scores
+from before the rule change are withdrawn; the table restarts as coverage
+accumulates, and the page reports the same scores under a stricter 3 h gap rule
+alongside. The climatology baseline divides each overflow's annual spill count
+by 365, an approximation: the returns count spills by the 12/24-hour block
+method, and `scripts/spill_day_ratio.py` finds 1.00 spill-days per counted
+spill pooled over 5,886 United Utilities site-years, which supports the
+approximation there without establishing it per overflow or company.
 
-**Missing rainfall is unknown, not dry (16 Sep 2026).** The E. coli rain windows
+**Versions.** Every logged forecast carries a stamp of the spill model,
+calibration map and E. coli model (content hashes), the code version and git
+sha, and the weather source (`forecast.model_version`). Live scores are broken
+down by stamp on the verification page, so a change starts a new row rather
+than being averaged into the old one.
+
+**Missing rainfall is unknown, not dry (16-17 Sep 2026).** The E. coli rain windows
 used to count timestamps rather than finite values, so a null-filled forecast
 passed the completeness check and summed to 0 mm; the daily spill features had
 the same failure. Both now require 90% (windows) or 20 of 24 (days) finite hours
-and return NaN otherwise, the transport step reports the share of weight arriving
+and return NaN otherwise. The window is (t − 48 h, t]: exactly 48 hour stamps,
+each the rain in the hour ending at that stamp (until 17 Sep it summed 49). An
+accepted window with a few missing hours still sums only the hours it has, so
+the finite fraction is kept (`rain_48h_coverage` in the API) and the evaluation
+reports the gain on complete windows only alongside all accepted ones. Further, the transport step reports the share of weight arriving
 from days without rain data, a day with more than 10% missing gets no figure on
 the map ("no data"), overflow-days forecast without rain are excluded from live
 scoring, and a build in which most forecasts fail or lack today's rain exits
@@ -353,7 +395,7 @@ time contributes to today (it started at yesterday before, and did not).
   scorer scored nothing: DuckDB returned its DATE columns as timestamps and the
   join to observed spill days silently matched no rows. Fixed, with a test.)
 
-## Status (16 Sep 2026)
+## Status (17 Sep 2026)
 
 Working end to end on a local machine: click anywhere on a river or lake in
 England and get a "right now" risk from live status plus a five-day forecast,
@@ -364,7 +406,12 @@ missing-rain handling, the travel-time history window, the decision-time and
 coverage rules of the live scorer, the issued-before-sample rule of the E. coli
 scorer, coverage accumulation in the poller and the build-health guard.
 
-Done since v1: reliability release of 16 Sep (missing rain is unknown not dry;
+Done since v1: reliability release of 16-17 Sep (missing rain is unknown not dry;
+strict 08:00 headline with missed deadlines reported; per-overflow observation
+masks with a longest-gap rule and feed-freshness check; version stamps on every
+forecast with live scores by version; 48-stamp rain windows with coverage kept;
+bootstrap intervals by site and by storm week and the rain + season comparison;
+replay under the production missing-data rule with availability reported;
 decision-time and coverage-gated live scoring; issued-before-sample rule for the
 E. coli scorer; travel-time history window shared with the hindcast; build-health
 guard; leave-one-site-out, forward-in-time and bootstrap tests of the E. coli

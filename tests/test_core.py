@@ -61,8 +61,9 @@ def test_ecoli_features_and_rain_windows():
     ends = pd.DatetimeIndex([pd.Timestamp("2025-06-03 12:00", tz="Europe/London"),
                              pd.Timestamp("2025-06-04 12:00", tz="Europe/London")])
     r48, r24 = rain_windows(hourly, ends)
-    # windows are closed at both ends, as in validate_ecoli.py, so the 12:00 burst sits on the edge of both
-    assert np.allclose(r48, [12.0, 7.0]) and np.allclose(r24, [7.0, 7.0])
+    # windows are (t - 48 h, t]: a value stamped H is the hour ending at H, so the 12:00 burst on day 3
+    # is the last hour of the windows ending 06-03 12:00 and falls just outside the 24 h window ending 06-04 12:00
+    assert np.allclose(r48, [12.0, 7.0]) and np.allclose(r24, [7.0, 0.0])
     X = features([0.0, 20.0], [0.0, 10.0], [0.1, 0.1], [0.0, 0.0], ends)
     assert list(X.columns) == FEATURES
     # a positive rain coefficient must raise the probability with more rain, all else equal

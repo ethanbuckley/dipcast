@@ -35,6 +35,7 @@ from sklearn.metrics import roc_auc_score
 from dipcast import config
 from dipcast.ingest.rainfall import grid_cell
 from dipcast.model.ecoli import FEATURES, THRESHOLD, features, fit, rain_windows
+from dipcast.model.forecast import MAX_MISSING_SHARE
 from dipcast.model.verify import reliability_table, scores
 
 VARIANTS = {
@@ -46,15 +47,18 @@ VARIANTS = {
     "rain + spill exposure + season (dipcast)": FEATURES,
 }
 RAIN_ONLY = "rain only"
+RAIN_SEASON = "rain + season"
 FULL = "rain + spill exposure + season (dipcast)"
+HEAVY_RAIN_MM = 10.0   # 48 h total above which a day counts as wet, for the availability check
 LEADS = (0, 1, 2, 3, 4)
 FORWARD_TRAIN_UNTIL = 2024
 BOOT = 2000
 EXPOSURE_FILE = config.PROCESSED / "ecoli_exposure_leads.parquet"
 
 
-def forecast_rain_at_samples(rows: pd.DataFrame) -> dict[int, tuple[np.ndarray, np.ndarray]]:
-    """48 h and 24 h rain before each sample time from the archived forecast at each lead."""
+def forecast_rain_at_samples(rows: pd.DataFrame) -> dict[int, tuple[np.ndarray, np.ndarray, np.ndarray]]:
+    """48 h and 24 h rain before each sample time from the archived forecast at each
+    lead, and the finite fraction of the 48 h window (1.0 = complete)."""
     cl, cn = grid_cell(rows["lat"].to_numpy(), rows["lon"].to_numpy())
     rows = rows.assign(cell_lat=np.round(cl, 3), cell_lon=np.round(cn, 3))
     cells = set(zip(rows.cell_lat, rows.cell_lon, strict=True))
@@ -65,7 +69,7 @@ def forecast_rain_at_samples(rows: pd.DataFrame) -> dict[int, tuple[np.ndarray, 
             frames.append(pd.read_parquet(f))
     leads = pd.concat(frames, ignore_index=True)
     leads["time"] = leads["time"].dt.tz_convert("Europe/London")
-    out = {k: (np.full(len(rows), np.nan), np.full(len(rows), np.nan)) for k in LEADS}
+    out = {k: (np.full(len(rows), np.nan), np.full(len(rows), np.nan), np.full(len(rows), np.nan)) for k in LEADS}
     for (a, b), g in leads.groupby(["cell_lat", "cell_lon"]):
         idx = np.where((rows.cell_lat == a) & (rows.cell_lon == b))[0]
         if len(idx) == 0:
@@ -73,8 +77,8 @@ def forecast_rain_at_samples(rows: pd.DataFrame) -> dict[int, tuple[np.ndarray, 
         ends = pd.DatetimeIndex(rows["sample_time"].iloc[idx])
         for k in LEADS:
             hourly = g[g.lead == k].set_index("time")["precip_mm"].sort_index()
-            r48, r24 = rain_windows(hourly, ends)
-            out[k][0][idx], out[k][1][idx] = r48, r24
+            r48, r24, c48, _ = rain_windows(hourly, ends, return_coverage=True)
+            out[k][0][idx], out[k][1][idx], out[k][2][idx] = r48, r24, c48
     return out
 
 
@@ -154,33 +158,49 @@ def main() -> None:
         ex["day"] = pd.to_datetime(ex["day"])
         if ex["day"].dt.tz is None and rows["day"].dt.tz is not None:
             ex["day"] = ex["day"].dt.tz_localize(rows["day"].dt.tz)
+        if "missing_share" not in ex:
+            ex["missing_share"] = np.where(ex["risk_prod"].isna(), 1.0, 0.0)
         for k in LEADS:
-            e = ex[ex.lead == k][["bw_id", "day", "risk_prod", "risk_holdout"]].rename(
-                columns={"risk_prod": f"risk_lead{k}", "risk_holdout": f"risk_hold_lead{k}"})
+            e = ex[ex.lead == k][["bw_id", "day", "risk_prod", "risk_holdout", "missing_share"]].rename(
+                columns={"risk_prod": f"risk_lead{k}", "risk_holdout": f"risk_hold_lead{k}", "missing_share": f"miss_lead{k}"})
             rows = rows.merge(e, on=["bw_id", "day"], how="left")
     else:
         for k in LEADS:
-            rows[f"risk_lead{k}"] = rows["risk_model"]; rows[f"risk_hold_lead{k}"] = np.nan
+            rows[f"risk_lead{k}"] = rows["risk_model"]; rows[f"risk_hold_lead{k}"] = np.nan; rows[f"miss_lead{k}"] = 0.0
 
     fc = forecast_rain_at_samples(rows)
     ok_rain = np.all([~np.isnan(fc[k][0]) for k in LEADS], axis=0)
-    ok_exp = np.all([rows[f"risk_lead{k}"].notna().to_numpy() for k in LEADS], axis=0)
+    # Production's rule: a figure is shown when at most MAX_MISSING_SHARE of the transport
+    # weight comes from overflow-days without rain data. The replay applies the same rule.
+    shown = {k: (rows[f"miss_lead{k}"].fillna(1.0).to_numpy() <= MAX_MISSING_SHARE) & rows[f"risk_lead{k}"].notna().to_numpy()
+             for k in LEADS}
+    ok_exp = np.all([shown[k] for k in LEADS], axis=0)
     years_all = rows["sample_time"].dt.year.to_numpy()
+    wet0 = rows["rain_48h"].to_numpy() >= HEAVY_RAIN_MM   # reanalysis rain: the same for every lead
+    exceed_all = (rows["ecoli"] > THRESHOLD).to_numpy()
+    # Availability: would the site have shown a figure, overall, on wet days, and on exceedance days?
+    availability = {int(k): {"all": float(shown[k].mean()), "wet_days": float(shown[k][wet0].mean()) if wet0.any() else None,
+                             "exceedance_days": float(shown[k][exceed_all].mean()) if exceed_all.any() else None,
+                             "rain_window_complete": float((fc[k][2] >= 1.0).mean())}
+                    for k in LEADS}
     counts = {"samples_with_upstream": n0,
               "dropped_missing_forecast_rain": int((~ok_rain).sum()),
               "dropped_missing_replayed_exposure": int((ok_rain & ~ok_exp).sum()),
               "by_year_before": {int(y): int((years_all == y).sum()) for y in np.unique(years_all)},
               "by_year_after": {int(y): int(((years_all == y) & ok_rain & ok_exp).sum()) for y in np.unique(years_all)},
               "by_lead_rain_available": {int(k): int((~np.isnan(fc[k][0])).sum()) for k in LEADS},
-              "by_lead_exposure_available": {int(k): int(rows[f"risk_lead{k}"].notna().sum()) for k in LEADS}}
+              "by_lead_exposure_available": {int(k): int(shown[k].sum()) for k in LEADS},
+              "availability": availability, "max_missing_share": MAX_MISSING_SHARE}
     ok = ok_rain & ok_exp
     rows = rows[ok].reset_index(drop=True)
-    fc = {k: (fc[k][0][ok], fc[k][1][ok]) for k in LEADS}
+    fc = {k: (fc[k][0][ok], fc[k][1][ok], fc[k][2][ok]) for k in LEADS}
+    complete48 = fc[0][2] >= 1.0
     y = (rows["ecoli"] > THRESHOLD).astype(int).to_numpy()
     years = rows["sample_time"].dt.year.to_numpy()
     lake = rows["lake"].to_numpy()
     site = rows["bw_id"].to_numpy()
-    week = rows["bw_id"] + "|" + rows["sample_time"].dt.strftime("%G-%V")
+    week = (rows["bw_id"] + "|" + rows["sample_time"].dt.strftime("%G-%V")).to_numpy()
+    cal_week = rows["sample_time"].dt.strftime("%G-%V").to_numpy()      # shared weather across sites
     rivers = lake == 0.0
     print(f"{len(rows)} samples with forecast rain and exposure at every lead, {rows.bw_id.nunique()} sites, "
           f"{y.mean():.3f} exceed {THRESHOLD}; years {sorted({int(v) for v in years})}; replayed exposure: {replayed}")
@@ -212,7 +232,7 @@ def main() -> None:
 
     # ---- leave-one-site-out
     loso_res = {}
-    for name in ("climatology by type", RAIN_ONLY, "spill exposure only", FULL):
+    for name in ("climatology by type", RAIN_ONLY, RAIN_SEASON, "spill exposure only", FULL):
         p = leave_one_out(X, y, site, lake, VARIANTS[name])
         s = scores(y[~np.isnan(p)], p[~np.isnan(p)]); s["by_type"] = by_type(y, p, lake)
         loso_res[name] = s; preds["loso:" + name] = p
@@ -226,28 +246,49 @@ def main() -> None:
         Xh = features(fc[0][0], fc[0][1], rows["risk_hold_lead0"], rows.lake, rows.sample_time)
         tr, te = years <= FORWARD_TRAIN_UNTIL, years > FORWARD_TRAIN_UNTIL
         fw = {}
-        for name in ("climatology by type", RAIN_ONLY, FULL):
+        for name in ("climatology by type", RAIN_ONLY, RAIN_SEASON, FULL):
             p = np.full(len(y), np.nan); p[te] = _fit_predict(Xh, y, tr, te, VARIANTS[name], lake)
             s = scores(y[te], p[te]); s["by_type"] = by_type(y, p, lake); fw[name] = s; preds["fwd:" + name] = p
         forward = {"train_years": sorted({int(v) for v in years[tr]}), "test_years": sorted({int(v) for v in years[te]}),
                    "n_train": int(tr.sum()), "n_test": int(te.sum()), "exposure": "spill model fitted 2023-24, uncalibrated",
                    "table": table(fw).round(4).reset_index().rename(columns={"index": "model"}).to_dict("records"),
                    "bootstrap_all": cluster_bootstrap(y, preds["fwd:" + RAIN_ONLY], preds["fwd:" + FULL], week, mask=te),
-                   "bootstrap_rivers": cluster_bootstrap(y, preds["fwd:" + RAIN_ONLY], preds["fwd:" + FULL], week, mask=te & rivers)}
+                   "bootstrap_rivers": cluster_bootstrap(y, preds["fwd:" + RAIN_ONLY], preds["fwd:" + FULL], week, mask=te & rivers),
+                   "bootstrap_rivers_by_site": cluster_bootstrap(y, preds["fwd:" + RAIN_ONLY], preds["fwd:" + FULL], site, mask=te & rivers),
+                   "bootstrap_rivers_by_calendar_week": cluster_bootstrap(y, preds["fwd:" + RAIN_ONLY], preds["fwd:" + FULL], cal_week, mask=te & rivers)}
         print(f"\nforward in time: fit {forward['train_years']} ({forward['n_train']}), score {forward['test_years']} ({forward['n_test']}):")
         print(table(fw).round(3).to_string())
 
-    # ---- uncertainty of the gain over rain alone (LOYO and LOSO predictions)
-    boots = {"loyo_all": cluster_bootstrap(y, preds[RAIN_ONLY], preds[FULL], week),
-             "loyo_rivers": cluster_bootstrap(y, preds[RAIN_ONLY], preds[FULL], week, mask=rivers),
-             "loyo_lakes": cluster_bootstrap(y, preds[RAIN_ONLY], preds[FULL], week, mask=~rivers),
-             "loso_all": cluster_bootstrap(y, preds["loso:" + RAIN_ONLY], preds["loso:" + FULL], week),
-             "loso_rivers": cluster_bootstrap(y, preds["loso:" + RAIN_ONLY], preds["loso:" + FULL], week, mask=rivers)}
-    print("\ngain of the full model over rain alone (cluster bootstrap by site-week, 95% intervals):")
+    # ---- uncertainty of the gain over rain alone (LOYO and LOSO predictions), under three
+    # dependence assumptions: site-weeks; whole sites (all weeks at a site move together);
+    # calendar weeks across all sites (one storm hits many sites at once). Two comparisons:
+    # rain only vs the full model (the headline) and rain + season vs the full model, which
+    # attributes the gain to the exposure term alone.
+    if RAIN_SEASON not in preds:
+        preds[RAIN_SEASON] = leave_one_out(X, y, years, lake, VARIANTS[RAIN_SEASON])
+    preds["loso:" + RAIN_SEASON] = leave_one_out(X, y, site, lake, VARIANTS[RAIN_SEASON])
+    groupings = {"site_week": week, "site": site, "calendar_week": cal_week}
+    boots = {}
+    for test, ref_key, new_key in (("loyo", RAIN_ONLY, FULL), ("loso", "loso:" + RAIN_ONLY, "loso:" + FULL),
+                                   ("loyo_vs_rain_season", RAIN_SEASON, FULL), ("loso_vs_rain_season", "loso:" + RAIN_SEASON, "loso:" + FULL)):
+        for subset, mask in (("all", None), ("rivers", rivers), ("lakes", ~rivers)):
+            if subset == "lakes" and "season" in test:
+                continue
+            for gname, g in groupings.items():
+                boots[f"{test}|{subset}|{gname}"] = cluster_bootstrap(y, preds[ref_key], preds[new_key], g, mask=mask)
+    print("\ngain of the full model over the reference (cluster bootstrap, 95% intervals):")
     for k, b in boots.items():
-        print(f"  {k:12s} n={b['n']:5d} Brier {b['brier_ref']:.4f} -> {b['brier_new']:.4f}, gain {b['brier_gain']:+.4f} "
-              f"[{b['brier_gain_ci'][0]:+.4f}, {b['brier_gain_ci'][1]:+.4f}], P(gain<=0)={b['p_gain_le_0']:.3f}; "
-              f"AUC {b['auc_ref']:.3f} -> {b['auc_new']:.3f}" + (f" [{b['auc_gain_ci'][0]:+.3f}, {b['auc_gain_ci'][1]:+.3f}]" if b["auc_gain_ci"] else ""))
+        if "rivers" not in k and "all" not in k:
+            continue
+        print(f"  {k:36s} n={b['n']:5d} clusters={b['clusters']:4d} Brier {b['brier_ref']:.4f} -> {b['brier_new']:.4f}, gain {1000*b['brier_gain']:+.1f}e-3 "
+              f"[{1000*b['brier_gain_ci'][0]:+.1f}, {1000*b['brier_gain_ci'][1]:+.1f}], P(<=0)={b['p_gain_le_0']:.3f}")
+    # Rain-window sensitivity: the same LOYO comparison on samples whose 48 h window was complete.
+    window_sens = {"share_complete": float(complete48.mean()),
+                   "complete_only": cluster_bootstrap(y, preds[RAIN_ONLY], preds[FULL], week, mask=rivers & complete48),
+                   "all_accepted": cluster_bootstrap(y, preds[RAIN_ONLY], preds[FULL], week, mask=rivers)}
+    print(f"\nrain-window sensitivity: {100*window_sens['share_complete']:.1f}% of accepted windows are complete; rivers LOYO gain "
+          f"complete-only {1000*window_sens['complete_only']['brier_gain']:+.1f}e-3 vs all {1000*window_sens['all_accepted']['brier_gain']:+.1f}e-3")
+    print("availability by lead:", json.dumps(availability))
 
     # ---- by lead: full replay (exposure and rain at lead k) vs fixed exposure, LOYO fit on lead 0
     by_lead = []
@@ -288,7 +329,8 @@ def main() -> None:
            "years": sorted({int(v) for v in years}), "row_counts": counts, "exposure_replayed": replayed,
            "loyo": tab.round(4).reset_index().rename(columns={"index": "model"}).to_dict("records"),
            "loso": loso_tab.round(4).reset_index().rename(columns={"index": "model"}).to_dict("records"),
-           "forward": forward, "bootstrap": boots,
+           "forward": forward, "bootstrap": boots, "rain_window_sensitivity": window_sens,
+           "rain_window": "(t - 48 h, t]: 48 hour stamps, at least 90% finite",
            "by_lead": bl.round(4).to_dict("records"),
            "reliability": rel.to_dict("records"), "coef_per_sd": final.coef, "rain_source": "forecast lead 0",
            "notes": ["Leave-one-year-out and leave-one-site-out use the production spill model for exposure, which saw 2023-25 spills.",

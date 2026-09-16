@@ -106,6 +106,31 @@ def calibrate_at_lead(p: np.ndarray, lead: int) -> np.ndarray:
 
 
 @lru_cache(maxsize=1)
+def model_version() -> str:
+    """Compact stamp of what produces a forecast: content hashes of the spill model,
+    calibration map and E. coli model, the code version (git sha when available),
+    and the weather source. Logged with every forecast so live scores can be split
+    by version; a change to any of these starts a new row in the table."""
+    import hashlib
+    import os
+    import subprocess
+
+    def h(p) -> str:
+        return hashlib.md5(p.read_bytes()).hexdigest()[:8] if p.exists() else "none"
+
+    sha = os.environ.get("GITHUB_SHA", "")[:7]
+    if not sha:
+        try:
+            sha = subprocess.run(["git", "rev-parse", "--short=7", "HEAD"], capture_output=True, text=True, check=False,
+                                 cwd=config.ROOT, timeout=5).stdout.strip() or "nogit"
+        except Exception:  # noqa: BLE001 - a missing git is not an error
+            sha = "nogit"
+    from dipcast import __version__
+    return (f"spill={h(MODEL_PATH)};cal={h(config.PROCESSED / 'lead_calibration.json')};"
+            f"ecoli={h(ecoli.MODEL_PATH)};code={__version__}+{sha};rain=open-meteo-forecast")
+
+
+@lru_cache(maxsize=1)
 def _model() -> SpillModel | None:
     if MODEL_PATH.exists():
         return SpillModel.load()
@@ -116,6 +141,7 @@ def _model() -> SpillModel | None:
 def reload_caches() -> None:
     with _LOAD_LOCK:
         _overflows_uncached.cache_clear(); _model.cache_clear(); _lead_calibration.cache_clear(); ecoli.load.cache_clear()
+        model_version.cache_clear()
         # the network itself is immutable at runtime; keep it loaded
 
 
@@ -186,6 +212,7 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
             "recent_spill_hours": config.RECENT_SPILL_HOURS,
             "model": None if model is None else model.trained_on,
             "lead_calibration": bool(_lead_calibration()),
+            "version": model_version(),
         },
     }
     if pin.mode in ("none", "isolated"):
@@ -259,13 +286,14 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
             spot_rain = fetch_forecast(cells_for_sites(pd.Series([lat]), pd.Series([lon])))
             hourly = spot_rain.assign(time=spot_rain["time"].dt.tz_convert(LOCAL_TZ)).set_index("time")["precip_mm"].sort_index()
             ends = pd.DatetimeIndex([d + pd.Timedelta(hours=ecoli.SAMPLE_HOUR) for d in days])
-            r48, r24 = ecoli.rain_windows(hourly, ends)
+            r48, r24, cov48, _ = ecoli.rain_windows(hourly, ends, return_coverage=True)
             X = ecoli.features(r48, r24, risk, np.full(len(days), 1.0 if pin.mode == "lake" else 0.0), days)
             p_ec = em.predict(X)
             for row in day_rows:
                 j = days.get_loc(pd.Timestamp(row["date"], tz=LOCAL_TZ))
                 ok = not (np.isnan(r48[j]) or np.isnan(p_ec[j]))
                 row["rain_48h_mm"] = None if np.isnan(r48[j]) else round(float(r48[j]), 1)
+                row["rain_48h_coverage"] = round(float(cov48[j]), 3)   # finite share of the window's 48 hours
                 row["p_ecoli_gt900"] = round(float(p_ec[j]), 3) if ok else None
                 if not ok and row["data_status"] == "ok":
                     row["data_status"] = "rain unavailable"
@@ -334,7 +362,7 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
             from dipcast.forecast_log import log_forecast
             log_forecast(now, lat, lon, pin.mode, pin.watercourse, now_risk, days, risk, ov,
                          np.nan_to_num(p_raw, nan=0.0), np.nan_to_num(p, nan=0.0), p_ecoli=p_ec, rain_48h=r48,
-                         available=avail)
+                         available=avail, version=model_version())
         except Exception as e:  # noqa: BLE001 - logging must never fail a forecast
             log.warning("forecast log failed: %s", e)
     return out

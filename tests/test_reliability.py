@@ -33,17 +33,19 @@ def test_rain_windows_partial_coverage_and_boundaries():
     vals = np.ones(96)
     hourly = _hourly(vals)
     t = pd.Timestamp("2025-06-03 12:00", tz=TZ)
-    r48, r24 = rain_windows(hourly, pd.DatetimeIndex([t]))
-    assert r48[0] == 49.0 and r24[0] == 25.0          # closed window: 49 and 25 hour stamps
-    # 8 of the 49 hours missing (84% coverage) -> unknown; 3 missing (94%) -> a total
+    r48, r24, c48, c24 = rain_windows(hourly, pd.DatetimeIndex([t]), return_coverage=True)
+    assert r48[0] == 48.0 and r24[0] == 24.0          # (t - 48 h, t]: exactly 48 and 24 hour stamps
+    assert c48[0] == 1.0 and c24[0] == 1.0
+    # 8 of the 48 hours missing (83% coverage) -> unknown; 3 missing (94%) -> a total, coverage reported
     gappy = hourly.copy(); gappy.iloc[40:48] = np.nan
     assert np.isnan(rain_windows(gappy, pd.DatetimeIndex([t]))[0][0])
     gappy = hourly.copy(); gappy.iloc[40:43] = np.nan
-    assert rain_windows(gappy, pd.DatetimeIndex([t]))[0][0] == 46.0
+    r48, _, c48, _ = rain_windows(gappy, pd.DatetimeIndex([t]), return_coverage=True)
+    assert r48[0] == 45.0 and abs(c48[0] - 45 / 48) < 1e-9
     # a window that starts before the series does is not covered
     early = pd.Timestamp("2025-06-02 06:00", tz=TZ)   # only 30 h of data before it
     r48, r24 = rain_windows(hourly, pd.DatetimeIndex([early]))
-    assert np.isnan(r48[0]) and r24[0] == 25.0
+    assert np.isnan(r48[0]) and r24[0] == 24.0
     # a window ending after the series is not covered either
     late = pd.Timestamp("2025-06-05 12:00", tz=TZ)
     assert np.isnan(rain_windows(hourly, pd.DatetimeIndex([late]))[1][0])
@@ -55,7 +57,7 @@ def test_rain_windows_duplicates_and_off_hour_sample_time():
     dup = pd.concat([hourly, hourly.iloc[:60]])   # duplicated stamps must not double-count
     t = pd.Timestamp("2025-06-03 10:37", tz=TZ)          # EA samples are not on the hour
     r48, r24 = rain_windows(dup, pd.DatetimeIndex([t]))
-    assert r48[0] == 49.0 and r24[0] == 25.0
+    assert r48[0] == 48.0 and r24[0] == 24.0
 
 
 def test_daily_rain_features_short_day_is_nan():
@@ -100,9 +102,14 @@ def _state(tmp_path, monkeypatch):
     return config
 
 
-def _log(fl, issued, days, ov, p):
+def _log(fl, issued, days, ov, p, version="v-test"):
     fl.log_forecast(issued, 54.0, -2.0, "river", "R", 0.1, days, np.full(len(days), 0.1), ov,
-                    np.full((len(ov), len(days)), p), np.full((len(ov), len(days)), p))
+                    np.full((len(ov), len(days)), p), np.full((len(ov), len(days)), p), version=version)
+
+
+def _mask(hours):
+    """Slot bitmask for observations on the hour at the given hours."""
+    return int(sum(1 << (h * 2) for h in hours))
 
 
 def test_verify_live_uses_decision_time_and_coverage(tmp_path, monkeypatch):
@@ -119,18 +126,54 @@ def test_verify_live_uses_decision_time_and_coverage(tmp_path, monkeypatch):
                          "latest_event_end": pd.to_datetime([None, None], utc=True),
                          "fetched_at": pd.to_datetime(["2026-09-14 12:00", "2026-09-14 12:00"], utc=True)})
     hist.to_parquet(tmp_path / "live_history.parquet", index=False)
-    # Coverage: A was observed 10 times on the 14th, 8 on the 15th and once on the 16th; B only twice.
+    # Coverage: A observed every 2 h on the 14th (12 polls, max gap 2 h), every 4 h on the
+    # 15th (gap 4 h: passes the 6 h rule, fails the strict 3 h one), once on the 16th;
+    # B observed 12 times but all within 08:00-13:00 (gap from 13:00 to midnight: 11 h).
     cov = pd.DataFrame({"site_id": ["A", "A", "A", "B"],
                         "day": pd.to_datetime(["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-14"]),
-                        "n_known": [10, 8, 1, 2], "n_unknown": [0, 0, 0, 0]})
+                        "n_known": [12, 6, 1, 12], "n_unknown": [0, 0, 0, 0], "n_stale": [0, 0, 0, 0],
+                        "slots": [_mask(range(0, 24, 2)), _mask(range(0, 24, 4)), _mask([6]),
+                                  int(sum(1 << s for s in range(16, 28)))]})
     cov.to_parquet(tmp_path / fl.COVERAGE_FILE, index=False)
     monkeypatch.setattr(fl, "verify_ecoli", lambda as_of: {"n_scored": 0})
     out = fl.verify_live(as_of=date(2026, 9, 16))
     # A is scored for the 14th and 15th (lead 0 and 1) with the 07:30 forecast (0.3); B is not covered.
     assert out["n_candidates"] == 4 and out["n_uncovered"] == 2 and out["n_scored"] == 2
-    assert out["share_issued_by_decision_hour"] == 1.0
+    assert out["missed_deadline"]["n"] == 0
     assert abs(out["overall"]["calibrated"]["brier"] - 0.09) < 1e-9     # (0.3 - 0)^2, not (0.9 - 0)^2
     assert {r["lead"] for r in out["by_lead"]} == {0, 1} and out["in_advance"]["n"] == 1
+    # Strict rule keeps only the 14th (gap 2 h); the 15th's 4 h gap fails it.
+    assert out["coverage_sensitivity"]["default"]["n"] == 2 and out["coverage_sensitivity"]["strict"]["n"] == 1
+    assert out["by_version"][0]["version"] == "v-test" and out["by_version"][0]["n"] == 2
+
+
+def test_verify_live_missed_deadline_is_reported_not_scored(tmp_path, monkeypatch):
+    _state(tmp_path, monkeypatch)
+    from dipcast import forecast_log as fl
+    ov = pd.DataFrame({"site_id": ["A"], "has_live": [True], "weight": [0.5]})
+    days = pd.date_range("2026-09-13", periods=3, freq="D", tz=TZ)
+    _log(fl, pd.Timestamp("2026-09-14 09:30", tz=TZ), days, ov, 0.3)     # first issue after 08:00
+    hist = pd.DataFrame({"site_id": ["A"], "company": ["X"], "status": [0],
+                         "status_start": pd.to_datetime(["2026-09-01"], utc=True),
+                         "latest_event_start": pd.to_datetime([None], utc=True),
+                         "latest_event_end": pd.to_datetime([None], utc=True),
+                         "fetched_at": pd.to_datetime(["2026-09-14 12:00"], utc=True)})
+    hist.to_parquet(tmp_path / "live_history.parquet", index=False)
+    cov = pd.DataFrame({"site_id": ["A", "A", "A"], "day": pd.to_datetime(["2026-09-14", "2026-09-15", "2026-09-16"]),
+                        "n_known": [12, 12, 1], "n_unknown": 0, "n_stale": 0, "slots": [_mask(range(0, 24, 2))] * 3})
+    cov.to_parquet(tmp_path / fl.COVERAGE_FILE, index=False)
+    monkeypatch.setattr(fl, "verify_ecoli", lambda as_of: {"n_scored": 0})
+    out = fl.verify_live(as_of=date(2026, 9, 16))
+    assert out["n_candidates"] == 2 and out["missed_deadline"]["n"] == 2 and out["n_scored"] == 0
+
+
+def test_slot_stats_gaps():
+    from dipcast.forecast_log import slot_stats
+    st = slot_stats(np.array([0, _mask(range(0, 24, 2)), int(sum(1 << s for s in range(16, 28))), 1 << 47]))
+    assert st.loc[0, "max_gap_h"] == 24.0 and st.loc[0, "n_slots"] == 0
+    assert st.loc[1, "max_gap_h"] == 2.0 and st.loc[1, "first_h"] == 0.0 and st.loc[1, "last_h"] == 22.5
+    assert st.loc[2, "max_gap_h"] == 10.0 and st.loc[2, "n_slots"] == 12     # last slot ends 14:00; 10 h to midnight
+    assert st.loc[3, "max_gap_h"] == 23.5
 
 
 def test_verify_live_scores_nothing_without_coverage(tmp_path, monkeypatch):
@@ -147,7 +190,7 @@ def test_verify_live_scores_nothing_without_coverage(tmp_path, monkeypatch):
     hist.to_parquet(tmp_path / "live_history.parquet", index=False)
     monkeypatch.setattr(fl, "verify_ecoli", lambda as_of: {"n_scored": 0})
     out = fl.verify_live(as_of=date(2026, 9, 16))
-    assert out["n_candidates"] == 2 and out["n_scored"] == 0 and out["n_uncovered"] == 2
+    assert out["n_candidates"] == 2 and out["n_scored"] == 0 and out["n_uncovered"] == 2 and out["missed_deadline"]["n"] == 0
 
 
 def test_verify_ecoli_ignores_forecasts_issued_after_the_sample(tmp_path, monkeypatch):
@@ -173,26 +216,33 @@ def test_save_live_accumulates_coverage(tmp_path, monkeypatch):
     from dipcast.ingest import live
     monkeypatch.setattr(config, "LIVE_FEEDS", {"X": "u"})
 
-    def poll(ts, statuses):
+    def poll(ts, statuses, updated=None):
         return pd.DataFrame({"site_id": ["A", "B"], "company": "X", "status": statuses,
                              "status_start": pd.Timestamp("2026-09-01", tz="UTC"), "latest_event_start": pd.NaT,
                              "latest_event_end": pd.NaT, "lat": 54.0, "lon": -2.0, "receiving_watercourse": "r",
-                             "last_updated": pd.Timestamp(ts, tz="UTC"), "fetched_at": pd.Timestamp(ts, tz="UTC")})
+                             "last_updated": pd.Timestamp(updated or ts, tz="UTC"), "fetched_at": pd.Timestamp(ts, tz="UTC")})
     live.save_live(poll("2026-09-14 06:00", [0, -1]))
     live.save_live(poll("2026-09-14 07:00", [0, 0]))
+    live.save_live(poll("2026-09-14 07:10", [0, 0]))                       # same half-hour slot: no new slot
+    live.save_live(poll("2026-09-14 09:00", [0, 0], updated="2026-09-13 12:00"))   # feed 21 h stale
     live.save_live(poll("2026-09-15 06:00", [1, 0]))
     cov = pd.read_parquet(tmp_path / live.COVERAGE_FILE)
     cov["day"] = pd.to_datetime(cov["day"]).dt.date
     a14 = cov[(cov.site_id == "A") & (cov.day == date(2026, 9, 14))].iloc[0]
     b14 = cov[(cov.site_id == "B") & (cov.day == date(2026, 9, 14))].iloc[0]
-    assert a14.n_known == 2 and b14.n_known == 1 and b14.n_unknown == 1
+    assert a14.n_known == 4 and a14.n_stale == 1 and b14.n_known == 3 and b14.n_unknown == 1
+    # fetched_at is UTC; slots are local (BST): 06:00Z -> 07:00 (slot 14), 07:00Z -> 08:00 (slot 16); the stale poll adds none
+    assert int(a14.slots) == (1 << 14) | (1 << 16)
+    assert int(b14.slots) == (1 << 16)
     hist = pd.read_parquet(tmp_path / "live_history.parquet")
     assert len(hist) == 4     # the event log keeps one row per (site, status, status_start); observations live in coverage
     pl = pd.read_parquet(tmp_path / live.POLL_LOG_FILE)
-    assert len(pl) == 3 and pl.n_rows.tolist() == [2, 2, 2]
+    assert len(pl) == 5 and pl.n_rows.tolist() == [2] * 5 and round(pl.feed_age_h.iloc[3]) == 21
     from dipcast.forecast_log import covered_site_days
-    ok = covered_site_days(cov, min_known=2)
-    assert ok[["site_id", "day"]].values.tolist() == [["A", date(2026, 9, 14)]]
+    # Two known slots at 06:00 and 07:00 leave a 17 h gap to midnight: not covered under any gap rule
+    assert covered_site_days(cov, min_known=2).empty
+    # stale polls do not count towards min_known: A has 4 - 1 = 3, B has 3 - 1 = 2
+    assert covered_site_days(cov, min_known=3, max_gap_h=24.0)["site_id"].tolist() == ["A"]
 
 
 # ---------------------------------------------------------------- build guard

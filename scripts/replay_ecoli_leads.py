@@ -16,7 +16,11 @@ days); Open-Meteo's previous-runs fields give, per hour, the value from the run
 k days earlier rather than one run's full trajectory, so a k-day window is a
 stitch of runs issued k days before each hour, not one run (see the README).
 
-Two exposures are written per (site, day, lead):
+Two exposures are written per (site, day, lead), plus `missing_share`, the share
+of transport weight arriving from overflow-days without rainfall data. The same
+rule as production (forecast.MAX_MISSING_SHARE) decides whether a figure would
+have been shown; train_ecoli.py applies it and reports availability, including
+availability on wet days, so abstention cannot pass for accuracy.
   risk_prod     the production spill model (fitted 2023-25) with the deployed
                 per-lead isotonic calibration: what the map computes
   risk_holdout  the model fitted on 2023-24 only, uncalibrated: for the
@@ -97,6 +101,28 @@ def combine_daily_leads(P: dict[int, np.ndarray], weights: np.ndarray, travel_h:
     return 1.0 - np.prod(1.0 - eff, axis=0)
 
 
+def missing_share_leads(missing: dict[int, np.ndarray], weights: np.ndarray, travel_h: np.ndarray, k: int) -> np.ndarray:
+    """Production's transport.missing_share, with the per-lead source rule of
+    combine_daily_leads: the share of transport weight whose source overflow-day
+    had no rainfall data at the lead it was forecast at."""
+    n, d = next(iter(missing.values())).shape
+    if weights.sum() <= 0:
+        return np.zeros(d)
+    shift = travel_h / 24.0
+    kk = np.floor(shift).astype(int)
+    a = shift - kk
+    eff = np.zeros((n, d))
+    for i in range(n):
+        for T in range(d):
+            for extra, frac in ((0, 1 - a[i]), (1, a[i])):
+                S = T - kk[i] - extra
+                if S < 0 or frac == 0:
+                    continue
+                m = max(k - (T - S), 0)
+                eff[i, T] += frac * float(missing[m][i, S])
+    return np.clip((eff * weights[:, None]).sum(axis=0) / weights.sum(), 0, 1)
+
+
 def main() -> None:
     samples = pd.read_parquet(config.RAW / "bwq_samples.parquet").dropna(subset=["ecoli", "sample_time"])
     samples["day"] = samples["sample_time"].dt.floor("D")
@@ -116,7 +142,7 @@ def main() -> None:
         if len(up) == 0:
             for d in sample_days:
                 for k in LEADS:
-                    out.append({"bw_id": bw_id, "day": d, "lead": k, "risk_prod": 0.0, "risk_holdout": 0.0})
+                    out.append({"bw_id": bw_id, "day": d, "lead": k, "risk_prod": 0.0, "risk_holdout": 0.0, "missing_share": 0.0})
             continue
         from dipcast.ingest.rainfall import grid_cell
         cl, cn = grid_cell(up["lat"].to_numpy(), up["lon"].to_numpy())
@@ -139,19 +165,23 @@ def main() -> None:
                 store[k] = np.where(np.isnan(pm), np.nan, store[k])
         w = up["weight"].to_numpy(dtype=float); tr = up["travel_h"].to_numpy(dtype=float)
         for k in LEADS:
-            # NaN where any needed probability is missing: propagate by combining a mask the same way
+            # Missing probabilities contribute nothing (as in production), and the share of
+            # transport weight they carry is reported so the production threshold can be applied.
             rp = combine_daily_leads({m: np.nan_to_num(P_prod[m], nan=0.0) for m in LEADS}, w, tr, k)
             rh = combine_daily_leads({m: np.nan_to_num(P_hold[m], nan=0.0) for m in LEADS}, w, tr, k)
-            miss = combine_daily_leads({m: np.isnan(P_prod[m]).astype(float) for m in LEADS}, np.ones_like(w), tr, k)
-            rp = np.where(miss > 0, np.nan, rp); rh = np.where(miss > 0, np.nan, rh)
+            miss = missing_share_leads({m: np.isnan(P_prod[m]) for m in LEADS}, w, tr, k)
             sp = pd.Series(rp, index=days).reindex(sample_days); sh = pd.Series(rh, index=days).reindex(sample_days)
+            sm = pd.Series(miss, index=days).reindex(sample_days)
             for d in sample_days:
-                out.append({"bw_id": bw_id, "day": d, "lead": k, "risk_prod": float(sp[d]), "risk_holdout": float(sh[d])})
+                out.append({"bw_id": bw_id, "day": d, "lead": k, "risk_prod": float(sp[d]), "risk_holdout": float(sh[d]),
+                            "missing_share": float(sm[d])})
         log.info("%s: %d overflows, %d sample days, hist %d d", s["name"], len(up), len(sample_days), hist)
     df = pd.DataFrame(out)
     df.to_parquet(OUT, index=False)
-    n_ok = df.groupby("lead")["risk_prod"].apply(lambda s: int(s.notna().sum())).to_dict()
-    log.info("wrote %s: %d rows; sample-days with exposure by lead %s", OUT, len(df), n_ok)
+    from dipcast.model.forecast import MAX_MISSING_SHARE
+    n_ok = df.groupby("lead")["missing_share"].apply(lambda s: int((s <= MAX_MISSING_SHARE).sum())).to_dict()
+    log.info("wrote %s: %d rows; sample-days that would have shown a figure (missing share <= %.2f) by lead %s",
+             OUT, len(df), MAX_MISSING_SHARE, n_ok)
     if missing:
         log.warning("sites with upstream cells lacking lead rain: %s", missing)
     print("REPLAY DONE")

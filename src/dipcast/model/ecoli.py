@@ -82,26 +82,36 @@ def load() -> EcoliModel | None:
 MIN_COVERAGE = 0.9   # share of a window's hourly values that must be finite
 
 
-def rain_windows(hourly: pd.Series, ends: pd.DatetimeIndex,
-                 min_coverage: float = MIN_COVERAGE) -> tuple[np.ndarray, np.ndarray]:
+def rain_windows(hourly: pd.Series, ends: pd.DatetimeIndex, min_coverage: float = MIN_COVERAGE,
+                 return_coverage: bool = False):
     """48 h and 24 h rainfall totals ending at each timestamp in `ends`, from an
-    hourly series indexed by time (hour stamps; a value is the hour ending then).
+    hourly series indexed by time. A value stamped H is the rain in the hour ending
+    at H, so the window (t - 48 h, t] is exactly the 48 stamps from floor(t) - 47 h
+    to floor(t) (24 for the 24 h window).
 
-    A window is the closed set of hour stamps from floor(t) - 48 h to floor(t), 49
-    values (25 for 24 h). The total is NaN unless at least `min_coverage` of those
-    stamps carry a finite value: missing hours, a null-filled forecast, duplicate
-    stamps or a series that does not span the window all count as missing, so a
-    gap in the data can never read as dry weather. (Before 16 Sep 2026 this counted
-    stamps rather than finite values, and pandas summed an all-NaN window to 0.0.)"""
+    The total is NaN unless at least `min_coverage` of the stamps carry a finite
+    value: missing hours, a null-filled forecast, duplicate stamps or a series that
+    does not span the window all count as missing, so a gap in the data can never
+    read as dry weather. An accepted window with a few missing hours sums only the
+    hours it has, which understates rain if the missing hours were wet; with
+    `return_coverage=True` the finite fraction of each window comes back too, so a
+    caller can require complete windows or report the sensitivity. (Before 16 Sep
+    2026 this counted stamps rather than finite values and pandas summed an all-NaN
+    window to 0.0; until 17 Sep it summed 49 stamps for 48 h.)"""
     s = hourly.astype(float)
     s = s[np.isfinite(s.to_numpy())]
     s = s[~s.index.duplicated(keep="last")].sort_index()
-    out48, out24 = [], []
+    out = {48: [], 24: []}
+    cov = {48: [], 24: []}
     for t in ends:
         t = pd.Timestamp(t).floor("h")
-        for hours, out in ((48, out48), (24, out24)):
-            idx = pd.date_range(t - pd.Timedelta(hours=hours), t, freq="h")
+        for hours in (48, 24):
+            idx = pd.date_range(t - pd.Timedelta(hours=hours - 1), t, freq="h")
             w = s.reindex(idx)
-            n_ok = int(w.notna().sum())
-            out.append(float(w.sum()) if n_ok >= min_coverage * len(idx) else np.nan)
-    return np.array(out48), np.array(out24)
+            frac = float(w.notna().sum()) / len(idx)
+            cov[hours].append(frac)
+            out[hours].append(float(w.sum()) if frac >= min_coverage else np.nan)
+    r48, r24 = np.array(out[48]), np.array(out[24])
+    if return_coverage:
+        return r48, r24, np.array(cov[48]), np.array(cov[24])
+    return r48, r24

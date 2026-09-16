@@ -37,11 +37,44 @@
   },
   "by_lead_exposure_available": {
    "0": 1750,
-   "1": 1610,
+   "1": 1630,
    "2": 1548,
    "3": 1548,
    "4": 1548
-  }
+  },
+  "availability": {
+   "0": {
+    "all": 1.0,
+    "wet_days": 1.0,
+    "exceedance_days": 1.0,
+    "rain_window_complete": 1.0
+   },
+   "1": {
+    "all": 0.9314285714285714,
+    "wet_days": 0.9455040871934605,
+    "exceedance_days": 0.9724770642201835,
+    "rain_window_complete": 0.8845714285714286
+   },
+   "2": {
+    "all": 0.8845714285714286,
+    "wet_days": 0.9046321525885559,
+    "exceedance_days": 0.9724770642201835,
+    "rain_window_complete": 0.8845714285714286
+   },
+   "3": {
+    "all": 0.8845714285714286,
+    "wet_days": 0.9046321525885559,
+    "exceedance_days": 0.9724770642201835,
+    "rain_window_complete": 0.8845714285714286
+   },
+   "4": {
+    "all": 0.8845714285714286,
+    "wet_days": 0.9046321525885559,
+    "exceedance_days": 0.9724770642201835,
+    "rain_window_complete": 0.8845714285714286
+   }
+  },
+  "max_missing_share": 0.1
  },
  "exposure_replayed": true,
  "loyo": [
@@ -59,27 +92,27 @@
   },
   {
    "model": "rain only",
-   "brier": 0.093,
-   "log_loss": 0.3171,
-   "auc": 0.7988,
+   "brier": 0.0934,
+   "log_loss": 0.3186,
+   "auc": 0.796,
    "n": 1548.0,
-   "skill_vs_clim": 0.1999,
-   "brier_river": 0.1413,
-   "auc_river": 0.7193,
+   "skill_vs_clim": 0.1961,
+   "brier_river": 0.1421,
+   "auc_river": 0.7135,
    "brier_lake": 0.0246,
-   "auc_lake": 0.3504
+   "auc_lake": 0.3518
   },
   {
    "model": "rain + season",
-   "brier": 0.0935,
-   "log_loss": 0.3159,
-   "auc": 0.8054,
+   "brier": 0.094,
+   "log_loss": 0.3175,
+   "auc": 0.8029,
    "n": 1548.0,
-   "skill_vs_clim": 0.1955,
-   "brier_river": 0.1422,
-   "auc_river": 0.7312,
+   "skill_vs_clim": 0.1912,
+   "brier_river": 0.1431,
+   "auc_river": 0.7256,
    "brier_lake": 0.0246,
-   "auc_lake": 0.3717
+   "auc_lake": 0.3797
   },
   {
    "model": "spill exposure only",
@@ -95,27 +128,27 @@
   },
   {
    "model": "rain + spill exposure",
-   "brier": 0.0901,
-   "log_loss": 0.3089,
-   "auc": 0.8129,
+   "brier": 0.0903,
+   "log_loss": 0.3099,
+   "auc": 0.8116,
    "n": 1548.0,
-   "skill_vs_clim": 0.225,
-   "brier_river": 0.1361,
-   "auc_river": 0.7464,
+   "skill_vs_clim": 0.2227,
+   "brier_river": 0.1366,
+   "auc_river": 0.7436,
    "brier_lake": 0.0248,
-   "auc_lake": 0.4429
+   "auc_lake": 0.4499
   },
   {
    "model": "rain + spill exposure + season (dipcast)",
-   "brier": 0.0905,
-   "log_loss": 0.3082,
-   "auc": 0.8166,
+   "brier": 0.0908,
+   "log_loss": 0.3094,
+   "auc": 0.8152,
    "n": 1548.0,
-   "skill_vs_clim": 0.2214,
-   "brier_river": 0.1369,
-   "auc_river": 0.7519,
+   "skill_vs_clim": 0.2185,
+   "brier_river": 0.1375,
+   "auc_river": 0.7491,
    "brier_lake": 0.0248,
-   "auc_lake": 0.4635
+   "auc_lake": 0.4664
   }
  ],
  "loso": [
@@ -133,15 +166,27 @@
   },
   {
    "model": "rain only",
-   "brier": 0.0918,
-   "log_loss": 0.3212,
-   "auc": 0.791,
+   "brier": 0.0922,
+   "log_loss": 0.3224,
+   "auc": 0.789,
    "n": 1548.0,
-   "skill_vs_clim": 0.1776,
-   "brier_river": 0.1389,
-   "auc_river": 0.7241,
+   "skill_vs_clim": 0.1737,
+   "brier_river": 0.1396,
+   "auc_river": 0.7203,
    "brier_lake": 0.0251,
-   "auc_lake": 0.0622
+   "auc_lake": 0.0594
+  },
+  {
+   "model": "rain + season",
+   "brier": 0.0926,
+   "log_loss": 0.3222,
+   "auc": 0.7998,
+   "n": 1548.0,
+   "skill_vs_clim": 0.1703,
+   "brier_river": 0.1402,
+   "auc_river": 0.7385,
+   "brier_lake": 0.0251,
+   "auc_lake": 0.1102
   },
   {
    "model": "spill exposure only",
@@ -157,15 +202,15 @@
   },
   {
    "model": "rain + spill exposure + season (dipcast)",
-   "brier": 0.09,
-   "log_loss": 0.3168,
-   "auc": 0.8088,
+   "brier": 0.0903,
+   "log_loss": 0.3178,
+   "auc": 0.8076,
    "n": 1548.0,
-   "skill_vs_clim": 0.1933,
-   "brier_river": 0.1353,
-   "auc_river": 0.7623,
+   "skill_vs_clim": 0.1903,
+   "brier_river": 0.1358,
+   "auc_river": 0.7607,
    "brier_lake": 0.026,
-   "auc_lake": 0.1911
+   "auc_lake": 0.1819
   }
  ],
  "forward": {
@@ -194,193 +239,731 @@
    },
    {
     "model": "rain only",
-    "brier": 0.0871,
-    "log_loss": 0.3057,
-    "auc": 0.7881,
+    "brier": 0.0875,
+    "log_loss": 0.3072,
+    "auc": 0.7886,
     "n": 1028.0,
-    "skill_vs_clim": 0.2347,
-    "brier_river": 0.1245,
-    "auc_river": 0.7657,
+    "skill_vs_clim": 0.2309,
+    "brier_river": 0.1252,
+    "auc_river": 0.7655,
     "brier_lake": 0.0309,
-    "auc_lake": 0.5047
+    "auc_lake": 0.5148
+   },
+   {
+    "model": "rain + season",
+    "brier": 0.0873,
+    "log_loss": 0.3047,
+    "auc": 0.7984,
+    "n": 1028.0,
+    "skill_vs_clim": 0.2329,
+    "brier_river": 0.1248,
+    "auc_river": 0.7864,
+    "brier_lake": 0.0309,
+    "auc_lake": 0.5029
    },
    {
     "model": "rain + spill exposure + season (dipcast)",
-    "brier": 0.0823,
-    "log_loss": 0.293,
-    "auc": 0.8102,
+    "brier": 0.0826,
+    "log_loss": 0.2941,
+    "auc": 0.8099,
     "n": 1028.0,
-    "skill_vs_clim": 0.2761,
-    "brier_river": 0.1165,
-    "auc_river": 0.8061,
+    "skill_vs_clim": 0.2739,
+    "brier_river": 0.1169,
+    "auc_river": 0.8065,
     "brier_lake": 0.0311,
-    "auc_lake": 0.5427
+    "auc_lake": 0.5321
    }
   ],
   "bootstrap_all": {
    "n": 1028,
    "clusters": 925,
-   "brier_ref": 0.08705163484036604,
-   "brier_new": 0.08234712318050613,
-   "brier_gain": 0.004704511659859911,
+   "brier_ref": 0.0874866870385534,
+   "brier_new": 0.08259763160595986,
+   "brier_gain": 0.004889055432593548,
    "brier_gain_ci": [
-    0.0016841610160525853,
-    0.007692957482181862
+    0.0017911545725129232,
+    0.007920908296998987
    ],
    "p_gain_le_0": 0.001,
-   "auc_ref": 0.7881366251636274,
-   "auc_new": 0.8102022385257796,
+   "auc_ref": 0.7885577440206196,
+   "auc_new": 0.8098572254863161,
    "auc_gain_ci": [
-    0.002703413853976486,
-    0.04307339187216582
+    0.0019175290657507033,
+    0.0427264169944429
    ]
   },
   "bootstrap_rivers": {
    "n": 617,
    "clusters": 558,
-   "brier_ref": 0.12447162705777845,
-   "brier_new": 0.11648953789293048,
-   "brier_gain": 0.007982089164847966,
+   "brier_ref": 0.12519833112904008,
+   "brier_new": 0.11689059296114815,
+   "brier_gain": 0.008307738167891932,
    "brier_gain_ci": [
-    0.0028856184531688765,
-    0.012791761968357613
+    0.0031387796065520963,
+    0.01316164390038199
    ],
    "p_gain_le_0": 0.001,
-   "auc_ref": 0.7657336967576582,
-   "auc_new": 0.806069728652211,
+   "auc_ref": 0.765520117163663,
+   "auc_new": 0.8065172287539156,
    "auc_gain_ci": [
-    0.006820289766803772,
-    0.07765110139844186
+    0.007281421511038644,
+    0.07871907539286173
+   ]
+  },
+  "bootstrap_rivers_by_site": {
+   "n": 617,
+   "clusters": 20,
+   "brier_ref": 0.12519833112904008,
+   "brier_new": 0.11689059296114815,
+   "brier_gain": 0.008307738167891932,
+   "brier_gain_ci": [
+    0.0018001899605791841,
+    0.01533960671934901
+   ],
+   "p_gain_le_0": 0.0055,
+   "auc_ref": 0.765520117163663,
+   "auc_new": 0.8065172287539156,
+   "auc_gain_ci": [
+    0.008945659219570606,
+    0.08599259544494008
+   ]
+  },
+  "bootstrap_rivers_by_calendar_week": {
+   "n": 617,
+   "clusters": 40,
+   "brier_ref": 0.12519833112904008,
+   "brier_new": 0.11689059296114815,
+   "brier_gain": 0.008307738167891932,
+   "brier_gain_ci": [
+    -0.00038177478983843904,
+    0.017719002809642788
+   ],
+   "p_gain_le_0": 0.0315,
+   "auc_ref": 0.765520117163663,
+   "auc_new": 0.8065172287539156,
+   "auc_gain_ci": [
+    -0.01472295886010272,
+    0.1204953207488132
    ]
   }
  },
  "bootstrap": {
-  "loyo_all": {
+  "loyo|all|site_week": {
    "n": 1548,
    "clusters": 1371,
-   "brier_ref": 0.09298440324383336,
-   "brier_new": 0.09048827496715019,
-   "brier_gain": 0.0024961282766831766,
+   "brier_ref": 0.093422836840032,
+   "brier_new": 0.09082056902868495,
+   "brier_gain": 0.0026022678113470504,
    "brier_gain_ci": [
-    3.9119193216138194e-05,
-    0.004956189063309646
+    4.551292599568776e-05,
+    0.005102836501580471
    ],
-   "p_gain_le_0": 0.023,
-   "auc_ref": 0.7987815642300304,
-   "auc_new": 0.8166379505140662,
+   "p_gain_le_0": 0.022,
+   "auc_ref": 0.7959658513162353,
+   "auc_new": 0.815183312620043,
    "auc_gain_ci": [
-    0.005987209897008172,
-    0.030057156243999558
+    0.007493984922304748,
+    0.030908990398593888
    ]
   },
-  "loyo_rivers": {
+  "loyo|all|site": {
+   "n": 1548,
+   "clusters": 32,
+   "brier_ref": 0.093422836840032,
+   "brier_new": 0.09082056902868495,
+   "brier_gain": 0.0026022678113470504,
+   "brier_gain_ci": [
+    0.00026010231155291743,
+    0.005153912891776027
+   ],
+   "p_gain_le_0": 0.014,
+   "auc_ref": 0.7959658513162353,
+   "auc_new": 0.815183312620043,
+   "auc_gain_ci": [
+    0.00018898402478099164,
+    0.04022664780012053
+   ]
+  },
+  "loyo|all|calendar_week": {
+   "n": 1548,
+   "clusters": 63,
+   "brier_ref": 0.093422836840032,
+   "brier_new": 0.09082056902868495,
+   "brier_gain": 0.0026022678113470504,
+   "brier_gain_ci": [
+    -0.001423798745059898,
+    0.006535014049806283
+   ],
+   "p_gain_le_0": 0.1045,
+   "auc_ref": 0.7959658513162353,
+   "auc_new": 0.815183312620043,
+   "auc_gain_ci": [
+    0.002779996298861173,
+    0.041150335326938785
+   ]
+  },
+  "loyo|rivers|site_week": {
    "n": 907,
    "clusters": 805,
-   "brier_ref": 0.1413311586639987,
-   "brier_new": 0.13690241264889197,
-   "brier_gain": 0.004428746015106733,
+   "brier_ref": 0.14209094160524346,
+   "brier_new": 0.13746856448597772,
+   "brier_gain": 0.004622377119265747,
    "brier_gain_ci": [
-    0.00019393424158698215,
-    0.008463505436744932
+    0.0003010234150934588,
+    0.008777731563241617
    ],
-   "p_gain_le_0": 0.019,
-   "auc_ref": 0.7192872929762623,
-   "auc_new": 0.7519303079881742,
+   "p_gain_le_0": 0.017,
+   "auc_ref": 0.713456901748041,
+   "auc_new": 0.7490671374034845,
    "auc_gain_ci": [
-    0.010755019638541436,
-    0.05676003286998431
+    0.01409862781632131,
+    0.06028980593297556
    ]
   },
-  "loyo_lakes": {
+  "loyo|rivers|site": {
+   "n": 907,
+   "clusters": 20,
+   "brier_ref": 0.14209094160524346,
+   "brier_new": 0.13746856448597772,
+   "brier_gain": 0.004622377119265747,
+   "brier_gain_ci": [
+    0.0008891950545498566,
+    0.008698293723172325
+   ],
+   "p_gain_le_0": 0.006,
+   "auc_ref": 0.713456901748041,
+   "auc_new": 0.7490671374034845,
+   "auc_gain_ci": [
+    0.007246744083436674,
+    0.07270895992842
+   ]
+  },
+  "loyo|rivers|calendar_week": {
+   "n": 907,
+   "clusters": 62,
+   "brier_ref": 0.14209094160524346,
+   "brier_new": 0.13746856448597772,
+   "brier_gain": 0.004622377119265747,
+   "brier_gain_ci": [
+    -0.0019685192400522144,
+    0.011636029252353738
+   ],
+   "p_gain_le_0": 0.091,
+   "auc_ref": 0.713456901748041,
+   "auc_new": 0.7490671374034845,
+   "auc_gain_ci": [
+    0.003650438721487548,
+    0.08180968915748778
+   ]
+  },
+  "loyo|lakes|site_week": {
    "n": 641,
    "clusters": 566,
-   "brier_ref": 0.024574875683630582,
-   "brier_new": 0.024813356281752734,
-   "brier_gain": -0.00023848059812215175,
+   "brier_ref": 0.02455860747646446,
+   "brier_new": 0.024814747063373645,
+   "brier_gain": -0.0002561395869091834,
    "brier_gain_ci": [
-    -0.0005594617621178946,
-    9.296348212195149e-05
+    -0.0005773530418574191,
+    7.159372383401076e-05
    ],
-   "p_gain_le_0": 0.9205,
-   "auc_ref": 0.3503500000000001,
-   "auc_new": 0.4635,
+   "p_gain_le_0": 0.936,
+   "auc_ref": 0.35185,
+   "auc_new": 0.4663999999999999,
    "auc_gain_ci": [
-    5.412337245047646e-17,
-    0.2370481112474955
+    -0.0011470773146312148,
+    0.24163027659312894
    ]
   },
-  "loso_all": {
+  "loyo|lakes|site": {
+   "n": 641,
+   "clusters": 12,
+   "brier_ref": 0.02455860747646446,
+   "brier_new": 0.024814747063373645,
+   "brier_gain": -0.0002561395869091834,
+   "brier_gain_ci": [
+    -0.001272133714005693,
+    0.000318185061819485
+   ],
+   "p_gain_le_0": 0.648,
+   "auc_ref": 0.35185,
+   "auc_new": 0.4663999999999999,
+   "auc_gain_ci": [
+    0.011454596736866409,
+    0.22872305641111715
+   ]
+  },
+  "loyo|lakes|calendar_week": {
+   "n": 641,
+   "clusters": 61,
+   "brier_ref": 0.02455860747646446,
+   "brier_new": 0.024814747063373645,
+   "brier_gain": -0.0002561395869091834,
+   "brier_gain_ci": [
+    -0.0005752729245426782,
+    6.458368833088154e-05
+   ],
+   "p_gain_le_0": 0.9365,
+   "auc_ref": 0.35185,
+   "auc_new": 0.4663999999999999,
+   "auc_gain_ci": [
+    0.0019945456308875444,
+    0.23648759727561433
+   ]
+  },
+  "loso|all|site_week": {
    "n": 1548,
    "clusters": 1371,
-   "brier_ref": 0.09175711925566975,
-   "brier_new": 0.09000164210147613,
-   "brier_gain": 0.0017554771541936215,
+   "brier_ref": 0.09218614775231584,
+   "brier_new": 0.09033559420614815,
+   "brier_gain": 0.0018505535461676992,
    "brier_gain_ci": [
-    -0.0005322660246478352,
-    0.003944394560692354
+    -0.0005016284602952014,
+    0.004095078364194409
    ],
-   "p_gain_le_0": 0.069,
-   "auc_ref": 0.7909575895379053,
-   "auc_new": 0.8087751384024403,
+   "p_gain_le_0": 0.062,
+   "auc_ref": 0.7890068918766242,
+   "auc_new": 0.807617077166422,
    "auc_gain_ci": [
-    0.006031403536807487,
-    0.02989156771316957
+    0.007113127049719475,
+    0.030874850904263687
    ]
   },
-  "loso_rivers": {
+  "loso|all|site": {
+   "n": 1548,
+   "clusters": 32,
+   "brier_ref": 0.09218614775231584,
+   "brier_new": 0.09033559420614815,
+   "brier_gain": 0.0018505535461676992,
+   "brier_gain_ci": [
+    -0.0009140961911960457,
+    0.004675081089405429
+   ],
+   "p_gain_le_0": 0.105,
+   "auc_ref": 0.7890068918766242,
+   "auc_new": 0.807617077166422,
+   "auc_gain_ci": [
+    -0.004621446245045971,
+    0.04139946570481152
+   ]
+  },
+  "loso|all|calendar_week": {
+   "n": 1548,
+   "clusters": 63,
+   "brier_ref": 0.09218614775231584,
+   "brier_new": 0.09033559420614815,
+   "brier_gain": 0.0018505535461676992,
+   "brier_gain_ci": [
+    -0.0010363312486470135,
+    0.004940314550758478
+   ],
+   "p_gain_le_0": 0.1165,
+   "auc_ref": 0.7890068918766242,
+   "auc_new": 0.807617077166422,
+   "auc_gain_ci": [
+    0.00415616434413196,
+    0.03774980276244379
+   ]
+  },
+  "loso|rivers|site_week": {
    "n": 907,
    "clusters": 805,
-   "brier_ref": 0.13887308635498957,
-   "brier_new": 0.1352567393336141,
-   "brier_gain": 0.0036163470213754767,
+   "brier_ref": 0.13960497069071637,
+   "brier_new": 0.13578613956642693,
+   "brier_gain": 0.0038188311242894346,
    "brier_gain_ci": [
-    -0.00015161999330703667,
-    0.0074174854837492765
+    -2.2260230184786837e-05,
+    0.007713915684023566
    ],
-   "p_gain_le_0": 0.033,
-   "auc_ref": 0.7240628318838083,
-   "auc_new": 0.7622563793449869,
+   "p_gain_le_0": 0.026,
+   "auc_ref": 0.720299090100175,
+   "auc_new": 0.7606992163954189,
    "auc_gain_ci": [
-    0.016037504549417454,
-    0.062118882903387226
+    0.01832285318069706,
+    0.06464396182674108
+   ]
+  },
+  "loso|rivers|site": {
+   "n": 907,
+   "clusters": 20,
+   "brier_ref": 0.13960497069071637,
+   "brier_new": 0.13578613956642693,
+   "brier_gain": 0.0038188311242894346,
+   "brier_gain_ci": [
+    -0.0004753251681071442,
+    0.008215664650720638
+   ],
+   "p_gain_le_0": 0.042,
+   "auc_ref": 0.720299090100175,
+   "auc_new": 0.7606992163954189,
+   "auc_gain_ci": [
+    0.010965075227686102,
+    0.0774658064358652
+   ]
+  },
+  "loso|rivers|calendar_week": {
+   "n": 907,
+   "clusters": 62,
+   "brier_ref": 0.13960497069071637,
+   "brier_new": 0.13578613956642693,
+   "brier_gain": 0.0038188311242894346,
+   "brier_gain_ci": [
+    -0.0010548558745075078,
+    0.009051672182719694
+   ],
+   "p_gain_le_0": 0.065,
+   "auc_ref": 0.720299090100175,
+   "auc_new": 0.7606992163954189,
+   "auc_gain_ci": [
+    0.010861448051701519,
+    0.08299807006648591
+   ]
+  },
+  "loso|lakes|site_week": {
+   "n": 641,
+   "clusters": 566,
+   "brier_ref": 0.025089622939321706,
+   "brier_new": 0.026024136106658543,
+   "brier_gain": -0.0009345131673368368,
+   "brier_gain_ci": [
+    -0.001561284576423476,
+    -0.0003959208518851764
+   ],
+   "p_gain_le_0": 1.0,
+   "auc_ref": 0.05940000000000001,
+   "auc_new": 0.18189999999999998,
+   "auc_gain_ci": [
+    0.017659214959076304,
+    0.2393309226738817
+   ]
+  },
+  "loso|lakes|site": {
+   "n": 641,
+   "clusters": 12,
+   "brier_ref": 0.025089622939321706,
+   "brier_new": 0.026024136106658543,
+   "brier_gain": -0.0009345131673368368,
+   "brier_gain_ci": [
+    -0.003414366996266763,
+    0.00029587138179146765
+   ],
+   "p_gain_le_0": 0.6395,
+   "auc_ref": 0.05940000000000001,
+   "auc_new": 0.18189999999999998,
+   "auc_gain_ci": [
+    0.014333980331262928,
+    0.6771562980030722
+   ]
+  },
+  "loso|lakes|calendar_week": {
+   "n": 641,
+   "clusters": 61,
+   "brier_ref": 0.025089622939321706,
+   "brier_new": 0.026024136106658543,
+   "brier_gain": -0.0009345131673368368,
+   "brier_gain_ci": [
+    -0.0015266189615199097,
+    -0.00047019670236532425
+   ],
+   "p_gain_le_0": 1.0,
+   "auc_ref": 0.05940000000000001,
+   "auc_new": 0.18189999999999998,
+   "auc_gain_ci": [
+    0.025330404731376117,
+    0.24397807227156265
+   ]
+  },
+  "loyo_vs_rain_season|all|site_week": {
+   "n": 1548,
+   "clusters": 1371,
+   "brier_ref": 0.09398854056970533,
+   "brier_new": 0.09082056902868495,
+   "brier_gain": 0.003167971541020387,
+   "brier_gain_ci": [
+    0.0011107803614205344,
+    0.005158435438080978
+   ],
+   "p_gain_le_0": 0.001,
+   "auc_ref": 0.8029177494068467,
+   "auc_new": 0.815183312620043,
+   "auc_gain_ci": [
+    0.004311273363311224,
+    0.019885307033509245
+   ]
+  },
+  "loyo_vs_rain_season|all|site": {
+   "n": 1548,
+   "clusters": 32,
+   "brier_ref": 0.09398854056970533,
+   "brier_new": 0.09082056902868495,
+   "brier_gain": 0.003167971541020387,
+   "brier_gain_ci": [
+    0.0009779553471519326,
+    0.00558691652459371
+   ],
+   "p_gain_le_0": 0.0015,
+   "auc_ref": 0.8029177494068467,
+   "auc_new": 0.815183312620043,
+   "auc_gain_ci": [
+    -0.004164389949741159,
+    0.02976897608715393
+   ]
+  },
+  "loyo_vs_rain_season|all|calendar_week": {
+   "n": 1548,
+   "clusters": 63,
+   "brier_ref": 0.09398854056970533,
+   "brier_new": 0.09082056902868495,
+   "brier_gain": 0.003167971541020387,
+   "brier_gain_ci": [
+    0.0009233300663870431,
+    0.005369068856158869
+   ],
+   "p_gain_le_0": 0.0015,
+   "auc_ref": 0.8029177494068467,
+   "auc_new": 0.815183312620043,
+   "auc_gain_ci": [
+    0.004643373467225043,
+    0.019979152968298823
+   ]
+  },
+  "loyo_vs_rain_season|rivers|site_week": {
+   "n": 907,
+   "clusters": 805,
+   "brier_ref": 0.14305382188376314,
+   "brier_new": 0.13746856448597772,
+   "brier_gain": 0.005585257397785426,
+   "brier_gain_ci": [
+    0.0022627109622677215,
+    0.009063455143708576
+   ],
+   "p_gain_le_0": 0.0005,
+   "auc_ref": 0.7256307586325669,
+   "auc_new": 0.7490671374034845,
+   "auc_gain_ci": [
+    0.0096779440963024,
+    0.037655102465775143
+   ]
+  },
+  "loyo_vs_rain_season|rivers|site": {
+   "n": 907,
+   "clusters": 20,
+   "brier_ref": 0.14305382188376314,
+   "brier_new": 0.13746856448597772,
+   "brier_gain": 0.005585257397785426,
+   "brier_gain_ci": [
+    0.002196821897183993,
+    0.00930531022292466
+   ],
+   "p_gain_le_0": 0.0,
+   "auc_ref": 0.7256307586325669,
+   "auc_new": 0.7490671374034845,
+   "auc_gain_ci": [
+    -0.001232531919862606,
+    0.05481428358714935
+   ]
+  },
+  "loyo_vs_rain_season|rivers|calendar_week": {
+   "n": 907,
+   "clusters": 62,
+   "brier_ref": 0.14305382188376314,
+   "brier_new": 0.13746856448597772,
+   "brier_gain": 0.005585257397785426,
+   "brier_gain_ci": [
+    0.0018706172774127568,
+    0.009373487007316777
+   ],
+   "p_gain_le_0": 0.001,
+   "auc_ref": 0.7256307586325669,
+   "auc_new": 0.7490671374034845,
+   "auc_gain_ci": [
+    0.011192499550282559,
+    0.03535858526087706
+   ]
+  },
+  "loso_vs_rain_season|all|site_week": {
+   "n": 1548,
+   "clusters": 1371,
+   "brier_ref": 0.09256975079830822,
+   "brier_new": 0.09033559420614815,
+   "brier_gain": 0.002234156592160072,
+   "brier_gain_ci": [
+    0.00015737416779933004,
+    0.004281449342189374
+   ],
+   "p_gain_le_0": 0.018,
+   "auc_ref": 0.7997648570782963,
+   "auc_new": 0.807617077166422,
+   "auc_gain_ci": [
+    -0.00043652447647671007,
+    0.016103780590023146
+   ]
+  },
+  "loso_vs_rain_season|all|site": {
+   "n": 1548,
+   "clusters": 32,
+   "brier_ref": 0.09256975079830822,
+   "brier_new": 0.09033559420614815,
+   "brier_gain": 0.002234156592160072,
+   "brier_gain_ci": [
+    -0.0004650305937405566,
+    0.004870150442027662
+   ],
+   "p_gain_le_0": 0.0475,
+   "auc_ref": 0.7997648570782963,
+   "auc_new": 0.807617077166422,
+   "auc_gain_ci": [
+    -0.013762932342188255,
+    0.026862052850020506
+   ]
+  },
+  "loso_vs_rain_season|all|calendar_week": {
+   "n": 1548,
+   "clusters": 63,
+   "brier_ref": 0.09256975079830822,
+   "brier_new": 0.09033559420614815,
+   "brier_gain": 0.002234156592160072,
+   "brier_gain_ci": [
+    0.00014464790585734627,
+    0.004356842149780939
+   ],
+   "p_gain_le_0": 0.019,
+   "auc_ref": 0.7997648570782963,
+   "auc_new": 0.807617077166422,
+   "auc_gain_ci": [
+    0.0005611222239681662,
+    0.015970616066285238
+   ]
+  },
+  "loso_vs_rain_season|rivers|site_week": {
+   "n": 907,
+   "clusters": 805,
+   "brier_ref": 0.140231277012505,
+   "brier_new": 0.13578613956642693,
+   "brier_gain": 0.004445137446078079,
+   "brier_gain_ci": [
+    0.0011123798587817306,
+    0.007856078883869352
+   ],
+   "p_gain_le_0": 0.0045,
+   "auc_ref": 0.7385186141967335,
+   "auc_new": 0.7606992163954189,
+   "auc_gain_ci": [
+    0.006983884141744137,
+    0.03809779261857064
+   ]
+  },
+  "loso_vs_rain_season|rivers|site": {
+   "n": 907,
+   "clusters": 20,
+   "brier_ref": 0.140231277012505,
+   "brier_new": 0.13578613956642693,
+   "brier_gain": 0.004445137446078079,
+   "brier_gain_ci": [
+    0.000551447135508849,
+    0.00862331042222931
+   ],
+   "p_gain_le_0": 0.01,
+   "auc_ref": 0.7385186141967335,
+   "auc_new": 0.7606992163954189,
+   "auc_gain_ci": [
+    -0.0038084933870773303,
+    0.054403474898425765
+   ]
+  },
+  "loso_vs_rain_season|rivers|calendar_week": {
+   "n": 907,
+   "clusters": 62,
+   "brier_ref": 0.140231277012505,
+   "brier_new": 0.13578613956642693,
+   "brier_gain": 0.004445137446078079,
+   "brier_gain_ci": [
+    0.000906490631979753,
+    0.008136996881352752
+   ],
+   "p_gain_le_0": 0.007,
+   "auc_ref": 0.7385186141967335,
+   "auc_new": 0.7606992163954189,
+   "auc_gain_ci": [
+    0.00737706196939038,
+    0.03806460062134555
    ]
   }
  },
+ "rain_window_sensitivity": {
+  "share_complete": 1.0,
+  "complete_only": {
+   "n": 907,
+   "clusters": 805,
+   "brier_ref": 0.14209094160524346,
+   "brier_new": 0.13746856448597772,
+   "brier_gain": 0.004622377119265747,
+   "brier_gain_ci": [
+    0.0003010234150934588,
+    0.008777731563241617
+   ],
+   "p_gain_le_0": 0.017,
+   "auc_ref": 0.713456901748041,
+   "auc_new": 0.7490671374034845,
+   "auc_gain_ci": [
+    0.01409862781632131,
+    0.06028980593297556
+   ]
+  },
+  "all_accepted": {
+   "n": 907,
+   "clusters": 805,
+   "brier_ref": 0.14209094160524346,
+   "brier_new": 0.13746856448597772,
+   "brier_gain": 0.004622377119265747,
+   "brier_gain_ci": [
+    0.0003010234150934588,
+    0.008777731563241617
+   ],
+   "p_gain_le_0": 0.017,
+   "auc_ref": 0.713456901748041,
+   "auc_new": 0.7490671374034845,
+   "auc_gain_ci": [
+    0.01409862781632131,
+    0.06028980593297556
+   ]
+  }
+ },
+ "rain_window": "(t - 48 h, t]: 48 hour stamps, at least 90% finite",
  "by_lead": [
   {
    "lead": 0,
    "exposure": "replayed exposure",
    "n": 1548,
-   "brier": 0.0905,
-   "auc": 0.8166,
-   "brier_rain_only": 0.093,
-   "auc_rain_only": 0.7988,
-   "brier_river": 0.1369,
-   "auc_river": 0.7519,
-   "brier_river_rain_only": 0.1413
+   "brier": 0.0908,
+   "auc": 0.8152,
+   "brier_rain_only": 0.0934,
+   "auc_rain_only": 0.796,
+   "brier_river": 0.1375,
+   "auc_river": 0.7491,
+   "brier_river_rain_only": 0.1421
   },
   {
    "lead": 0,
    "exposure": "fixed lead-0 exposure",
    "n": 1548,
-   "brier": 0.0905,
-   "auc": 0.8166,
-   "brier_rain_only": 0.093,
-   "auc_rain_only": 0.7988,
-   "brier_river": 0.1369,
-   "auc_river": 0.7519,
-   "brier_river_rain_only": 0.1413
+   "brier": 0.0908,
+   "auc": 0.8152,
+   "brier_rain_only": 0.0934,
+   "auc_rain_only": 0.796,
+   "brier_river": 0.1375,
+   "auc_river": 0.7491,
+   "brier_river_rain_only": 0.1421
   },
   {
    "lead": 1,
    "exposure": "replayed exposure",
    "n": 1548,
    "brier": 0.0972,
-   "auc": 0.7991,
+   "auc": 0.7987,
    "brier_rain_only": 0.1012,
-   "auc_rain_only": 0.7647,
+   "auc_rain_only": 0.7646,
    "brier_river": 0.1483,
-   "auc_river": 0.7186,
+   "auc_river": 0.7176,
    "brier_river_rain_only": 0.1554
   },
   {
@@ -388,146 +971,146 @@
    "exposure": "fixed lead-0 exposure",
    "n": 1548,
    "brier": 0.0952,
-   "auc": 0.804,
+   "auc": 0.8037,
    "brier_rain_only": 0.1012,
-   "auc_rain_only": 0.7647,
-   "brier_river": 0.1449,
-   "auc_river": 0.7287,
+   "auc_rain_only": 0.7646,
+   "brier_river": 0.1448,
+   "auc_river": 0.7279,
    "brier_river_rain_only": 0.1554
   },
   {
    "lead": 2,
    "exposure": "replayed exposure",
    "n": 1548,
-   "brier": 0.0986,
-   "auc": 0.7956,
-   "brier_rain_only": 0.102,
-   "auc_rain_only": 0.7705,
-   "brier_river": 0.1507,
-   "auc_river": 0.7107,
-   "brier_river_rain_only": 0.1568
+   "brier": 0.0987,
+   "auc": 0.7945,
+   "brier_rain_only": 0.1022,
+   "auc_rain_only": 0.7691,
+   "brier_river": 0.1509,
+   "auc_river": 0.7085,
+   "brier_river_rain_only": 0.157
   },
   {
    "lead": 2,
    "exposure": "fixed lead-0 exposure",
    "n": 1548,
    "brier": 0.0957,
-   "auc": 0.8041,
-   "brier_rain_only": 0.102,
-   "auc_rain_only": 0.7705,
+   "auc": 0.8032,
+   "brier_rain_only": 0.1022,
+   "auc_rain_only": 0.7691,
    "brier_river": 0.1458,
-   "auc_river": 0.7267,
-   "brier_river_rain_only": 0.1568
+   "auc_river": 0.7247,
+   "brier_river_rain_only": 0.157
   },
   {
    "lead": 3,
    "exposure": "replayed exposure",
    "n": 1548,
-   "brier": 0.1025,
-   "auc": 0.7882,
-   "brier_rain_only": 0.1064,
-   "auc_rain_only": 0.7541,
-   "brier_river": 0.1573,
-   "auc_river": 0.6956,
-   "brier_river_rain_only": 0.1643
+   "brier": 0.1024,
+   "auc": 0.7871,
+   "brier_rain_only": 0.1065,
+   "auc_rain_only": 0.7527,
+   "brier_river": 0.1572,
+   "auc_river": 0.6932,
+   "brier_river_rain_only": 0.1644
   },
   {
    "lead": 3,
    "exposure": "fixed lead-0 exposure",
    "n": 1548,
-   "brier": 0.0985,
-   "auc": 0.7995,
-   "brier_rain_only": 0.1064,
-   "auc_rain_only": 0.7541,
-   "brier_river": 0.1506,
-   "auc_river": 0.7163,
-   "brier_river_rain_only": 0.1643
+   "brier": 0.0984,
+   "auc": 0.7988,
+   "brier_rain_only": 0.1065,
+   "auc_rain_only": 0.7527,
+   "brier_river": 0.1504,
+   "auc_river": 0.7149,
+   "brier_river_rain_only": 0.1644
   },
   {
    "lead": 4,
    "exposure": "replayed exposure",
    "n": 1548,
-   "brier": 0.1001,
-   "auc": 0.795,
+   "brier": 0.1,
+   "auc": 0.7942,
    "brier_rain_only": 0.1045,
-   "auc_rain_only": 0.758,
-   "brier_river": 0.1532,
-   "auc_river": 0.7062,
-   "brier_river_rain_only": 0.161
+   "auc_rain_only": 0.7582,
+   "brier_river": 0.1531,
+   "auc_river": 0.7048,
+   "brier_river_rain_only": 0.1611
   },
   {
    "lead": 4,
    "exposure": "fixed lead-0 exposure",
    "n": 1548,
-   "brier": 0.0961,
-   "auc": 0.8025,
+   "brier": 0.096,
+   "auc": 0.8021,
    "brier_rain_only": 0.1045,
-   "auc_rain_only": 0.758,
-   "brier_river": 0.1464,
-   "auc_river": 0.7244,
-   "brier_river_rain_only": 0.161
+   "auc_rain_only": 0.7582,
+   "brier_river": 0.1462,
+   "auc_river": 0.7237,
+   "brier_river_rain_only": 0.1611
   }
  ],
  "reliability": [
   {
-   "n": 972,
-   "forecast": 0.042,
-   "observed": 0.049,
+   "n": 962,
+   "forecast": 0.041,
+   "observed": 0.051,
    "lo": 0.0,
    "hi": 0.1
   },
   {
-   "n": 247,
+   "n": 257,
    "forecast": 0.137,
-   "observed": 0.146,
+   "observed": 0.14,
    "lo": 0.1,
    "hi": 0.2
   },
   {
    "n": 86,
    "forecast": 0.247,
-   "observed": 0.198,
+   "observed": 0.209,
    "lo": 0.2,
    "hi": 0.3
   },
   {
-   "n": 94,
+   "n": 93,
    "forecast": 0.349,
-   "observed": 0.223,
+   "observed": 0.204,
    "lo": 0.3,
    "hi": 0.4
   },
   {
-   "n": 44,
-   "forecast": 0.446,
-   "observed": 0.477,
+   "n": 53,
+   "forecast": 0.45,
+   "observed": 0.472,
    "lo": 0.4,
    "hi": 0.5
   },
   {
-   "n": 52,
-   "forecast": 0.548,
-   "observed": 0.577,
+   "n": 48,
+   "forecast": 0.553,
+   "observed": 0.604,
    "lo": 0.5,
    "hi": 0.6
   },
   {
-   "n": 34,
-   "forecast": 0.644,
-   "observed": 0.676,
+   "n": 33,
+   "forecast": 0.652,
+   "observed": 0.667,
    "lo": 0.6,
    "hi": 0.7
   },
   {
-   "n": 12,
-   "forecast": 0.733,
-   "observed": 0.833,
+   "n": 9,
+   "forecast": 0.739,
+   "observed": 0.889,
    "lo": 0.7,
    "hi": 0.8
   },
   {
    "n": 6,
-   "forecast": 0.827,
+   "forecast": 0.828,
    "observed": 0.833,
    "lo": 0.8,
    "hi": 0.9
@@ -541,13 +1124,13 @@
   }
  ],
  "coef_per_sd": {
-  "lrain48": 0.9604925361933025,
-  "lrain24": -0.22959102803236503,
-  "logit_risk": 0.5355620766097038,
-  "lake": -0.4569997282862072,
-  "lake_x_lrain48": -0.9462436954737918,
-  "doy_sin": -0.08137436072374099,
-  "doy_cos": 0.11381513653343737
+  "lrain48": 0.9061136162279557,
+  "lrain24": -0.19464116580259602,
+  "logit_risk": 0.544866682890723,
+  "lake": -0.46664170125607096,
+  "lake_x_lrain48": -0.9255963919015433,
+  "doy_sin": -0.07424497358737008,
+  "doy_cos": 0.11375348820999584
  },
  "rain_source": "forecast lead 0",
  "notes": [

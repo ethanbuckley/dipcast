@@ -64,48 +64,77 @@ def fetch_live(companies: dict[str, str] | None = None) -> pd.DataFrame:
 LOCAL_TZ = "Europe/London"
 COVERAGE_FILE = "live_coverage.parquet"
 POLL_LOG_FILE = "poll_log.parquet"
+SLOTS_PER_DAY = 48          # half-hour slots; the site polls every 30 min
+FEED_CURRENT_H = 6.0        # a feed whose freshest LastUpdated is older than this is stale
+COVERAGE_COLS = ["site_id", "day", "n_known", "n_unknown", "n_stale", "slots"]
+
+
+def feed_age_hours(df: pd.DataFrame) -> pd.Series:
+    """Per company, the age of the freshest `last_updated` in this poll. Six companies
+    stamp every record on every refresh (age under an hour); Northumbrian and Southern
+    stamp a record only when it changes; South West Water publishes no stamp (NaN).
+    A successful HTTP response is not evidence the feed is current; this is."""
+    if df.empty or "last_updated" not in df:
+        return pd.Series(dtype=float)
+    age = (pd.to_datetime(df["fetched_at"], utc=True) - pd.to_datetime(df["last_updated"], utc=True)).dt.total_seconds() / 3600
+    return age.groupby(df["company"]).min()
 
 
 def coverage_rows(df: pd.DataFrame) -> pd.DataFrame:
-    """One row per overflow for this poll: its local day and whether the status was
-    known (0 or 1) or unknown (offline, missing). Summed over polls this becomes the
-    per-overflow daily observation count that the live scorer needs before it may
-    treat an unmatched day as 'no spill'."""
+    """One row per overflow for this poll: local day, whether the status was known
+    (0 or 1) or unknown (offline, missing), whether the company's feed looked stale,
+    and the half-hour slot as a bit in `slots`. OR-ing the slot bits over a day gives
+    the distinct times the overflow was observed, from which the scorer derives the
+    first and last observation and the longest gap; a repeated poll in the same slot
+    adds nothing."""
     if df.empty:
-        return pd.DataFrame(columns=["site_id", "day", "n_known", "n_unknown"])
-    day = pd.to_datetime(df["fetched_at"], utc=True).dt.tz_convert(LOCAL_TZ).dt.date
+        return pd.DataFrame(columns=COVERAGE_COLS)
+    local = pd.to_datetime(df["fetched_at"], utc=True).dt.tz_convert(LOCAL_TZ)
     known = df["status"].isin([0, 1])
-    return pd.DataFrame({"site_id": df["site_id"].astype(str).to_numpy(), "day": day.to_numpy(),
-                         "n_known": known.astype(int).to_numpy(), "n_unknown": (~known).astype(int).to_numpy()})
+    age = df["company"].map(feed_age_hours(df))
+    stale = known & (age > FEED_CURRENT_H)
+    slot = (local.dt.hour * 2 + local.dt.minute // 30).astype(int)
+    slots = np.where(known & ~stale, np.left_shift(np.int64(1), slot.to_numpy()), np.int64(0))
+    return pd.DataFrame({"site_id": df["site_id"].astype(str).to_numpy(), "day": local.dt.date.to_numpy(),
+                         "n_known": known.astype(int).to_numpy(), "n_unknown": (~known).astype(int).to_numpy(),
+                         "n_stale": stale.astype(int).to_numpy(), "slots": slots})
 
 
 def update_coverage(df: pd.DataFrame) -> pd.DataFrame:
-    """Add this poll to live_coverage.parquet (site_id, day, n_known, n_unknown) and
-    return the merged table. Compact: one row per overflow per day."""
+    """Add this poll to live_coverage.parquet and return the merged table. Compact:
+    one row per overflow per day, counts summed and slot bits OR-ed."""
     new = coverage_rows(df)
     p = config.state_read(COVERAGE_FILE)
     if p.exists():
         old = pd.read_parquet(p)
         old["day"] = pd.to_datetime(old["day"]).dt.date
-        new = pd.concat([old, new], ignore_index=True)
-    cov = new.groupby(["site_id", "day"], as_index=False)[["n_known", "n_unknown"]].sum()
+        for c, dflt in (("n_stale", 0), ("slots", 0)):   # files from before 17 Sep 2026
+            if c not in old:
+                old[c] = dflt
+        new = pd.concat([old[COVERAGE_COLS], new], ignore_index=True)
+    new["slots"] = new["slots"].astype("int64")
+    cov = new.groupby(["site_id", "day"], as_index=False).agg(
+        n_known=("n_known", "sum"), n_unknown=("n_unknown", "sum"), n_stale=("n_stale", "sum"),
+        slots=("slots", lambda s: int(np.bitwise_or.reduce(s.to_numpy(dtype="int64")))))
     cov["day"] = pd.to_datetime(cov["day"])
     write_parquet(cov, config.state_write(COVERAGE_FILE))
     return cov
 
 
 def log_poll(df: pd.DataFrame, feeds: dict[str, str] | None = None) -> None:
-    """Append one row per company per poll: rows returned and how many had a known
-    status. A company absent from a poll (feed failure) appears with zero rows, so
-    feed outages are visible afterwards."""
+    """Append one row per company per poll: rows returned, how many had a known
+    status, and the age of the freshest record. A company absent from a poll (feed
+    failure) appears with zero rows, so feed outages are visible afterwards."""
     fetched = df["fetched_at"].iloc[0] if len(df) else pd.Timestamp.now(tz="UTC")
     companies = list((feeds or config.LIVE_FEEDS).keys())
     g = df.groupby("company") if len(df) else None
+    ages = feed_age_hours(df)
     rows = []
     for c in companies:
         sub = g.get_group(c) if g is not None and c in g.groups else df.iloc[0:0]
         rows.append({"fetched_at": fetched, "company": c, "n_rows": len(sub),
-                     "n_known": int(sub["status"].isin([0, 1]).sum()) if len(sub) else 0})
+                     "n_known": int(sub["status"].isin([0, 1]).sum()) if len(sub) else 0,
+                     "feed_age_h": float(ages.get(c, np.nan))})
     new = pd.DataFrame(rows)
     p = config.state_read(POLL_LOG_FILE)
     if p.exists():
