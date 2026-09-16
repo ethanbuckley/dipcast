@@ -79,13 +79,29 @@ def load() -> EcoliModel | None:
     return EcoliModel.from_json() if MODEL_PATH.exists() else None
 
 
-def rain_windows(hourly: pd.Series, ends: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
+MIN_COVERAGE = 0.9   # share of a window's hourly values that must be finite
+
+
+def rain_windows(hourly: pd.Series, ends: pd.DatetimeIndex,
+                 min_coverage: float = MIN_COVERAGE) -> tuple[np.ndarray, np.ndarray]:
     """48 h and 24 h rainfall totals ending at each timestamp in `ends`, from an
-    hourly series indexed by time. NaN where fewer than 20 of the 24 hours exist."""
+    hourly series indexed by time (hour stamps; a value is the hour ending then).
+
+    A window is the closed set of hour stamps from floor(t) - 48 h to floor(t), 49
+    values (25 for 24 h). The total is NaN unless at least `min_coverage` of those
+    stamps carry a finite value: missing hours, a null-filled forecast, duplicate
+    stamps or a series that does not span the window all count as missing, so a
+    gap in the data can never read as dry weather. (Before 16 Sep 2026 this counted
+    stamps rather than finite values, and pandas summed an all-NaN window to 0.0.)"""
+    s = hourly.astype(float)
+    s = s[np.isfinite(s.to_numpy())]
+    s = s[~s.index.duplicated(keep="last")].sort_index()
     out48, out24 = [], []
     for t in ends:
-        w = hourly.loc[t - pd.Timedelta(hours=48): t]
-        w24 = hourly.loc[t - pd.Timedelta(hours=24): t]
-        out48.append(float(w.sum()) if len(w) >= 40 else np.nan)
-        out24.append(float(w24.sum()) if len(w24) >= 20 else np.nan)
+        t = pd.Timestamp(t).floor("h")
+        for hours, out in ((48, out48), (24, out24)):
+            idx = pd.date_range(t - pd.Timedelta(hours=hours), t, freq="h")
+            w = s.reindex(idx)
+            n_ok = int(w.notna().sum())
+            out.append(float(w.sum()) if n_ok >= min_coverage * len(idx) else np.nan)
     return np.array(out48), np.array(out24)

@@ -11,6 +11,25 @@ Two DuckDB tables in the state directory:
 
 `verify_live()` scores overflow-day forecasts whose target day has passed,
 using the accumulated live history, and writes verification_live.json.
+
+Scoring rules (16 Sep 2026):
+
+* Decision time. For each (overflow, issue day, target day) the forecast scored is
+  the latest one issued by DECISION_HOUR local time on the issue day: what a
+  swimmer planning the day would have seen. Before this the latest issue of the
+  day was taken, which made "today" an end-of-day estimate. Days with no issue by
+  the cutoff fall back to the earliest issue that day and are counted.
+* Coverage. An overflow-day scores as "no spill" only if that overflow was
+  observed with a known status (discharging or not) at least MIN_KNOWN_POLLS times
+  that day and at least once the next day (live_coverage.parquet, written by
+  ingest.live.save_live). A poll gap, an offline monitor or a dead company feed is
+  a missing observation, not a dry day. Days from before the coverage file
+  existed are not scored.
+* Rain. Overflow-days forecast without rainfall data (p logged as 0 with
+  rain_available = false) are excluded.
+* E. coli. A point forecast is compared with a sample only if it was issued
+  before the sample was taken; lead 0 ("same day") is reported separately from
+  leads 1-4 ("in advance").
 """
 
 from __future__ import annotations
@@ -31,6 +50,9 @@ from dipcast.model.verify import reliability_table, scores
 log = logging.getLogger(__name__)
 _LOCK = threading.Lock()
 LOCAL_TZ = "Europe/London"
+DECISION_HOUR = 8         # local time: forecasts available by then count for that issue day
+MIN_KNOWN_POLLS = 6       # known-status polls on the target day needed to score a non-event
+COVERAGE_FILE = "live_coverage.parquet"
 
 
 def _conn() -> duckdb.DuckDBPyConnection:
@@ -48,15 +70,19 @@ def _conn() -> duckdb.DuckDBPyConnection:
     # Added 15 Sep 2026: the E. coli exceedance forecast and the rain it used.
     con.execute("ALTER TABLE forecast_points ADD COLUMN IF NOT EXISTS p_ecoli DOUBLE")
     con.execute("ALTER TABLE forecast_points ADD COLUMN IF NOT EXISTS rain_48h DOUBLE")
+    # Added 16 Sep 2026: whether the overflow's cell had rainfall data for the day.
+    con.execute("ALTER TABLE forecast_overflows ADD COLUMN IF NOT EXISTS rain_available BOOLEAN DEFAULT TRUE")
     return con
 
 
 def log_forecast(issued_at: pd.Timestamp, lat: float, lon: float, mode: str, watercourse: str | None,
                  now_risk: float, days: pd.DatetimeIndex, risk: np.ndarray,
                  ov: pd.DataFrame, p_raw: np.ndarray, p_cal: np.ndarray,
-                 p_ecoli: np.ndarray | None = None, rain_48h: np.ndarray | None = None) -> None:
-    """Append one forecast. `days[0]` is yesterday (lead -1); only leads >= 0 are logged.
-    `p_ecoli` and `rain_48h` are aligned with `days` (NaN where unavailable)."""
+                 p_ecoli: np.ndarray | None = None, rain_48h: np.ndarray | None = None,
+                 available: np.ndarray | None = None) -> None:
+    """Append one forecast. `days` may start before today (history for travel time);
+    only leads >= 0 are logged. `p_ecoli` and `rain_48h` are aligned with `days` (NaN
+    where unavailable); `available` is the (n_overflows, n_days) rain-data mask."""
     issue_day = issued_at.tz_convert(LOCAL_TZ).date()
     pts, rows = [], []
 
@@ -69,18 +95,19 @@ def log_forecast(issued_at: pd.Timestamp, lat: float, lon: float, mode: str, wat
         lead = (d.date() - issue_day).days
         if lead < 0:
             continue
-        pts.append((issued_at, lat, lon, mode, watercourse, float(now_risk), d.date(), lead, float(risk[j]),
-                    _f(p_ecoli, j), _f(rain_48h, j)))
+        pts.append((issued_at, lat, lon, mode, watercourse, float(now_risk), d.date(), lead,
+                    None if np.isnan(risk[j]) else float(risk[j]), _f(p_ecoli, j), _f(rain_48h, j)))
         if len(ov):
             for i, sid in enumerate(ov["site_id"].to_numpy()):
+                ok = True if available is None else bool(available[i, j])
                 rows.append((issued_at, issue_day, lat, lon, str(sid), bool(ov["has_live"].iloc[i]),
-                             d.date(), lead, float(p_raw[i, j]), float(p_cal[i, j]), float(ov["weight"].iloc[i])))
+                             d.date(), lead, float(p_raw[i, j]), float(p_cal[i, j]), float(ov["weight"].iloc[i]), ok))
     with _LOCK:
         con = _conn()
         try:
             con.executemany("INSERT INTO forecast_points VALUES (?,?,?,?,?,?,?,?,?,?,?)", pts)
             if rows:
-                con.executemany("INSERT INTO forecast_overflows VALUES (?,?,?,?,?,?,?,?,?,?,?)", rows)
+                con.executemany("INSERT INTO forecast_overflows VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", rows)
         finally:
             con.close()
 
@@ -95,6 +122,8 @@ def observed_spill_days(history: pd.DataFrame) -> pd.DataFrame:
     end = end.where(~((h["status"] == 1) & end.isna()), fetched)
     end = end.fillna(start)
     ok = start.notna()
+    if not ok.any():   # a fresh history with no recorded event at all
+        return pd.DataFrame({"site_id": pd.Series(dtype=str), "day": pd.Series(dtype=object)})
     ev = pd.DataFrame({"site_id": h.loc[ok, "site_id"].to_numpy(),
                        "event_start": start[ok].dt.tz_convert(LOCAL_TZ).to_numpy(),
                        "event_end": end[ok].dt.tz_convert(LOCAL_TZ).to_numpy()})
@@ -111,6 +140,53 @@ def observed_spill_days(history: pd.DataFrame) -> pd.DataFrame:
     return out.drop_duplicates()
 
 
+def select_decision_forecasts(con: duckdb.DuckDBPyConnection, cutoff: date,
+                              decision_hour: int = DECISION_HOUR) -> pd.DataFrame:
+    """One row per (overflow, issue day, target day): the latest forecast issued by
+    `decision_hour` local time on the issue day, else the earliest issued that day
+    (flagged in `before_cutoff`). Rows without rainfall data are dropped."""
+    fc = con.execute(f"""
+        WITH f AS (
+            SELECT site_id, issue_day, target_day, lead, p_raw, p_cal, issued_at,
+                   epoch_ms(issued_at) AS issued_ms,
+                   (issued_at AT TIME ZONE '{LOCAL_TZ}') <= (issue_day::TIMESTAMP + INTERVAL {int(decision_hour)} HOUR) AS before_cutoff
+            FROM forecast_overflows
+            WHERE has_live AND target_day <= ? AND coalesce(rain_available, TRUE))
+        SELECT site_id, issue_day, target_day, lead, p_raw, p_cal, issued_ms, before_cutoff FROM f
+        QUALIFY row_number() OVER (PARTITION BY site_id, issue_day, target_day
+            ORDER BY before_cutoff DESC, CASE WHEN before_cutoff THEN issued_at END DESC NULLS LAST, issued_at ASC) = 1
+    """, [cutoff]).df()
+    for c in ("target_day", "issue_day"):
+        fc[c] = pd.to_datetime(fc[c]).dt.date
+    fc["issued_at"] = pd.to_datetime(fc["issued_ms"], unit="ms", utc=True).dt.tz_convert(LOCAL_TZ)
+    return fc.drop(columns=["issued_ms"])
+
+
+def load_coverage() -> pd.DataFrame:
+    """(site_id, day, n_known, n_unknown) from the live poller; empty if none yet."""
+    p = config.state_read(COVERAGE_FILE)
+    if not p.exists():
+        return pd.DataFrame(columns=["site_id", "day", "n_known", "n_unknown"])
+    cov = pd.read_parquet(p)
+    cov["day"] = pd.to_datetime(cov["day"]).dt.date
+    return cov
+
+
+def covered_site_days(cov: pd.DataFrame, min_known: int = MIN_KNOWN_POLLS) -> pd.DataFrame:
+    """(site_id, day) pairs whose observation supports a 'no spill' verdict: at
+    least `min_known` known-status polls that day and one the day after (so an
+    event that ended late is still visible in the feed's latest-event fields)."""
+    if cov.empty:
+        return pd.DataFrame(columns=["site_id", "day"])
+    c = cov.groupby(["site_id", "day"], as_index=False)["n_known"].sum()
+    nxt = c.assign(day=pd.to_datetime(c["day"]) - pd.Timedelta(days=1))
+    nxt["day"] = nxt["day"].dt.date
+    nxt = nxt.rename(columns={"n_known": "n_known_next"})
+    m = c.merge(nxt, on=["site_id", "day"], how="left")
+    ok = (m["n_known"] >= min_known) & (m["n_known_next"].fillna(0) >= 1)
+    return m.loc[ok, ["site_id", "day"]].reset_index(drop=True)
+
+
 def verify_live(as_of: date | None = None) -> dict:
     """Score logged overflow-day forecasts whose target day is complete."""
     as_of = as_of or pd.Timestamp.now(tz=LOCAL_TZ).date()
@@ -118,30 +194,28 @@ def verify_live(as_of: date | None = None) -> dict:
     with _LOCK:
         con = _conn()
         try:
-            fc = con.execute("""
-                SELECT site_id, issue_day, target_day, lead, p_raw, p_cal
-                FROM forecast_overflows WHERE has_live AND target_day <= ?
-                QUALIFY row_number() OVER (PARTITION BY site_id, issue_day, target_day ORDER BY issued_at DESC) = 1
-            """, [cutoff]).df()
+            fc = select_decision_forecasts(con, cutoff)
             first_issue = con.execute("SELECT min(issue_day) FROM forecast_overflows").fetchone()[0]
             n_points = con.execute("SELECT count(*) FROM forecast_points").fetchone()[0]
         finally:
             con.close()
     out = {"generated_at": pd.Timestamp.now(tz=LOCAL_TZ).isoformat(), "first_forecast_day": str(first_issue) if first_issue else None,
-           "n_point_forecasts": int(n_points), "n_scored": 0}
+           "n_point_forecasts": int(n_points), "n_scored": 0,
+           "rules": {"decision_hour_local": DECISION_HOUR, "min_known_polls": MIN_KNOWN_POLLS,
+                     "baseline": "annual spill count / 365 (spill-days per counted spill = "
+                                 f"{_spill_days_per_spill():.2f} at United Utilities 2023-25)"}}
     hist_path = config.state_read("live_history.parquet")
     if fc.empty or not hist_path.exists():
         return _finish(out, as_of)
     hist = pd.read_parquet(hist_path)
-    # DuckDB hands DATE columns back as datetime64; the polled-day filter and the
-    # spill-day join below compare against Python dates, so normalise first.
-    # (Without this nothing ever scored: the filter silently emptied the frame.)
-    for c in ("target_day", "issue_day"):
-        fc[c] = pd.to_datetime(fc[c]).dt.date
-    # Only score days on which we were actually polling, so a gap in polling does
-    # not read as 'no spill'.
-    polled_days = set(pd.to_datetime(hist["fetched_at"], utc=True).dt.tz_convert(LOCAL_TZ).dt.date.unique())
-    fc = fc[fc["target_day"].isin(polled_days)]
+    out["n_candidates"] = len(fc)
+    out["share_issued_by_decision_hour"] = float(fc["before_cutoff"].mean())
+    # Score only overflow-days whose observation supports a verdict either way.
+    cov = covered_site_days(load_coverage())
+    out["coverage_from"] = str(cov["day"].min()) if len(cov) else None
+    fc = fc.merge(cov.assign(covered=True), left_on=["site_id", "target_day"], right_on=["site_id", "day"], how="left")
+    fc = fc[fc["covered"].fillna(False).astype(bool)].drop(columns=["covered", "day"])
+    out["n_uncovered"] = int(out["n_candidates"] - len(fc))
     if fc.empty:
         return _finish(out, as_of)
     obs = observed_spill_days(hist)
@@ -150,7 +224,7 @@ def verify_live(as_of: date | None = None) -> dict:
     fc["y"] = fc["y"].fillna(0).astype(int)
     y = fc["y"].to_numpy()
     out["n_scored"] = len(fc)
-    # Baseline: each overflow's long-run spill-day rate from the annual returns, as in
+    # Baseline: each overflow's long-run daily spill rate from the annual returns, as in
     # the offline tests. The in-period mean would be an in-sample, hindsight baseline
     # and over a few dry days it makes any forecast look bad.
     fc["p_clim"] = _site_climatology(fc["site_id"])
@@ -162,8 +236,16 @@ def verify_live(as_of: date | None = None) -> dict:
         yy = g["y"].to_numpy()
         by_lead.append({"lead": int(k), "n": len(g), "base_rate": float(yy.mean()),
                         "brier_raw": float(np.mean((g["p_raw"].to_numpy() - yy) ** 2)),
-                        "brier_cal": float(np.mean((g["p_cal"].to_numpy() - yy) ** 2))})
+                        "brier_cal": float(np.mean((g["p_cal"].to_numpy() - yy) ** 2)),
+                        "climatology_brier": float(np.mean((g["p_clim"].to_numpy() - yy) ** 2)),
+                        "same_day": bool(k == 0)})
     out["by_lead"] = by_lead
+    adv = fc[fc["lead"] >= 1]
+    if len(adv):
+        ya = adv["y"].to_numpy()
+        out["in_advance"] = {"n": len(adv), "brier_cal": float(np.mean((adv["p_cal"].to_numpy() - ya) ** 2)),
+                             "climatology_brier": float(np.mean((adv["p_clim"].to_numpy() - ya) ** 2)),
+                             "auc": float(roc_auc_score(ya, adv["p_cal"])) if 0 < ya.mean() < 1 else None}
     # By water company: the spill model was trained on United Utilities only, so this is
     # the geographic-transfer check. Companies with too few scored days are pooled as "other".
     comp = _site_companies()
@@ -250,21 +332,24 @@ def match_points_to_sites(points: pd.DataFrame, sites: pd.DataFrame) -> pd.Serie
 
 
 def verify_ecoli(as_of: date | None = None) -> dict:
-    """Score logged P(E. coli > 900) against EA samples taken on the target day."""
+    """Score logged P(E. coli > 900) against EA samples taken on the target day.
+    For each sample and lead the forecast used is the latest one issued *before the
+    sample was taken*; a forecast issued after the sample is not a forecast of it."""
     as_of = as_of or pd.Timestamp.now(tz=LOCAL_TZ).date()
     with _LOCK:
         con = _conn()
         try:
             pts = con.execute("""
-                SELECT issued_at, lat, lon, target_day, lead, p_ecoli, rain_48h, risk
+                SELECT epoch_ms(issued_at) AS issued_ms, lat, lon, target_day, lead, p_ecoli, rain_48h, risk
                 FROM forecast_points WHERE p_ecoli IS NOT NULL AND target_day <= ?
-                QUALIFY row_number() OVER (PARTITION BY lat, lon, target_day, lead ORDER BY issued_at DESC) = 1
             """, [as_of]).df()
         finally:
             con.close()
-    out = {"n_forecasts": len(pts), "n_scored": 0}
+    out = {"n_forecasts": int(pts[["lat", "lon", "target_day", "lead"]].drop_duplicates().shape[0]) if len(pts) else 0,
+           "n_scored": 0, "rule": "latest forecast issued before the sample time, per lead"}
     if pts.empty:
         return out
+    pts["issued_at"] = pd.to_datetime(pts["issued_ms"], unit="ms", utc=True).dt.tz_convert(LOCAL_TZ)
     pts["target_day"] = pd.to_datetime(pts["target_day"]).dt.date
     sites = _bathing_sites()
     pts["bw_id"] = match_points_to_sites(pts, sites)
@@ -275,10 +360,14 @@ def verify_ecoli(as_of: date | None = None) -> dict:
     samples = samples.assign(day=samples["sample_time"].dt.date)
     m = pts.merge(samples[["bw_id", "day", "sample_time", "ecoli", "name", "kind"]], left_on=["bw_id", "target_day"],
                   right_on=["bw_id", "day"], how="inner")
+    n_pairs = len(m)
+    m = m[m["issued_at"] < m["sample_time"]]
+    out["n_issued_after_sample"] = int(n_pairs - len(m))
+    m = (m.sort_values("issued_at").groupby(["bw_id", "sample_time", "lead"], as_index=False).last())
     if m.empty:
         return out
     m["y"] = (m["ecoli"] > 900).astype(int)
-    out["n_scored"] = len(m); out["n_samples"] = int(m[["bw_id", "day"]].drop_duplicates().shape[0])
+    out["n_scored"] = len(m); out["n_samples"] = int(m[["bw_id", "sample_time"]].drop_duplicates().shape[0])
     out["n_sites"] = int(m["bw_id"].nunique())
     from dipcast.model.ecoli import load as load_ecoli
     em = load_ecoli()
@@ -288,9 +377,16 @@ def verify_ecoli(as_of: date | None = None) -> dict:
     out["overall"] = {"brier": float(np.mean((p - y) ** 2)), "base_rate": float(y.mean()),
                       "climatology_brier": float(np.mean((m["p_clim"].to_numpy() - y) ** 2)),
                       "auc": float(roc_auc_score(y, p)) if 0 < y.mean() < 1 and len(m) >= 30 else None}
-    out["by_lead"] = [{"lead": int(k), "n": len(g), "base_rate": float(g["y"].mean()),
-                       "brier": float(np.mean((g["p_ecoli"].to_numpy() - g["y"].to_numpy()) ** 2))}
+    out["by_lead"] = [{"lead": int(k), "n": len(g), "base_rate": float(g["y"].mean()), "same_day": bool(k == 0),
+                       "brier": float(np.mean((g["p_ecoli"].to_numpy() - g["y"].to_numpy()) ** 2)),
+                       "climatology_brier": float(np.mean((g["p_clim"].to_numpy() - g["y"].to_numpy()) ** 2))}
                       for k, g in m.groupby("lead")]
+    adv = m[m["lead"] >= 1]
+    if len(adv):
+        ya, pa = adv["y"].to_numpy(), adv["p_ecoli"].to_numpy()
+        out["in_advance"] = {"n": len(adv), "brier": float(np.mean((pa - ya) ** 2)), "base_rate": float(ya.mean()),
+                             "climatology_brier": float(np.mean((adv["p_clim"].to_numpy() - ya) ** 2)),
+                             "auc": float(roc_auc_score(ya, pa)) if 0 < ya.mean() < 1 and len(adv) >= 30 else None}
     recent = (m[m["lead"].isin([0, 1])].sort_values(["sample_time", "lead"]).groupby(["bw_id", "day"]).first()
               .reset_index().sort_values("sample_time", ascending=False).head(30))
     out["recent"] = [{"site": r["name"], "kind": r["kind"], "day": str(r["day"]), "lead": int(r["lead"]),
@@ -299,15 +395,31 @@ def verify_ecoli(as_of: date | None = None) -> dict:
     return out
 
 
+def _spill_days_per_spill() -> float:
+    """Spill-days per counted spill, measured on United Utilities event history against
+    the annual returns (scripts/spill_day_ratio.py). The returns count spills by the
+    12/24-hour block method, so a count is not a day count; on 5,886 site-years the
+    pooled ratio is 1.00, so count/365 is the spill-day rate to within 1%."""
+    p = config.PROCESSED / "spill_day_ratio.json"
+    if p.exists():
+        try:
+            return float(json.loads(p.read_text()).get("spill_days_per_spill", 1.0))
+        except (ValueError, TypeError):
+            return 1.0
+    return 1.0
+
+
 def _site_climatology(site_ids: pd.Series) -> np.ndarray:
-    """Long-run daily spill probability per overflow from the annual returns
-    (spill-days per year / 365), the same baseline as the offline tests."""
+    """Long-run daily spill-day probability per overflow: the annual-return spill
+    count times the measured spill-days-per-spill ratio, over 365. The same baseline
+    as the offline tests."""
     p = config.state_read("overflows.parquet")
     default = 20.0 / 365.0
+    ratio = _spill_days_per_spill()
     if not p.exists():
         return np.full(len(site_ids), default)
     ov = pd.read_parquet(p, columns=["site_id", "lta_spills"]).drop_duplicates("site_id").set_index("site_id")["lta_spills"]
-    clim = site_ids.map(ov).astype(float).fillna(default * 365.0).to_numpy() / 365.0
+    clim = site_ids.map(ov).astype(float).fillna(default * 365.0).to_numpy() * ratio / 365.0
     return np.clip(clim, 0.001, 0.95)
 
 

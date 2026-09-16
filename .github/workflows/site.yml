@@ -35,7 +35,10 @@ jobs:
           enable-cache: true
 
       - name: Install
-        run: uv sync --frozen --no-dev
+        run: uv sync --frozen
+
+      - name: Tests (the build does not run if these fail)
+        run: uv run pytest -q
 
       - name: Restore mutable state (live history, forecast log)
         id: state-cache

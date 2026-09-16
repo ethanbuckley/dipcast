@@ -19,6 +19,9 @@ data/processed/*
 !data/processed/spill_model.pkl
 !data/processed/spill_model_holdout_2025.pkl
 !data/processed/lead_calibration.json
+!data/processed/spill_day_ratio.json
+!data/processed/ecoli_model.json
+!data/processed/ecoli_model_eval.json
 !data/processed/verification_2025.csv
 !data/processed/reliability_2025.csv
 !data/processed/verification_leads_2025.csv
@@ -30,4 +33,5 @@ data/processed/*
 data/raw/*
 !data/raw/bathing_waters_inland.json
 /site/
+.claude/
 /state/

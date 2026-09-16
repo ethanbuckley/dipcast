@@ -1,39 +1,39 @@
 {
  "coef": {
-  "lrain48": 1.0365645655736826,
-  "lrain24": -0.19838671010175732,
-  "logit_risk": 0.5349409814312457,
-  "lake": -0.5931671526068929,
-  "lake_x_lrain48": -0.8969978927234851,
-  "doy_sin": -0.05595206832046946,
-  "doy_cos": 0.14569584761925217
+  "lrain48": 0.9604925361933025,
+  "lrain24": -0.22959102803236503,
+  "logit_risk": 0.5355620766097038,
+  "lake": -0.4569997282862072,
+  "lake_x_lrain48": -0.9462436954737918,
+  "doy_sin": -0.08137436072374099,
+  "doy_cos": 0.11381513653343737
  },
- "intercept": -2.727132581833374,
+ "intercept": -2.4938957958708396,
  "mean": {
-  "lrain48": 1.1489346294675065,
-  "lrain24": 0.6958343064994331,
-  "logit_risk": -4.335262384634088,
-  "lake": 0.45885714285714285,
-  "lake_x_lrain48": 0.6712353516289266,
-  "doy_sin": -0.15233229990222427,
-  "doy_cos": -0.7874012176102541
+  "lrain48": 1.1822243779487334,
+  "lrain24": 0.7432694946342667,
+  "logit_risk": -4.515933662281726,
+  "lake": 0.4140826873385013,
+  "lake_x_lrain48": 0.6606052079442187,
+  "doy_sin": -0.15439546709480154,
+  "doy_cos": -0.7890334747984327
  },
  "scale": {
-  "lrain48": 1.195630456652711,
-  "lrain24": 0.9693916016560464,
-  "logit_risk": 2.0297224343707825,
-  "lake": 0.4983043902135746,
-  "lake_x_lrain48": 1.1431777318906176,
-  "doy_sin": 0.5568858412487834,
-  "doy_cos": 0.21603785022311017
+  "lrain48": 1.2118455333371476,
+  "lrain24": 0.9985899767796647,
+  "logit_risk": 1.9463036693153264,
+  "lake": 0.4925629050030323,
+  "lake_x_lrain48": 1.159381928775701,
+  "doy_sin": 0.554395804717776,
+  "doy_cos": 0.21501978304197622
  },
  "meta": {
   "target": "E. coli > 900 cfu/100 ml",
-  "n_samples": 1750,
+  "n_samples": 1548,
   "n_sites": 32,
   "rain_source": "Open-Meteo archived forecast, lead 0 (48 h / 24 h to the sample time)",
+  "exposure_source": "replayed lead-0 exposure",
   "years": [
-   2023,
    2024,
    2025,
    2026
@@ -41,34 +41,53 @@
   "sites": "EA inland designated bathing waters with monitored overflows upstream",
   "loyo": {
    "climatology by type": {
-    "brier": 0.1054,
-    "auc": 0.648
+    "brier": 0.1162,
+    "auc": 0.62
    },
    "rain only": {
-    "brier": 0.0848,
-    "auc": 0.811
+    "brier": 0.093,
+    "auc": 0.799
    },
    "rain + season": {
-    "brier": 0.0853,
-    "auc": 0.818
+    "brier": 0.0935,
+    "auc": 0.805
    },
    "spill exposure only": {
-    "brier": 0.0916,
+    "brier": 0.0968,
     "auc": 0.801
    },
    "rain + spill exposure": {
-    "brier": 0.082,
-    "auc": 0.826
+    "brier": 0.0901,
+    "auc": 0.813
    },
    "rain + spill exposure + season (dipcast)": {
-    "brier": 0.0824,
-    "auc": 0.83
+    "brier": 0.0905,
+    "auc": 0.817
    }
   },
-  "base_rate": 0.1246,
+  "loso": {
+   "climatology by type": {
+    "brier": 0.1116,
+    "auc": 0.556
+   },
+   "rain only": {
+    "brier": 0.0918,
+    "auc": 0.791
+   },
+   "spill exposure only": {
+    "brier": 0.0961,
+    "auc": 0.804
+   },
+   "rain + spill exposure + season (dipcast)": {
+    "brier": 0.09,
+    "auc": 0.809
+   }
+  },
+  "base_rate": 0.137,
   "base_rate_by_type": {
-   "river": 0.2133,
-   "lake": 0.0199
-  }
+   "river": 0.2161,
+   "lake": 0.025
+  },
+  "validated_scope": "rivers, May-September; no ranking skill on lakes"
  }
 }

@@ -38,6 +38,8 @@ SITE = ROOT / "site"
 STATIC = ROOT / "src" / "dipcast" / "api" / "static"
 TEMPLATE = ROOT / "src" / "dipcast" / "site" / "index.html"
 KEEP_CONTRIBUTORS = 10
+MIN_OK_SHARE = 0.8        # fewer spots with a forecast than this and the build fails (no publish)
+MAX_NO_DATA_SHARE = 0.5   # more of today's forecasts without rainfall data than this: fail
 # The pages were written for the FastAPI routes; rewrite them for flat files.
 REWRITES = [('href="/verification"', 'href="verification.html"'), ('href="/terms"', 'href="terms.html"'),
             ('href="/privacy"', 'href="privacy.html"'), ('href="/"', 'href="index.html"'),
@@ -63,6 +65,32 @@ def prefetch_rain(spots: pd.DataFrame) -> None:
     log.info("rainfall prefetched: %d cells, %d rows, %.0fs", len(cells), len(df), time.time() - t0)
 
 
+class BuildUnhealthy(RuntimeError):
+    """Raised instead of publishing when most forecasts failed or lack data. The
+    workflow's deploy job depends on the build job, so this keeps the previous
+    site up rather than replacing it with a page of blanks."""
+
+
+def build_health(results: list[dict]) -> dict:
+    """Counts the workflow and the page use to judge a build; raises BuildUnhealthy
+    when the site should not be published."""
+    n = len(results)
+    # A spot the model cannot say anything about (an isolated lake, no river within
+    # reach) returns an explanation with an empty day list; that is an answer, not a
+    # failure. A failure is an exception in forecast_point, which leaves no `days`.
+    ok = [r for r in results if "days" in r]
+    with_days = [r for r in ok if r["days"]]
+    today_no_data = sum(1 for r in with_days if r["days"][0].get("data_status") == "rain unavailable")
+    health = {"spots": n, "forecast_ok": len(ok), "forecast_failed": n - len(ok),
+              "no_forecast_possible": len(ok) - len(with_days), "today_rain_unavailable": today_no_data,
+              "failed_spots": [r["name"] for r in results if "days" not in r][:20]}
+    if n and len(ok) < MIN_OK_SHARE * n:
+        raise BuildUnhealthy(f"only {len(ok)}/{n} spots got a forecast; not publishing")
+    if with_days and today_no_data > MAX_NO_DATA_SHARE * len(with_days):
+        raise BuildUnhealthy(f"{today_no_data}/{len(ok)} forecasts have no rainfall data for today; not publishing")
+    return health
+
+
 def build(refresh: bool = True) -> dict:
     t0 = time.time()
     if refresh:
@@ -82,9 +110,11 @@ def build(refresh: bool = True) -> dict:
         results.append({"id": r.id, "name": r.name, "kind": r.kind, "source": r.source, "notes": r.notes,
                         "lat": float(r.lat), "lon": float(r.lon), **f})
     generated = pd.Timestamp.now(tz="Europe/London")
+    health = build_health(results)   # raises before anything is written if the build is bad
     (SITE / "data").mkdir(parents=True, exist_ok=True)
     (SITE / "data" / "spots.json").write_text(json.dumps({
-        "generated_at": generated.isoformat(), "version": __version__, "n": len(results), "spots": results}, default=str))
+        "generated_at": generated.isoformat(), "version": __version__, "n": len(results), "build": health,
+        "spots": results}, default=str))
     (SITE / "data" / "overflows.geojson").write_text(json.dumps(overflows_geojson(limit=20000), default=str))
     (SITE / "data" / "verification.json").write_text(json.dumps(load_verification(), default=str))
     for name in ["verification.html", "terms.html", "privacy.html"]:
@@ -95,12 +125,15 @@ def build(refresh: bool = True) -> dict:
     shutil.copy(STATIC / "page.css", SITE / "page.css")
     (SITE / "index.html").write_text(TEMPLATE.read_text())
     (SITE / ".nojekyll").write_text("")
-    ok = sum(1 for r in results if "days" in r)
-    summary = {"spots": len(results), "forecast_ok": ok, "seconds": round(time.time() - t0, 1),
-               "generated_at": generated.isoformat()}
+    summary = {**health, "seconds": round(time.time() - t0, 1), "generated_at": generated.isoformat()}
+    summary.pop("failed_spots", None)
     log.info("site built: %s", summary)
     return summary
 
 
 if __name__ == "__main__":
-    print(build(refresh="--no-refresh" not in sys.argv))
+    try:
+        print(build(refresh="--no-refresh" not in sys.argv))
+    except BuildUnhealthy as e:
+        log.error("%s", e)
+        sys.exit(2)

@@ -18,8 +18,10 @@ from dipcast.model.features import ALL_FEATURES, build_site_days, daily_rain_fea
 from dipcast.model.spill_model import MODEL_PATH, SpillModel
 from dipcast.model.transport import (
     combine_daily,
+    history_days,
     live_now_risk,
     locate_pin,
+    missing_share,
     risk_label,
     river_velocity,
     upstream_overflows,
@@ -30,6 +32,8 @@ from dipcast.overflows import load_overflows
 log = logging.getLogger(__name__)
 
 LOCAL_TZ = "Europe/London"   # swimmers think in local days, not UTC days
+MAX_MISSING_SHARE = 0.1      # more transport weight than this from days without rain data: no figure
+ECOLI_SEASON_MONTHS = range(5, 10)   # the EA samples the model was fitted on run May-September
 
 
 import threading
@@ -87,9 +91,8 @@ def calibrate_by_lead(p: np.ndarray, first_lead: int) -> np.ndarray:
     out = p.copy()
     kmax = max(cal)
     for j in range(p.shape[1]):
-        k = first_lead + j
-        if k < 0:
-            continue
+        # Past days are analysis rain: the hindcast treats them as lead 0 (validate_ecoli.py).
+        k = max(first_lead + j, 0)
         out[:, j] = _apply(cal[min(k, kmax)], out[:, j])
     return out
 
@@ -128,10 +131,13 @@ def _clean(v):
     return v
 
 
-def spill_probabilities(ov: pd.DataFrame, days: pd.DatetimeIndex, model: SpillModel | None) -> np.ndarray:
-    """(n_overflows, n_days) probability each overflow spills on each day."""
+def spill_probabilities(ov: pd.DataFrame, days: pd.DatetimeIndex,
+                        model: SpillModel | None) -> tuple[np.ndarray, np.ndarray]:
+    """(n_overflows, n_days) probability each overflow spills on each day, and a
+    bool mask of the same shape: True where that overflow's cell has rainfall data
+    for the day. Where it has none the probability is NaN, never 0."""
     if ov.empty:
-        return np.zeros((0, len(days)))
+        return np.zeros((0, len(days))), np.zeros((0, len(days)), dtype=bool)
     cells = cells_for_sites(ov["lat"], ov["lon"])
     rain = fetch_forecast(cells)
     rain["time"] = rain["time"].dt.tz_convert(LOCAL_TZ)   # local-midnight day boundaries
@@ -140,14 +146,17 @@ def spill_probabilities(ov: pd.DataFrame, days: pd.DatetimeIndex, model: SpillMo
     sd = build_site_days(sites, daily, days)
     for f in ALL_FEATURES:
         sd[f] = sd[f].astype(np.float32)
+    sd["ok"] = sd["rain_d"].notna()
     if model is None:
         # Climatology from the annual returns: spill-days per year.
         p = (sd["lta_spills"].to_numpy() if "lta_spills" in sd else np.full(len(sd), 20.0)) / 365.0
         sd["p"] = np.clip(np.nan_to_num(p, nan=0.05), 0.001, 0.95)
     else:
         sd["p"] = model.predict(sd.fillna({f: 0.0 for f in ALL_FEATURES}))
+    sd.loc[~sd["ok"], "p"] = np.nan
     mat = sd.pivot(index="site_id", columns="day", values="p").reindex(index=ov["site_id"], columns=days)
-    return np.nan_to_num(mat.to_numpy(dtype=float), nan=0.0)
+    okm = sd.pivot(index="site_id", columns="day", values="ok").reindex(index=ov["site_id"], columns=days)
+    return mat.to_numpy(dtype=float), okm.fillna(False).to_numpy(dtype=bool)
 
 
 def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = config.MAX_UPSTREAM_KM,
@@ -208,22 +217,38 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
     now_risk, now_contrib = live_now_risk(ov, now)
     live_n = int(ov["has_live"].sum()) if not ov.empty else 0
 
-    days = pd.date_range(now.floor("D") - pd.Timedelta(days=1), periods=days_ahead + 2, freq="D")
-    p_raw = spill_probabilities(ov, days, model)
-    p = calibrate_by_lead(p_raw, first_lead=-1)   # column 0 is yesterday, column 1 is today (lead 0)
     weights = ov["weight"].to_numpy(dtype=float) if not ov.empty else np.zeros(0)
     travel = ov["travel_h"].to_numpy(dtype=float) if not ov.empty else np.zeros(0)
+    # The grid starts far enough back for the longest travel time (same rule as the
+    # hindcast), so today's risk includes spills that left distant overflows days ago.
+    hist = history_days(travel)
+    days = pd.date_range(now.floor("D") - pd.Timedelta(days=hist), periods=hist + days_ahead + 1, freq="D")
+    today_idx = hist
+    p_raw, avail = spill_probabilities(ov, days, model)
+    p = calibrate_by_lead(p_raw, first_lead=-hist)   # column `hist` is today (lead 0)
     risk = combine_daily(p, weights, travel)
+    # Share of today's transport weight that comes from days with no rainfall data.
+    missing = missing_share(avail, weights, travel)
+    risk = np.where(missing > MAX_MISSING_SHARE, np.nan, risk)
     # Expected number of spilling upstream overflows per day (unweighted), for context.
-    exp_spills = p.sum(axis=0) if len(p) else np.zeros(len(days))
+    exp_spills = np.nansum(p, axis=0) if len(p) else np.zeros(len(days))
+
+    def _status(j: int) -> str:
+        if missing[j] > MAX_MISSING_SHARE:
+            return "rain unavailable"
+        return "partial" if missing[j] > 0 else "ok"
 
     day_rows = []
     for j, d in enumerate(days):
         if d < now.floor("D"):
-            continue  # yesterday is only there to absorb travel-time shifts
+            continue  # earlier days are only there to absorb travel-time shifts
+        known = not np.isnan(risk[j])
         day_rows.append({
-            "date": d.date().isoformat(), "risk": round(float(risk[j]), 3),
-            "label": risk_label(float(risk[j])), "expected_spilling_overflows": round(float(exp_spills[j]), 1),
+            "date": d.date().isoformat(), "risk": round(float(risk[j]), 3) if known else None,
+            "label": risk_label(float(risk[j])) if known else "unknown",
+            "expected_spilling_overflows": round(float(exp_spills[j]), 1) if known else None,
+            "data_status": _status(j), "rain_missing_share": round(float(missing[j]), 3),
+            "in_validated_season": d.month in ECOLI_SEASON_MONTHS,
         })
 
     # E. coli exceedance: rain at the spot itself (not at the overflows) plus the day's exposure.
@@ -239,11 +264,23 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
             p_ec = em.predict(X)
             for row in day_rows:
                 j = days.get_loc(pd.Timestamp(row["date"], tz=LOCAL_TZ))
+                ok = not (np.isnan(r48[j]) or np.isnan(p_ec[j]))
                 row["rain_48h_mm"] = None if np.isnan(r48[j]) else round(float(r48[j]), 1)
-                row["p_ecoli_gt900"] = None if np.isnan(r48[j]) else round(float(p_ec[j]), 3)
+                row["p_ecoli_gt900"] = round(float(p_ec[j]), 3) if ok else None
+                if not ok and row["data_status"] == "ok":
+                    row["data_status"] = "rain unavailable"
             out["assumptions"]["ecoli_model"] = {"target": em.meta.get("target"), "fitted_on": em.meta.get("sites"),
                                                  "n_samples": em.meta.get("n_samples"), "loyo_brier": em.meta.get("loyo", {}).get(
                                                      "rain + spill exposure + season (dipcast)", {}).get("brier")}
+            # Where the E. coli figure has been checked: rivers, in the May-September sampling
+            # season, at designated bathing waters. Lakes showed no ranking skill.
+            out["ecoli_scope"] = {
+                "water_body_validated": pin.mode == "river",
+                "season_validated_months": [int(m) for m in ECOLI_SEASON_MONTHS],
+                "note": ("Not validated on lakes: no ranking skill in the fitting data (16 exceedances in 803 lake samples)."
+                         if pin.mode == "lake" else
+                         "Validated on Environment Agency river bathing waters, May-September; other sites and months are extrapolation."),
+            }
         except Exception as e:  # noqa: BLE001 - an optional layer must not fail the forecast
             log.warning("E. coli model skipped: %s", e)
 
@@ -258,13 +295,14 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
         "overflows": len(ov), "with_live_feed": live_n,
         "without_live_feed": int(len(ov) - live_n),
         "sum_weight": round(float(weights.sum()), 3),
+        "history_days": int(hist), "max_travel_h": round(float(travel.max()), 1) if len(travel) else 0.0,
     }
-    today_idx = 1
     contrib = []
     if not ov.empty:
         ov = ov.copy()
-        ov["p_today"] = p[:, today_idx] if p.shape[1] > today_idx else 0.0
-        ov["p_tomorrow"] = p[:, today_idx + 1] if p.shape[1] > today_idx + 1 else 0.0
+        p0 = np.nan_to_num(p, nan=0.0)
+        ov["p_today"] = p0[:, today_idx] if p0.shape[1] > today_idx else 0.0
+        ov["p_tomorrow"] = p0[:, today_idx + 1] if p0.shape[1] > today_idx + 1 else 0.0
         ov["now_contribution"] = now_contrib
         ov["impact_today"] = ov["weight"] * ov["p_today"]
         ov["relevance"] = np.maximum.reduce([
@@ -294,8 +332,9 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
     if log_to_store:
         try:
             from dipcast.forecast_log import log_forecast
-            log_forecast(now, lat, lon, pin.mode, pin.watercourse, now_risk, days, risk, ov, p_raw, p,
-                         p_ecoli=p_ec, rain_48h=r48)
+            log_forecast(now, lat, lon, pin.mode, pin.watercourse, now_risk, days, risk, ov,
+                         np.nan_to_num(p_raw, nan=0.0), np.nan_to_num(p, nan=0.0), p_ecoli=p_ec, rain_48h=r48,
+                         available=avail)
         except Exception as e:  # noqa: BLE001 - logging must never fail a forecast
             log.warning("forecast log failed: %s", e)
     return out

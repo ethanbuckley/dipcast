@@ -25,10 +25,17 @@ from scipy.stats import spearmanr
 from sklearn.metrics import roc_auc_score
 
 from dipcast import config
+from dipcast.model.ecoli import rain_windows
 from dipcast.model.features import ALL_FEATURES, build_site_days, daily_rain_features
 from dipcast.model.forecast import calibrate_at_lead
 from dipcast.model.spill_model import SpillModel
-from dipcast.model.transport import combine_daily, locate_pin, river_velocity, upstream_overflows
+from dipcast.model.transport import (
+    combine_daily,
+    history_days,
+    locate_pin,
+    river_velocity,
+    upstream_overflows,
+)
 from dipcast.network.rivers import RiverNetwork
 from dipcast.overflows import load_overflows
 
@@ -79,7 +86,7 @@ def main() -> None:
         sample_days = pd.DatetimeIndex(sorted(g["day"].unique()))
         p_by_day = {}
         if len(up):
-            lead_days = int(np.ceil(up["travel_h"].max() / 24.0)) + 1
+            lead_days = history_days(up["travel_h"])   # the same rule the live forecast uses
             days = pd.date_range(sample_days.min() - pd.Timedelta(days=lead_days), sample_days.max(), freq="D")
             sd = build_site_days(up[["site_id", "lat", "lon", "company", "lta_spills", "spill_hours", "edm_operational_pct"]],
                                  daily, days)
@@ -91,12 +98,10 @@ def main() -> None:
             w = up["weight"].to_numpy(dtype=float); tr = up["travel_h"].to_numpy(dtype=float)
             risk = pd.Series(combine_daily(pm, w, tr), index=days)
             p_by_day = risk.reindex(sample_days).to_dict()
-        for _, r in g.iterrows():
+        r48_all, r24_all = rain_windows(site_rain, pd.DatetimeIndex(g["sample_time"]))
+        for i, (_, r) in enumerate(g.iterrows()):
             t = r["sample_time"]
-            win = site_rain.loc[t - pd.Timedelta(hours=48): t]
-            rain_48 = float(win.sum()) if len(win) else np.nan
-            win24 = site_rain.loc[t - pd.Timedelta(hours=24): t]
-            rain_24 = float(win24.sum()) if len(win24) else np.nan
+            rain_48, rain_24 = float(r48_all[i]), float(r24_all[i])   # NaN unless the window is covered
             risk_model = float(p_by_day.get(r["day"], 0.0)) if len(up) else 0.0
             # Observed-spill exposure (event history only covers United Utilities).
             risk_obs = np.nan

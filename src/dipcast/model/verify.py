@@ -11,7 +11,7 @@ def scores(y: np.ndarray, p: np.ndarray) -> dict[str, float]:
     p = np.clip(p, 1e-6, 1 - 1e-6)
     return {
         "brier": float(brier_score_loss(y, p)),
-        "log_loss": float(log_loss(y, p)),
+        "log_loss": float(log_loss(y, p, labels=[0, 1])),   # a dry spell may hold a single class
         "auc": float(roc_auc_score(y, p)) if 0 < y.mean() < 1 else float("nan"),
         "base_rate": float(y.mean()),
         "n": len(y),

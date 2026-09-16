@@ -1,0 +1,214 @@
+"""Tests for the 16 Sep 2026 reliability fixes: missing rain is unknown, not dry;
+forecasts are scored as of a decision time and only where the overflow was
+observed; a forecast issued after a sample does not count; the live forecast
+looks back far enough for the longest travel time; a mostly-failed build does
+not publish."""
+
+from datetime import date
+
+import numpy as np
+import pandas as pd
+import pytest
+
+TZ = "Europe/London"
+
+
+# ---------------------------------------------------------------- missing rain
+def _hourly(values, start="2025-06-01", n=None):
+    n = n or len(values)
+    t = pd.date_range(start, periods=n, freq="h", tz=TZ)
+    return pd.Series(values, index=t, dtype=float)
+
+
+def test_rain_windows_all_nan_is_unknown_not_zero():
+    from dipcast.model.ecoli import rain_windows
+    hourly = _hourly([np.nan] * 96)
+    ends = pd.DatetimeIndex([pd.Timestamp("2025-06-03 12:00", tz=TZ)])
+    r48, r24 = rain_windows(hourly, ends)
+    assert np.isnan(r48[0]) and np.isnan(r24[0])
+
+
+def test_rain_windows_partial_coverage_and_boundaries():
+    from dipcast.model.ecoli import rain_windows
+    vals = np.ones(96)
+    hourly = _hourly(vals)
+    t = pd.Timestamp("2025-06-03 12:00", tz=TZ)
+    r48, r24 = rain_windows(hourly, pd.DatetimeIndex([t]))
+    assert r48[0] == 49.0 and r24[0] == 25.0          # closed window: 49 and 25 hour stamps
+    # 8 of the 49 hours missing (84% coverage) -> unknown; 3 missing (94%) -> a total
+    gappy = hourly.copy(); gappy.iloc[40:48] = np.nan
+    assert np.isnan(rain_windows(gappy, pd.DatetimeIndex([t]))[0][0])
+    gappy = hourly.copy(); gappy.iloc[40:43] = np.nan
+    assert rain_windows(gappy, pd.DatetimeIndex([t]))[0][0] == 46.0
+    # a window that starts before the series does is not covered
+    early = pd.Timestamp("2025-06-02 06:00", tz=TZ)   # only 30 h of data before it
+    r48, r24 = rain_windows(hourly, pd.DatetimeIndex([early]))
+    assert np.isnan(r48[0]) and r24[0] == 25.0
+    # a window ending after the series is not covered either
+    late = pd.Timestamp("2025-06-05 12:00", tz=TZ)
+    assert np.isnan(rain_windows(hourly, pd.DatetimeIndex([late]))[1][0])
+
+
+def test_rain_windows_duplicates_and_off_hour_sample_time():
+    from dipcast.model.ecoli import rain_windows
+    hourly = _hourly(np.ones(96))
+    dup = pd.concat([hourly, hourly.iloc[:60]])   # duplicated stamps must not double-count
+    t = pd.Timestamp("2025-06-03 10:37", tz=TZ)          # EA samples are not on the hour
+    r48, r24 = rain_windows(dup, pd.DatetimeIndex([t]))
+    assert r48[0] == 49.0 and r24[0] == 25.0
+
+
+def test_daily_rain_features_short_day_is_nan():
+    from dipcast.model.features import daily_rain_features
+    t = pd.date_range("2025-01-01", periods=24 * 3, freq="h", tz="UTC")
+    p = np.ones(len(t)); p[24:24 + 10] = np.nan       # day 2 has only 14 finite hours
+    df = pd.DataFrame({"cell_lat": 54.2, "cell_lon": -2.6, "time": t, "precip_mm": p})
+    d = daily_rain_features(df).set_index("day")
+    assert d.loc["2025-01-01", "rain_d"] == 24.0
+    assert np.isnan(d.loc["2025-01-02", "rain_d"]) and np.isnan(d.loc["2025-01-02", "max3h_d"])
+    assert d.loc["2025-01-03", "rain_d"] == 24.0 and np.isnan(d.loc["2025-01-03", "rain_d1"])
+
+
+# ---------------------------------------------------------------- transport history
+def test_history_window_covers_travel_time():
+    from dipcast.model.transport import combine_daily, history_days, missing_share
+    # The review's example: 48 h travel, constant spill probability. With the grid
+    # starting only yesterday, today has no contribution; with the shared history
+    # rule it does.
+    travel = np.array([48.0]); w = np.array([0.5]); p_const = 0.4
+    days_short = 1
+    r = combine_daily(np.full((1, days_short + 5), p_const), w, travel)
+    assert r[days_short] == 0.0
+    hist = history_days(travel)
+    assert hist == 3
+    r = combine_daily(np.full((1, hist + 5), p_const), w, travel)
+    assert abs(r[hist] - 0.2) < 1e-9
+    assert history_days(np.array([])) == 1 and history_days(None) == 1
+    # missing_share follows the same shift: a missing source day two days back hits today
+    avail = np.ones((1, hist + 5), dtype=bool); avail[0, hist - 2] = False
+    ms = missing_share(avail, w, travel)
+    assert ms[hist] == 1.0 and ms[hist + 1] == 0.0
+
+
+# ---------------------------------------------------------------- live scoring
+def _state(tmp_path, monkeypatch):
+    """Point both the state directory and its read fallback at an empty temp dir."""
+    from dipcast import config
+    monkeypatch.setattr(config, "STATE", tmp_path)
+    monkeypatch.setattr(config, "PROCESSED", tmp_path)
+    monkeypatch.setattr(config, "DUCKDB_PATH", tmp_path / "t.duckdb")
+    return config
+
+
+def _log(fl, issued, days, ov, p):
+    fl.log_forecast(issued, 54.0, -2.0, "river", "R", 0.1, days, np.full(len(days), 0.1), ov,
+                    np.full((len(ov), len(days)), p), np.full((len(ov), len(days)), p))
+
+
+def test_verify_live_uses_decision_time_and_coverage(tmp_path, monkeypatch):
+    _state(tmp_path, monkeypatch)
+    from dipcast import forecast_log as fl
+    ov = pd.DataFrame({"site_id": ["A", "B"], "has_live": [True, True], "weight": [0.5, 0.5]})
+    days = pd.date_range("2026-09-13", periods=3, freq="D", tz=TZ)     # yesterday, today (14th), tomorrow
+    # Two issues on the 14th: one before the 08:00 decision time, one late at night.
+    _log(fl, pd.Timestamp("2026-09-14 07:30", tz=TZ), days, ov, 0.3)
+    _log(fl, pd.Timestamp("2026-09-14 23:00", tz=TZ), days, ov, 0.9)
+    hist = pd.DataFrame({"site_id": ["A", "B"], "company": ["X", "X"], "status": [0, 0],
+                         "status_start": pd.to_datetime(["2026-09-01", "2026-09-01"], utc=True),
+                         "latest_event_start": pd.to_datetime([None, None], utc=True),
+                         "latest_event_end": pd.to_datetime([None, None], utc=True),
+                         "fetched_at": pd.to_datetime(["2026-09-14 12:00", "2026-09-14 12:00"], utc=True)})
+    hist.to_parquet(tmp_path / "live_history.parquet", index=False)
+    # Coverage: A was observed 10 times on the 14th, 8 on the 15th and once on the 16th; B only twice.
+    cov = pd.DataFrame({"site_id": ["A", "A", "A", "B"],
+                        "day": pd.to_datetime(["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-14"]),
+                        "n_known": [10, 8, 1, 2], "n_unknown": [0, 0, 0, 0]})
+    cov.to_parquet(tmp_path / fl.COVERAGE_FILE, index=False)
+    monkeypatch.setattr(fl, "verify_ecoli", lambda as_of: {"n_scored": 0})
+    out = fl.verify_live(as_of=date(2026, 9, 16))
+    # A is scored for the 14th and 15th (lead 0 and 1) with the 07:30 forecast (0.3); B is not covered.
+    assert out["n_candidates"] == 4 and out["n_uncovered"] == 2 and out["n_scored"] == 2
+    assert out["share_issued_by_decision_hour"] == 1.0
+    assert abs(out["overall"]["calibrated"]["brier"] - 0.09) < 1e-9     # (0.3 - 0)^2, not (0.9 - 0)^2
+    assert {r["lead"] for r in out["by_lead"]} == {0, 1} and out["in_advance"]["n"] == 1
+
+
+def test_verify_live_scores_nothing_without_coverage(tmp_path, monkeypatch):
+    _state(tmp_path, monkeypatch)
+    from dipcast import forecast_log as fl
+    ov = pd.DataFrame({"site_id": ["A"], "has_live": [True], "weight": [0.5]})
+    days = pd.date_range("2026-09-13", periods=3, freq="D", tz=TZ)
+    _log(fl, pd.Timestamp("2026-09-14 07:30", tz=TZ), days, ov, 0.3)
+    hist = pd.DataFrame({"site_id": ["A"], "company": ["X"], "status": [0],
+                         "status_start": pd.to_datetime(["2026-09-01"], utc=True),
+                         "latest_event_start": pd.to_datetime([None], utc=True),
+                         "latest_event_end": pd.to_datetime([None], utc=True),
+                         "fetched_at": pd.to_datetime(["2026-09-14 12:00"], utc=True)})
+    hist.to_parquet(tmp_path / "live_history.parquet", index=False)
+    monkeypatch.setattr(fl, "verify_ecoli", lambda as_of: {"n_scored": 0})
+    out = fl.verify_live(as_of=date(2026, 9, 16))
+    assert out["n_candidates"] == 2 and out["n_scored"] == 0 and out["n_uncovered"] == 2
+
+
+def test_verify_ecoli_ignores_forecasts_issued_after_the_sample(tmp_path, monkeypatch):
+    import json
+    config = _state(tmp_path, monkeypatch)
+    from dipcast import forecast_log as fl
+    s = json.loads((config.RAW / "bathing_waters_inland.json").read_text())[0]
+    days = pd.date_range("2026-09-09", periods=3, freq="D", tz=TZ)
+    for issued, p in ((pd.Timestamp("2026-09-10 07:00", tz=TZ), 0.6), (pd.Timestamp("2026-09-10 15:00", tz=TZ), 0.95)):
+        fl.log_forecast(issued, round(s["lat"], 5), round(s["lon"], 5), "river", "R", 0.1, days, np.array([0.1, 0.2, 0.3]),
+                        pd.DataFrame(), np.zeros((0, 3)), np.zeros((0, 3)),
+                        p_ecoli=np.array([np.nan, p, p / 2]), rain_48h=np.array([np.nan, 12.0, 3.0]))
+    samples = pd.DataFrame({"bw_id": [s["id"]], "name": s["name"], "kind": s["kind"],
+                            "sample_time": pd.to_datetime(["2026-09-10 11:00"]).tz_localize(TZ), "ecoli": [1500]})
+    samples.to_parquet(tmp_path / fl.ECOLI_SAMPLES, index=False)
+    out = fl.verify_ecoli(as_of=date(2026, 9, 12))
+    assert out["n_scored"] == 1 and out["n_issued_after_sample"] == 1
+    assert abs(out["by_lead"][0]["brier"] - 0.16) < 1e-9      # 07:00 forecast 0.6 scored, 15:00 forecast 0.95 not
+
+
+def test_save_live_accumulates_coverage(tmp_path, monkeypatch):
+    config = _state(tmp_path, monkeypatch)
+    from dipcast.ingest import live
+    monkeypatch.setattr(config, "LIVE_FEEDS", {"X": "u"})
+
+    def poll(ts, statuses):
+        return pd.DataFrame({"site_id": ["A", "B"], "company": "X", "status": statuses,
+                             "status_start": pd.Timestamp("2026-09-01", tz="UTC"), "latest_event_start": pd.NaT,
+                             "latest_event_end": pd.NaT, "lat": 54.0, "lon": -2.0, "receiving_watercourse": "r",
+                             "last_updated": pd.Timestamp(ts, tz="UTC"), "fetched_at": pd.Timestamp(ts, tz="UTC")})
+    live.save_live(poll("2026-09-14 06:00", [0, -1]))
+    live.save_live(poll("2026-09-14 07:00", [0, 0]))
+    live.save_live(poll("2026-09-15 06:00", [1, 0]))
+    cov = pd.read_parquet(tmp_path / live.COVERAGE_FILE)
+    cov["day"] = pd.to_datetime(cov["day"]).dt.date
+    a14 = cov[(cov.site_id == "A") & (cov.day == date(2026, 9, 14))].iloc[0]
+    b14 = cov[(cov.site_id == "B") & (cov.day == date(2026, 9, 14))].iloc[0]
+    assert a14.n_known == 2 and b14.n_known == 1 and b14.n_unknown == 1
+    hist = pd.read_parquet(tmp_path / "live_history.parquet")
+    assert len(hist) == 4     # the event log keeps one row per (site, status, status_start); observations live in coverage
+    pl = pd.read_parquet(tmp_path / live.POLL_LOG_FILE)
+    assert len(pl) == 3 and pl.n_rows.tolist() == [2, 2, 2]
+    from dipcast.forecast_log import covered_site_days
+    ok = covered_site_days(cov, min_known=2)
+    assert ok[["site_id", "day"]].values.tolist() == [["A", date(2026, 9, 14)]]
+
+
+# ---------------------------------------------------------------- build guard
+def test_build_health_refuses_mostly_failed_builds():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    from build_site import BuildUnhealthy, build_health
+    good = {"name": "ok", "days": [{"data_status": "ok"}]}
+    bad = {"name": "bad", "error": "forecast failed"}
+    isolated = {"name": "tarn", "error": "An isolated lake", "days": []}   # an answer, not a failure
+    h = build_health([good] * 8 + [isolated] + [bad])
+    assert h["forecast_ok"] == 9 and h["forecast_failed"] == 1 and h["failed_spots"] == ["bad"]
+    assert h["no_forecast_possible"] == 1
+    with pytest.raises(BuildUnhealthy):
+        build_health([good] * 7 + [bad] * 3)
+    nodata = {"name": "nd", "days": [{"data_status": "rain unavailable"}]}
+    with pytest.raises(BuildUnhealthy):
+        build_health([good] * 4 + [nodata] * 6)

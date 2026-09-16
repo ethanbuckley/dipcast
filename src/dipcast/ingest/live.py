@@ -61,6 +61,58 @@ def fetch_live(companies: dict[str, str] | None = None) -> pd.DataFrame:
     return df[COLS]
 
 
+LOCAL_TZ = "Europe/London"
+COVERAGE_FILE = "live_coverage.parquet"
+POLL_LOG_FILE = "poll_log.parquet"
+
+
+def coverage_rows(df: pd.DataFrame) -> pd.DataFrame:
+    """One row per overflow for this poll: its local day and whether the status was
+    known (0 or 1) or unknown (offline, missing). Summed over polls this becomes the
+    per-overflow daily observation count that the live scorer needs before it may
+    treat an unmatched day as 'no spill'."""
+    if df.empty:
+        return pd.DataFrame(columns=["site_id", "day", "n_known", "n_unknown"])
+    day = pd.to_datetime(df["fetched_at"], utc=True).dt.tz_convert(LOCAL_TZ).dt.date
+    known = df["status"].isin([0, 1])
+    return pd.DataFrame({"site_id": df["site_id"].astype(str).to_numpy(), "day": day.to_numpy(),
+                         "n_known": known.astype(int).to_numpy(), "n_unknown": (~known).astype(int).to_numpy()})
+
+
+def update_coverage(df: pd.DataFrame) -> pd.DataFrame:
+    """Add this poll to live_coverage.parquet (site_id, day, n_known, n_unknown) and
+    return the merged table. Compact: one row per overflow per day."""
+    new = coverage_rows(df)
+    p = config.state_read(COVERAGE_FILE)
+    if p.exists():
+        old = pd.read_parquet(p)
+        old["day"] = pd.to_datetime(old["day"]).dt.date
+        new = pd.concat([old, new], ignore_index=True)
+    cov = new.groupby(["site_id", "day"], as_index=False)[["n_known", "n_unknown"]].sum()
+    cov["day"] = pd.to_datetime(cov["day"])
+    write_parquet(cov, config.state_write(COVERAGE_FILE))
+    return cov
+
+
+def log_poll(df: pd.DataFrame, feeds: dict[str, str] | None = None) -> None:
+    """Append one row per company per poll: rows returned and how many had a known
+    status. A company absent from a poll (feed failure) appears with zero rows, so
+    feed outages are visible afterwards."""
+    fetched = df["fetched_at"].iloc[0] if len(df) else pd.Timestamp.now(tz="UTC")
+    companies = list((feeds or config.LIVE_FEEDS).keys())
+    g = df.groupby("company") if len(df) else None
+    rows = []
+    for c in companies:
+        sub = g.get_group(c) if g is not None and c in g.groups else df.iloc[0:0]
+        rows.append({"fetched_at": fetched, "company": c, "n_rows": len(sub),
+                     "n_known": int(sub["status"].isin([0, 1]).sum()) if len(sub) else 0})
+    new = pd.DataFrame(rows)
+    p = config.state_read(POLL_LOG_FILE)
+    if p.exists():
+        new = pd.concat([pd.read_parquet(p), new], ignore_index=True)
+    write_parquet(new, config.state_write(POLL_LOG_FILE))
+
+
 def save_live(df: pd.DataFrame) -> None:
     write_parquet(df, config.state_write("live_latest.parquet"))
     hist_read = config.state_read("live_history.parquet")
@@ -69,8 +121,12 @@ def save_live(df: pd.DataFrame) -> None:
     if hist_read.exists():
         old = pd.read_parquet(hist_read)
         keep = pd.concat([old, keep], ignore_index=True)
+    # The history keeps one row per distinct (site, status, status_start): an event
+    # log, not an observation log. Observation counts live in the coverage file.
     keep = keep.drop_duplicates(subset=["site_id", "status", "status_start"], keep="last")
     write_parquet(keep, config.state_write("live_history.parquet"))
+    update_coverage(df)
+    log_poll(df)
 
 
 if __name__ == "__main__":

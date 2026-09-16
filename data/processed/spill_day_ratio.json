@@ -1,0 +1,30 @@
+{
+ "spill_days_per_spill": 1.004,
+ "median_site_year_ratio": 1.0,
+ "site_years": 5886,
+ "years": [
+  2023,
+  2024,
+  2025
+ ],
+ "company": "United Utilities",
+ "by_annual_count": {
+  "0-5": {
+   "site_years": 1117,
+   "ratio": 1.092
+  },
+  "5-20": {
+   "site_years": 1388,
+   "ratio": 1.048
+  },
+  "20-50": {
+   "site_years": 1587,
+   "ratio": 1.019
+  },
+  "50-10000": {
+   "site_years": 1794,
+   "ratio": 0.993
+  }
+ },
+ "note": "spill-days from event history (features.spill_days) over the annual-return spill count, per site-year, pooled"
+}

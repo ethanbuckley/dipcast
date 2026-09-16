@@ -341,24 +341,54 @@ def upstream_overflows(net: RiverNetwork, pin: PinLocation, overflows: pd.DataFr
     return ov.sort_values("weight", ascending=False).reset_index(drop=True)
 
 
-def combine_daily(p: np.ndarray, weights: np.ndarray, travel_h: np.ndarray) -> np.ndarray:
-    """p: (n_overflows, n_days) spill probabilities by overflow and spill day.
-    Returns risk per day at the spot, shifting each overflow's effect by its travel time."""
+def history_days(travel_h: np.ndarray | pd.Series | None) -> int:
+    """How many days before the first day of interest the spill grid must start so
+    that every upstream overflow's travel time is covered: ceil(max travel / 24 h) + 1.
+    Shared by the hindcast (validate_ecoli.py) and the live forecast so the two
+    cannot drift apart. (The live forecast started only at yesterday until
+    16 Sep 2026, so a 48 h travel time contributed nothing to today.)"""
+    if travel_h is None or len(travel_h) == 0:
+        return 1
+    mx = float(np.nanmax(np.asarray(travel_h, dtype=float)))
+    return max(1, int(np.ceil(mx / 24.0)) + 1)
+
+
+def shift_by_travel(p: np.ndarray, travel_h: np.ndarray) -> np.ndarray:
+    """Move each overflow's daily values later by its travel time, splitting a
+    fractional day between two arrival days. p: (n_overflows, n_days)."""
     n, d = p.shape
-    if n == 0:
-        return np.zeros(d)
-    shift = travel_h / 24.0
+    shift = np.asarray(travel_h, dtype=float) / 24.0
     k = np.floor(shift).astype(int)
     a = shift - k
-    eff = np.zeros_like(p)
+    eff = np.zeros_like(p, dtype=float)
     for i in range(n):
         for j in range(d):
             if j + k[i] < d:
                 eff[i, j + k[i]] += (1 - a[i]) * p[i, j]
             if j + k[i] + 1 < d:
                 eff[i, j + k[i] + 1] += a[i] * p[i, j]
-    eff = np.clip(eff, 0, 1) * weights[:, None]
+    return eff
+
+
+def combine_daily(p: np.ndarray, weights: np.ndarray, travel_h: np.ndarray) -> np.ndarray:
+    """p: (n_overflows, n_days) spill probabilities by overflow and spill day.
+    Returns risk per day at the spot, shifting each overflow's effect by its travel time."""
+    n, d = p.shape
+    if n == 0:
+        return np.zeros(d)
+    eff = np.clip(shift_by_travel(np.nan_to_num(p, nan=0.0), travel_h), 0, 1) * weights[:, None]
     return 1.0 - np.prod(1.0 - eff, axis=0)
+
+
+def missing_share(available: np.ndarray, weights: np.ndarray, travel_h: np.ndarray) -> np.ndarray:
+    """Per arrival day, the share of transport weight whose source day has no
+    rainfall data (`available` is a bool (n_overflows, n_days) mask). Days with a
+    large share get no risk figure rather than one computed as if it were dry."""
+    n, d = available.shape
+    if n == 0 or weights.sum() <= 0:
+        return np.zeros(d)
+    miss = shift_by_travel((~available).astype(float), travel_h) * weights[:, None]
+    return np.clip(miss.sum(axis=0) / weights.sum(), 0, 1)
 
 
 def live_now_risk(ov: pd.DataFrame, now: pd.Timestamp, recent_h: float = config.RECENT_SPILL_HOURS,

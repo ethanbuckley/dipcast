@@ -19,6 +19,7 @@ from dipcast.ingest.rainfall import grid_cell
 log = logging.getLogger(__name__)
 
 API_DECAY = 0.85  # daily decay of the antecedent precipitation index
+MIN_HOURS_PER_DAY = 20  # fewer finite hourly values than this and the day's rain is unknown (NaN)
 
 RAIN_FEATURES = [
     "rain_d", "rain_d1", "rain_d2", "rain_3d", "rain_7d", "rain_30d",
@@ -38,15 +39,22 @@ def daily_rain_features(rain_hourly: pd.DataFrame) -> pd.DataFrame:
     df = rain_hourly.copy()
     df["day"] = df["time"].dt.floor("D")
     df = df.sort_values(["cell_lat", "cell_lon", "time"])
+    df = df[~df.duplicated(["cell_lat", "cell_lon", "time"], keep="last")]
+    df["precip_mm"] = pd.to_numeric(df["precip_mm"], errors="coerce").astype(float)
+    df["ok"] = np.isfinite(df["precip_mm"])
     g = df.groupby(["cell_lat", "cell_lon"], sort=False)
     df["r3"] = g["precip_mm"].transform(lambda s: s.rolling(3, min_periods=1).sum())
     df["r6"] = g["precip_mm"].transform(lambda s: s.rolling(6, min_periods=1).sum())
     daily = (
         df.groupby(["cell_lat", "cell_lon", "day"], sort=True)
         .agg(rain_d=("precip_mm", "sum"), max1h_d=("precip_mm", "max"),
-             max3h_d=("r3", "max"), max6h_d=("r6", "max"), n_hours=("precip_mm", "size"))
+             max3h_d=("r3", "max"), max6h_d=("r6", "max"), n_hours=("ok", "sum"))
         .reset_index()
     )
+    # A day with too few finite hours (a null-filled forecast, a truncated series, a
+    # partial day at the edge of the pull) has an unknown total, not a dry one.
+    short = daily["n_hours"] < MIN_HOURS_PER_DAY
+    daily.loc[short, ["rain_d", "max1h_d", "max3h_d", "max6h_d"]] = np.nan
     out = []
     for (cl, cn), d in daily.groupby(["cell_lat", "cell_lon"], sort=False):
         d = d.set_index("day").asfreq("D")  # fill missing days with NaN rows

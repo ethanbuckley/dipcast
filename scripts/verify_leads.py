@@ -116,9 +116,19 @@ def main() -> None:
         knots_y = iso.predict(grid)
         pi = np.interp(pk[ok], grid, knots_y)
         si = scores(y[ok], pi); rows.append({"source": f"forecast lead {k}, isotonic-calibrated", **si})
+        # Fitting and scoring the map on the same year is optimistic. Cross-fit by
+        # month parity: calibrate on odd months, score even months, and the reverse,
+        # so every scored day is calibrated by a map that never saw its month.
+        month = dfk.loc[ok, "day"].dt.month.to_numpy()
+        pcf = np.full(ok.sum(), np.nan)
+        for parity in (0, 1):
+            fit_m, sc_m = month % 2 != parity, month % 2 == parity
+            iso_cf = IsotonicRegression(y_min=0.001, y_max=0.99, out_of_bounds="clip").fit(pk[ok][fit_m], y[ok][fit_m])
+            pcf[sc_m] = iso_cf.predict(pk[ok][sc_m])
+        scf = scores(y[ok], pcf); rows.append({"source": f"forecast lead {k}, isotonic cross-fitted (odd/even months)", **scf})
         calib[str(k)] = {"a": a, "b": b, "brier_before": s["brier"], "brier_after": sc["brier"],
                          "iso_x": [round(float(v), 5) for v in grid], "iso_y": [round(float(v), 5) for v in knots_y],
-                         "brier_isotonic": si["brier"]}
+                         "brier_isotonic": si["brier"], "brier_isotonic_crossfit": scf["brier"]}
         if k in (0, 2):
             print(f"\n--- reliability, lead {k} (raw) ---")
             print(reliability_table(y[ok], pk[ok]).round(3).to_string())
