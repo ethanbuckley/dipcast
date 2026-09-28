@@ -147,6 +147,39 @@ def test_verify_live_uses_decision_time_and_coverage(tmp_path, monkeypatch):
     assert out["by_version"][0]["version"] == "v-test" and out["by_version"][0]["n"] == 2
 
 
+def test_verify_live_reports_level_by_company_and_rain(tmp_path, monkeypatch):
+    _state(tmp_path, monkeypatch)
+    from dipcast import forecast_log as fl
+    ov = pd.DataFrame({"site_id": ["A", "B"], "has_live": [True, True], "weight": [0.5, 0.5]})
+    days = pd.date_range("2026-09-13", periods=3, freq="D", tz=TZ)
+    rain = np.array([[0.0, 0.2, 12.0], [0.0, 3.0, np.nan]])     # B's rain for the 15th is missing
+    fl.log_forecast(pd.Timestamp("2026-09-14 07:30", tz=TZ), 54.0, -2.0, "river", "R", 0.1, days, np.full(3, 0.1), ov,
+                    np.full((2, 3), 0.4), np.full((2, 3), 0.4), version="v-test", rain_mm=rain)
+    hist = pd.DataFrame({"site_id": ["A", "B"], "company": ["X", "Y"], "status": [0, 0],
+                         "status_start": pd.to_datetime(["2026-09-01", "2026-09-01"], utc=True),
+                         "latest_event_start": pd.to_datetime(["2026-09-14 10:00", None], utc=True),
+                         "latest_event_end": pd.to_datetime(["2026-09-14 12:00", None], utc=True),
+                         "fetched_at": pd.to_datetime(["2026-09-14 13:00", "2026-09-14 13:00"], utc=True)})
+    hist.to_parquet(tmp_path / "live_history.parquet", index=False)
+    pd.DataFrame({"site_id": ["A", "B"], "company": ["X", "Y"], "lta_spills": [36.5, 36.5]}).to_parquet(
+        tmp_path / "overflows.parquet", index=False)
+    every2h = _mask(range(0, 24, 2))
+    pd.DataFrame({"site_id": ["A", "A", "A", "B", "B", "B"],
+                  "day": pd.to_datetime(["2026-09-14", "2026-09-15", "2026-09-16"] * 2),
+                  "n_known": 12, "n_unknown": 0, "n_stale": 0, "slots": every2h}).to_parquet(tmp_path / fl.COVERAGE_FILE, index=False)
+    monkeypatch.setattr(fl, "verify_ecoli", lambda as_of: {"n_scored": 0})
+    out = fl.verify_live(as_of=date(2026, 9, 16))
+    # A spilled on the 14th; A on the 15th and B on both days did not. Every forecast was 0.4.
+    assert out["n_scored"] == 4 and abs(out["overall"]["mean_forecast"] - 0.4) < 1e-9
+    assert abs(out["overall"]["period_base_rate_brier"] - 0.1875) < 1e-9     # flat 0.25 against y = 1, 0, 0, 0
+    comp = {r["company"]: r for r in out["by_company"]}
+    assert comp["X"]["n_spill_days"] == 1 and abs(comp["X"]["flat_brier"] - 0.25) < 1e-9
+    assert comp["Y"]["n_spill_days"] == 0 and comp["Y"]["flat_brier"] == 0.0 and abs(comp["Y"]["mean_forecast"] - 0.4) < 1e-9
+    bands = {r["band"]: r for r in out["by_rain"]}
+    assert set(bands) == {"under 1 mm", "1-5 mm", "10 mm or more"} and out["n_rain_unlogged"] == 1
+    assert bands["under 1 mm"]["base_rate"] == 1.0 and bands["1-5 mm"]["base_rate"] == 0.0 and bands["10 mm or more"]["n"] == 1
+
+
 def test_verify_live_missed_deadline_is_reported_not_scored(tmp_path, monkeypatch):
     _state(tmp_path, monkeypatch)
     from dipcast import forecast_log as fl

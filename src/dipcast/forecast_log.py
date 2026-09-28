@@ -60,6 +60,8 @@ MAX_GAP_H = 6.0           # longest unobserved stretch allowed on a scored day
 STRICT_GAP_H = 3.0        # the stricter rule reported alongside, for sensitivity
 COVERAGE_FILE = "live_coverage.parquet"
 SLOTS_PER_DAY = 48
+RAIN_BANDS = [0.0, 1.0, 5.0, 10.0, np.inf]   # target-day rain at the overflow's cell, mm
+RAIN_BAND_LABELS = ["under 1 mm", "1-5 mm", "5-10 mm", "10 mm or more"]
 
 
 def _conn() -> duckdb.DuckDBPyConnection:
@@ -82,6 +84,8 @@ def _conn() -> duckdb.DuckDBPyConnection:
     # Added 17 Sep 2026: which models and code produced the forecast.
     con.execute("ALTER TABLE forecast_points ADD COLUMN IF NOT EXISTS version VARCHAR")
     con.execute("ALTER TABLE forecast_overflows ADD COLUMN IF NOT EXISTS version VARCHAR")
+    # Added 28 Sep 2026: the target day's rain (mm) at the overflow's cell that the forecast used.
+    con.execute("ALTER TABLE forecast_overflows ADD COLUMN IF NOT EXISTS rain_mm DOUBLE")
     return con
 
 
@@ -89,10 +93,12 @@ def log_forecast(issued_at: pd.Timestamp, lat: float, lon: float, mode: str, wat
                  now_risk: float, days: pd.DatetimeIndex, risk: np.ndarray,
                  ov: pd.DataFrame, p_raw: np.ndarray, p_cal: np.ndarray,
                  p_ecoli: np.ndarray | None = None, rain_48h: np.ndarray | None = None,
-                 available: np.ndarray | None = None, version: str | None = None) -> None:
+                 available: np.ndarray | None = None, version: str | None = None,
+                 rain_mm: np.ndarray | None = None) -> None:
     """Append one forecast. `days` may start before today (history for travel time);
     only leads >= 0 are logged. `p_ecoli` and `rain_48h` are aligned with `days` (NaN
-    where unavailable); `available` is the (n_overflows, n_days) rain-data mask."""
+    where unavailable); `available` is the (n_overflows, n_days) rain-data mask and
+    `rain_mm` the day's rain at each overflow's cell, same shape."""
     issue_day = issued_at.tz_convert(LOCAL_TZ).date()
     pts, rows = [], []
 
@@ -110,14 +116,15 @@ def log_forecast(issued_at: pd.Timestamp, lat: float, lon: float, mode: str, wat
         if len(ov):
             for i, sid in enumerate(ov["site_id"].to_numpy()):
                 ok = True if available is None else bool(available[i, j])
+                rain = None if rain_mm is None or np.isnan(rain_mm[i, j]) else float(rain_mm[i, j])
                 rows.append((issued_at, issue_day, lat, lon, str(sid), bool(ov["has_live"].iloc[i]),
-                             d.date(), lead, float(p_raw[i, j]), float(p_cal[i, j]), float(ov["weight"].iloc[i]), ok, version))
+                             d.date(), lead, float(p_raw[i, j]), float(p_cal[i, j]), float(ov["weight"].iloc[i]), ok, version, rain))
     with _LOCK:
         con = _conn()
         try:
             con.executemany("INSERT INTO forecast_points VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", pts)
             if rows:
-                con.executemany("INSERT INTO forecast_overflows VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
+                con.executemany("INSERT INTO forecast_overflows VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", rows)
         finally:
             con.close()
 
@@ -159,12 +166,12 @@ def select_decision_forecasts(con: duckdb.DuckDBPyConnection, cutoff: date,
     Rows without rainfall data are dropped."""
     fc = con.execute(f"""
         WITH f AS (
-            SELECT site_id, issue_day, target_day, lead, p_raw, p_cal, issued_at, version,
+            SELECT site_id, issue_day, target_day, lead, p_raw, p_cal, issued_at, version, rain_mm,
                    epoch_ms(issued_at) AS issued_ms,
                    (issued_at AT TIME ZONE '{LOCAL_TZ}') <= (issue_day::TIMESTAMP + INTERVAL {int(decision_hour)} HOUR) AS before_cutoff
             FROM forecast_overflows
             WHERE has_live AND target_day <= ? AND coalesce(rain_available, TRUE))
-        SELECT site_id, issue_day, target_day, lead, p_raw, p_cal, issued_ms, before_cutoff, version FROM f
+        SELECT site_id, issue_day, target_day, lead, p_raw, p_cal, issued_ms, before_cutoff, version, rain_mm FROM f
         QUALIFY row_number() OVER (PARTITION BY site_id, issue_day, target_day
             ORDER BY before_cutoff DESC, CASE WHEN before_cutoff THEN issued_at END DESC NULLS LAST, issued_at ASC) = 1
     """, [cutoff]).df()
@@ -295,7 +302,10 @@ def verify_live(as_of: date | None = None) -> dict:
     fc["p_clim"] = _site_climatology(fc["site_id"])
     out["overall"] = {"raw": scores(y, fc["p_raw"].to_numpy()), "calibrated": scores(y, fc["p_cal"].to_numpy())}
     out["overall"]["climatology_brier"] = float(np.mean((fc["p_clim"].to_numpy() - y) ** 2))
+    # A flat forecast at the period's own spill rate uses hindsight, so it is not a rival
+    # forecast; a real forecast that loses to it is miscalibrated for the period.
     out["overall"]["period_base_rate_brier"] = float(np.mean((y.mean() - y) ** 2))
+    out["overall"]["mean_forecast"] = float(fc["p_cal"].mean())
     by_lead = []
     for k, g in fc.groupby("lead"):
         yy = g["y"].to_numpy()
@@ -329,7 +339,9 @@ def verify_live(as_of: date | None = None) -> dict:
             yy = g["y"].to_numpy(); pc = g["p_cal"].to_numpy()
             cb = float(np.mean((g["p_clim"].to_numpy() - yy) ** 2))
             by_company.append({"company": c, "n": len(g), "sites": int(g["site_id"].nunique()), "base_rate": float(yy.mean()),
+                               "n_spill_days": int(yy.sum()), "mean_forecast": float(pc.mean()),
                                "brier_cal": float(np.mean((pc - yy) ** 2)), "climatology_brier": cb,
+                               "flat_brier": float(np.mean((yy.mean() - yy) ** 2)),
                                "skill": float(1 - np.mean((pc - yy) ** 2) / cb) if cb > 0 else None,
                                "auc": float(roc_auc_score(yy, pc)) if 0 < yy.mean() < 1 and len(g) >= 30 else None})
         out["by_company"] = sorted(by_company, key=lambda r: -r["n"])
@@ -337,6 +349,16 @@ def verify_live(as_of: date | None = None) -> dict:
     out["by_week"] = [{"week": w, "n": len(g), "base_rate": float(g["y"].mean()),
                        "brier_cal": float(np.mean((g["p_cal"].to_numpy() - g["y"].to_numpy()) ** 2))}
                       for w, g in fc.groupby("week")]
+    # By the rain the forecast assumed for the target day (logged from 28 Sep 2026). If the
+    # excess sits on forecast-dry days the model's floor is too high; if on wet ones, the
+    # rain forecast or the model's rain response is.
+    r = fc.dropna(subset=["rain_mm"]) if "rain_mm" in fc else fc.iloc[0:0]
+    out["n_rain_unlogged"] = int(len(fc) - len(r))
+    if len(r):
+        band = pd.cut(r["rain_mm"], RAIN_BANDS, right=False, labels=RAIN_BAND_LABELS)
+        out["by_rain"] = [{"band": str(b), "n": len(g), "base_rate": float(g["y"].mean()), "mean_forecast": float(g["p_cal"].mean()),
+                           "brier_cal": float(np.mean((g["p_cal"].to_numpy() - g["y"].to_numpy()) ** 2))}
+                          for b, g in r.groupby(band, observed=True)]
     if len(fc) >= 200:
         out["reliability"] = reliability_table(y, fc["p_cal"].to_numpy()).round(4).to_dict("records")
     return _finish(out, as_of)

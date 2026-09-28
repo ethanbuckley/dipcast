@@ -158,12 +158,15 @@ def _clean(v):
 
 
 def spill_probabilities(ov: pd.DataFrame, days: pd.DatetimeIndex,
-                        model: SpillModel | None) -> tuple[np.ndarray, np.ndarray]:
+                        model: SpillModel | None, return_rain: bool = False) -> tuple[np.ndarray, ...]:
     """(n_overflows, n_days) probability each overflow spills on each day, and a
     bool mask of the same shape: True where that overflow's cell has rainfall data
-    for the day. Where it has none the probability is NaN, never 0."""
+    for the day. Where it has none the probability is NaN, never 0. With
+    `return_rain`, also the day's rainfall (mm) at each overflow's cell that the
+    probability was computed from, NaN where missing."""
     if ov.empty:
-        return np.zeros((0, len(days))), np.zeros((0, len(days)), dtype=bool)
+        empty = (np.zeros((0, len(days))), np.zeros((0, len(days)), dtype=bool))
+        return (*empty, np.zeros((0, len(days)))) if return_rain else empty
     cells = cells_for_sites(ov["lat"], ov["lon"])
     rain = fetch_forecast(cells)
     rain["time"] = rain["time"].dt.tz_convert(LOCAL_TZ)   # local-midnight day boundaries
@@ -182,7 +185,11 @@ def spill_probabilities(ov: pd.DataFrame, days: pd.DatetimeIndex,
     sd.loc[~sd["ok"], "p"] = np.nan
     mat = sd.pivot(index="site_id", columns="day", values="p").reindex(index=ov["site_id"], columns=days)
     okm = sd.pivot(index="site_id", columns="day", values="ok").reindex(index=ov["site_id"], columns=days)
-    return mat.to_numpy(dtype=float), okm.fillna(False).to_numpy(dtype=bool)
+    out = (mat.to_numpy(dtype=float), okm.fillna(False).to_numpy(dtype=bool))
+    if return_rain:
+        rain_mm = sd.pivot(index="site_id", columns="day", values="rain_d").reindex(index=ov["site_id"], columns=days)
+        return (*out, rain_mm.to_numpy(dtype=float))
+    return out
 
 
 def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = config.MAX_UPSTREAM_KM,
@@ -251,7 +258,7 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
     hist = history_days(travel)
     days = pd.date_range(now.floor("D") - pd.Timedelta(days=hist), periods=hist + days_ahead + 1, freq="D")
     today_idx = hist
-    p_raw, avail = spill_probabilities(ov, days, model)
+    p_raw, avail, rain_mm = spill_probabilities(ov, days, model, return_rain=True)
     p = calibrate_by_lead(p_raw, first_lead=-hist)   # column `hist` is today (lead 0)
     risk = combine_daily(p, weights, travel)
     # Share of today's transport weight that comes from days with no rainfall data.
@@ -362,7 +369,7 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
             from dipcast.forecast_log import log_forecast
             log_forecast(now, lat, lon, pin.mode, pin.watercourse, now_risk, days, risk, ov,
                          np.nan_to_num(p_raw, nan=0.0), np.nan_to_num(p, nan=0.0), p_ecoli=p_ec, rain_48h=r48,
-                         available=avail, version=model_version())
+                         available=avail, rain_mm=rain_mm, version=model_version())
         except Exception as e:  # noqa: BLE001 - logging must never fail a forecast
             log.warning("forecast log failed: %s", e)
     return out

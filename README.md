@@ -337,6 +337,20 @@ sha, and the weather source (`forecast.model_version`). Live scores are broken
 down by stamp on the verification page, so a change starts a new row rather
 than being averaged into the old one.
 
+**Level checks (28 Sep 2026).** Beating climatology says little in a dry
+spell, because climatology knows nothing about the weather. The live table
+therefore also reports the mean forecast against the observed spill rate,
+overall and per company, and the score of a flat forecast at the period's own
+spill rate. That flat forecast uses hindsight, so it is not a rival, but a
+forecast that scores worse than it is pitched at the wrong level. From 28 Sep
+each logged overflow-day forecast also carries the target-day rain it assumed
+(`rain_mm`), and the page groups scores by it: excess on forecast-dry days
+means the model's floor is too high, excess only on wet days points at the
+rain forecast or the model's response to rain. A seasonal climatology was
+considered and dropped: United Utilities' 2023-25 events put September at or
+above the annual average (monthly factors 1.04, 1.06 and 1.91), so it would not
+have made a dry September harder to beat.
+
 **Missing rainfall is unknown, not dry (16-17 Sep 2026).** The E. coli rain windows
 used to count timestamps rather than finite values, so a null-filled forecast
 passed the completeness check and summed to 0 mm; the daily spill features had
