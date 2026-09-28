@@ -9,6 +9,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+from dipcast import __version__
+
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
@@ -83,6 +85,12 @@ FORECAST_PAST_DAYS = 31   # enough history for the 30-day and API features
 # ---------------------------------------------------------------------------
 EA_HYDROLOGY = "https://environment.data.gov.uk/hydrology"
 EA_FLOOD_MONITORING = "https://environment.data.gov.uk/flood-monitoring"
+
+# Sent with every request to environment.data.gov.uk, so the Environment Agency
+# can tell whose traffic it is and where to get in touch. A fork should change it.
+USER_AGENT = os.environ.get("DIPCAST_USER_AGENT",
+                            f"dipcast/{__version__} (+https://github.com/ethanbuckley/dipcast)")
+EA_HEADERS = {"User-Agent": USER_AGENT}
 
 # ---------------------------------------------------------------------------
 # Physics defaults for transport. See model/transport.py for how they are used.

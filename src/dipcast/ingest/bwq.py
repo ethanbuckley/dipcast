@@ -31,7 +31,7 @@ def _val(x):
 
 def fetch_point(point: str, since: str = "2023-01-01T00:00:00") -> list[dict]:
     rows, page = [], 0
-    with httpx.Client(timeout=120) as c:
+    with httpx.Client(timeout=120, headers=config.EA_HEADERS) as c:
         while True:
             params = {"bwq_samplingPoint.notation": point, "_pageSize": 500, "_page": page,
                       "_sort": "-sampleDateTime.inXSDDateTime",

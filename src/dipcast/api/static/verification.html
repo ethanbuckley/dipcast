@@ -19,6 +19,7 @@ async function main() {
   const d = await (await fetch('/api/verification')).json();
   let h = '<h2>Live scoring of issued forecasts</h2>';
   const L = d.live;
+  if (L && L.ecoli_live && L.ecoli_live.samples && L.ecoli_live.samples.all_failed) h += `<p class="alert small"><b>E. coli scoring is stalled:</b> the last fetch of Environment Agency lab samples failed at every bathing water. <a href="#ecoli-live">Details</a>. The spill scores below are unaffected.</p>`;
   const rules = (L && L.rules) || {};
   const md = L && L.missed_deadline;
   const cs = L && L.coverage_stats;
@@ -53,9 +54,15 @@ async function main() {
       for (const r of L.reliability) h += `<tr><td>${f(r.lo,1)}–${f(r.hi,1)}</td><td class="num">${r.n}</td><td class="num">${pct(r.forecast)}</td><td class="num">${pct(r.observed)}</td></tr>`; h += '</table>'; }
   }
   const E = L && L.ecoli_live;
+  // The last attempt to fetch EA samples. Every request failing is a broken feed, not "nothing to score yet".
+  const S = E && E.samples;
+  const when = t => new Date(t).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'});
+  const why = S ? Object.entries(S.errors || {}).map(([k, n]) => `${k} ×${n}`).join(', ') : '';
+  const stalled = S && S.all_failed ? `<div class="alert"><b>E. coli scoring is stalled.</b> At ${when(S.checked_at)} every request for Environment Agency lab samples failed (${S.n_sites} of ${S.n_sites} bathing waters: ${why}). ${S.last_ok_at ? `Scores below use samples fetched ${when(S.last_ok_at)} and will not change until a fetch succeeds.` : `No samples have been fetched, so ${E.n_forecasts ? `none of the ${E.n_forecasts.toLocaleString()} logged E. coli forecasts` : 'no forecast'} can be scored. A zero here is a data-feed failure, not a result.`}</div>` : '';
+  const partial = S && !S.all_failed && S.n_failed ? `<p class="small muted">The last sample fetch (${when(S.checked_at)}) failed for ${S.n_failed} of ${S.n_sites} bathing waters (${why}); their earlier samples are kept.</p>` : '';
   if (E && E.n_scored) {
     const eo = E.overall;
-    h += `<h2>Live scoring: E. coli forecasts against new lab samples</h2><p class="small muted">The map's "E. coli &gt; 900" column, checked against Environment Agency samples taken on the forecast day at the designated bathing waters. For each sample and lead the forecast used is the latest one issued <em>before the sample was taken</em>${E.n_issued_after_sample ? ` (${E.n_issued_after_sample} later issues discarded)` : ''}. ${E.n_samples} samples at ${E.n_sites} sites so far; ${E.n_scored} forecast-sample pairs across lead times${E.in_advance ? `; forecasts made at least a day ahead: n = ${E.in_advance.n}, Brier ${f(E.in_advance.brier,3)} against climatology ${f(E.in_advance.climatology_brier,3)}` : ''}. Climatology is the training-period exceedance rate for rivers and lakes.</p>`;
+    h += `<h2 id="ecoli-live">Live scoring: E. coli forecasts against new lab samples</h2>${stalled}${partial}<p class="small muted">The map's "E. coli &gt; 900" column, checked against Environment Agency samples taken on the forecast day at the designated bathing waters. For each sample and lead the forecast used is the latest one issued <em>before the sample was taken</em>${E.n_issued_after_sample ? ` (${E.n_issued_after_sample} later issues discarded)` : ''}. ${E.n_samples} samples at ${E.n_sites} sites so far; ${E.n_scored} forecast-sample pairs across lead times${E.in_advance ? `; forecasts made at least a day ahead: n = ${E.in_advance.n}, Brier ${f(E.in_advance.brier,3)} against climatology ${f(E.in_advance.climatology_brier,3)}` : ''}. Climatology is the training-period exceedance rate for rivers and lakes.</p>`;
     h += `<table><tr><th>Forecast</th><th class="num">n</th><th class="num">Exceedance rate</th><th class="num">Brier</th><th class="num">Skill</th><th class="num">AUC</th></tr>`;
     h += `<tr><td>dipcast, all leads</td><td class="num">${E.n_scored}</td><td class="num">${pct(eo.base_rate)}</td><td class="num">${f(eo.brier,3)}</td><td class="num">${eo.climatology_brier > 0 ? f(1 - eo.brier/eo.climatology_brier, 2) : '–'}</td><td class="num">${f(eo.auc,3)}</td></tr>`;
     h += `<tr><td>climatology by type</td><td class="num">${E.n_scored}</td><td class="num"></td><td class="num">${f(eo.climatology_brier,3)}</td><td class="num">0.00</td><td class="num">–</td></tr></table>`;
@@ -65,8 +72,10 @@ async function main() {
       for (const r of E.by_version) h += `<tr><td class="small" style="font-family:ui-monospace,monospace">${r.version}</td><td class="num">${r.n}</td><td class="num">${pct(r.base_rate)}</td><td class="num">${f(r.brier,3)}</td></tr>`; h += '</table>'; }
     if (E.recent && E.recent.length) { h += `<h3>Most recent samples</h3><table><tr><th>Site</th><th>Sampled</th><th class="num">Forecast (lead)</th><th class="num">Rain 48 h</th><th class="num">Measured E. coli</th></tr>`;
       for (const r of E.recent) h += `<tr><td>${r.site}</td><td>${r.day}</td><td class="num">${pct(r.forecast)} (${r.lead})</td><td class="num">${r.rain_48h === null ? '–' : r.rain_48h + ' mm'}</td><td class="num"${r.ecoli > 900 ? ' style="font-weight:600"' : ''}>${r.ecoli.toLocaleString()}</td></tr>`; h += '</table><p class="small muted">Bold: over 900 cfu/100 ml, the inland "sufficient" threshold.</p>'; }
+  } else if (stalled) {
+    h += `<h2 id="ecoli-live">Live scoring: E. coli forecasts against new lab samples</h2>${stalled}`;
   } else if (L && L.n_scored) {
-    h += `<h2>Live scoring: E. coli forecasts against new lab samples</h2><p class="muted">Forecasts of the "E. coli &gt; 900" column are logged from 15 September 2026 and scored against Environment Agency samples as they are published, usually within a week of sampling. Nothing to show yet.</p>`;
+    h += `<h2 id="ecoli-live">Live scoring: E. coli forecasts against new lab samples</h2>${partial}<p class="muted">Forecasts of the "E. coli &gt; 900" column are logged from 15 September 2026 and scored against Environment Agency samples as they are published, usually within a week of sampling. Nothing to show yet.</p>`;
   }
   document.getElementById('live').innerHTML = h;
 

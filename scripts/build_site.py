@@ -19,7 +19,7 @@ import time
 import pandas as pd
 
 from dipcast import __version__, config
-from dipcast.forecast_log import load_verification
+from dipcast.forecast_log import load_verification, samples_status
 from dipcast.ingest.rainfall import cells_for_sites, fetch_forecast
 from dipcast.jobs import refresh_all
 from dipcast.model.forecast import (
@@ -101,9 +101,11 @@ class BuildUnhealthy(RuntimeError):
     site up rather than replacing it with a page of blanks."""
 
 
-def build_health(results: list[dict]) -> dict:
+def build_health(results: list[dict], ecoli_samples: dict | None = None) -> dict:
     """Counts the workflow and the page use to judge a build; raises BuildUnhealthy
-    when the site should not be published."""
+    when the site should not be published. `ecoli_samples` is the last EA sample fetch
+    (forecast_log.samples_status); if every request failed it goes in `warnings`. That
+    stalls the E. coli scores, not the forecasts, so it does not stop the publish."""
     n = len(results)
     # A spot the model cannot say anything about (an isolated lake, no river within
     # reach) returns an explanation with an empty day list; that is an answer, not a
@@ -113,12 +115,26 @@ def build_health(results: list[dict]) -> dict:
     today_no_data = sum(1 for r in with_days if r["days"][0].get("data_status") == "rain unavailable")
     health = {"spots": n, "forecast_ok": len(ok), "forecast_failed": n - len(ok),
               "no_forecast_possible": len(ok) - len(with_days), "today_rain_unavailable": today_no_data,
-              "failed_spots": [r["name"] for r in results if "days" not in r][:20]}
+              "failed_spots": [r["name"] for r in results if "days" not in r][:20], "warnings": []}
     if n and len(ok) < MIN_OK_SHARE * n:
         raise BuildUnhealthy(f"only {len(ok)}/{n} spots got a forecast; not publishing")
     if with_days and today_no_data > MAX_NO_DATA_SHARE * len(with_days):
         raise BuildUnhealthy(f"{today_no_data}/{len(ok)} forecasts have no rainfall data for today; not publishing")
+    if ecoli_samples:
+        s = ecoli_samples
+        health["ecoli_samples"] = {k: s.get(k) for k in ("checked_at", "n_sites", "n_failed", "errors", "last_ok_at")}
+        if s.get("all_failed"):
+            why = ", ".join(f"{k} x{v}" for k, v in (s.get("errors") or {}).items())
+            health["warnings"].append(f"E. coli scoring stalled: all {s.get('n_sites')} EA sample requests failed "
+                                      f"at {s.get('checked_at')} ({why}); last good fetch {s.get('last_ok_at') or 'never'}")
     return health
+
+
+def announce(warning: str) -> None:
+    """Log a build warning and, on GitHub Actions, raise it as an annotation on the run page."""
+    log.warning("%s", warning)
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        print("::warning title=dipcast build health::" + warning.replace("%", "%25").replace("\n", "%0A"), flush=True)
 
 
 def build(refresh: bool = True) -> dict:
@@ -140,7 +156,9 @@ def build(refresh: bool = True) -> dict:
         results.append({"id": r.id, "name": r.name, "kind": r.kind, "source": r.source, "notes": r.notes,
                         "lat": float(r.lat), "lon": float(r.lon), **f})
     generated = pd.Timestamp.now(tz="Europe/London")
-    health = build_health(results)   # raises before anything is written if the build is bad
+    health = build_health(results, samples_status())   # raises before anything is written if the build is bad
+    for w in health["warnings"]:
+        announce(w)
     (SITE / "data").mkdir(parents=True, exist_ok=True)
     (SITE / "data" / "spots.json").write_text(json.dumps({
         "generated_at": generated.isoformat(), "version": __version__, "n": len(results), "build": health,

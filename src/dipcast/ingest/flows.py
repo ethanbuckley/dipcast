@@ -76,7 +76,7 @@ def _nearest_level_station(lat: float, lon: float, dist_km: int = 15) -> RiverSt
     try:
         r = httpx.get(f"{config.EA_FLOOD_MONITORING}/id/stations",
                       params={"lat": lat, "long": lon, "dist": dist_km, "parameter": "level",
-                              "type": "SingleLevel"}, timeout=EA_TIMEOUT_S)
+                              "type": "SingleLevel"}, headers=config.EA_HEADERS, timeout=EA_TIMEOUT_S)
         r.raise_for_status()
         items = r.json().get("items", [])
     except httpx.HTTPError as e:
@@ -98,7 +98,7 @@ def _nearest_level_station(lat: float, lon: float, dist_km: int = 15) -> RiverSt
     scale = s.get("stageScale", {})
     if isinstance(scale, str):  # some stations link to the scale instead of embedding it
         try:
-            rs = httpx.get(scale, params={"_view": "full"}, timeout=EA_TIMEOUT_S)
+            rs = httpx.get(scale, params={"_view": "full"}, headers=config.EA_HEADERS, timeout=EA_TIMEOUT_S)
             rs.raise_for_status()
             scale = rs.json().get("items", {})
             if isinstance(scale, list):
@@ -112,7 +112,7 @@ def _nearest_level_station(lat: float, lon: float, dist_km: int = 15) -> RiverSt
     level, observed = None, None
     try:
         rr = httpx.get(f"{config.EA_FLOOD_MONITORING}/id/stations/{ref}/readings",
-                       params={"latest": ""}, timeout=EA_TIMEOUT_S)
+                       params={"latest": ""}, headers=config.EA_HEADERS, timeout=EA_TIMEOUT_S)
         rr.raise_for_status()
         for rd in rr.json().get("items", []):
             if "level" in rd.get("measure", ""):
