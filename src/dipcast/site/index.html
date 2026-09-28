@@ -98,6 +98,13 @@ const shortDay = iso => iso === today() ? 'Today' : new Date(iso + 'T12:00:00').
 // One plain sentence or three: what is happening now, the worst day ahead and why, and when it eases.
 function summary(d) {
   const days = d.days.slice(0, 5), known = days.filter(hasData), n = d.now.discharging_upstream, out = [];
+  // No monitored overflow upstream: the exposure is zero whatever the weather, so "low" would
+  // read as clean water. Say what the forecast does not cover, and when the rain is heaviest.
+  if (!d.upstream_summary.overflows) {
+    const wet = days.filter(x => x.rain_48h_mm >= 10).reduce((a, b) => !a || b.rain_48h_mm > a.rain_48h_mm ? b : a, null);
+    return 'No monitored storm overflows upstream, so this forecast has nothing to flag. It does not cover runoff from farms, roads or wildlife, which rain also washes in'
+      + (wet ? `. The wettest day ahead is ${dayWord(wet.date).replace(/^on /, '')}, with about ${Math.round(wet.rain_48h_mm)}&nbsp;mm of rain in the 48 hours before.` : '.');
+  }
   if (n) out.push(`${n} upstream overflow${n === 1 ? ' is' : 's are'} discharging now; exposure right now is ${d.now.label}.`);
   if (!known.length) return out.concat('No rainfall forecast has arrived, so there is no forecast for the days ahead.').join(' ');
   const peak = known.reduce((a, b) => ORDER[b.label] > ORDER[a.label] ? b : a);
@@ -112,7 +119,9 @@ function summary(d) {
   if (eases) out.push(`Low again ${dayWord(eases.date)}.`);
   return out.join(' ');
 }
-const strip = d => `<div class="days">` + d.days.slice(0, 5).map(x => `<div class="day ${hasData(x) ? cls(x.label).slice(2) : ''}"><div class="d">${shortDay(x.date)}</div><div class="l">${hasData(x) ? cap(x.label) : 'No data'}</div><div class="r">${x.rain_48h_mm === null || x.rain_48h_mm === undefined ? '–' : Math.round(x.rain_48h_mm) + ' mm'}</div></div>`).join('') + `</div><div class="small muted">Exposure by day, with rain in the previous 48 h.</div>`;
+const strip = d => { const none = !d.upstream_summary.overflows;   // then there is no exposure to colour, only rain
+  return `<div class="days">` + d.days.slice(0, 5).map(x => `<div class="day ${hasData(x) && !none ? cls(x.label).slice(2) : ''}"><div class="d">${shortDay(x.date)}</div><div class="l">${none ? '–' : hasData(x) ? cap(x.label) : 'No data'}</div><div class="r">${x.rain_48h_mm === null || x.rain_48h_mm === undefined ? '–' : Math.round(x.rain_48h_mm) + ' mm'}</div></div>`).join('')
+    + `</div><div class="small muted">${none ? 'No overflow exposure to show; rain in the previous 48 h.' : 'Exposure by day, with rain in the previous 48 h.'}</div>`; };
 // A later day worse than the badge, which covers only now and the next two days.
 const later = s => { if (s.error) return null; const w = ORDER[worst(s)] ?? 0;
   const x = s.days.slice(2, 5).filter(hasData).reduce((a, b) => !a || ORDER[b.label] > ORDER[a.label] ? b : a, null);
