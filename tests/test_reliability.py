@@ -245,6 +245,30 @@ def test_save_live_accumulates_coverage(tmp_path, monkeypatch):
     assert covered_site_days(cov, min_known=3, max_gap_h=24.0)["site_id"].tolist() == ["A"]
 
 
+def test_save_live_upgrades_a_coverage_file_from_before_17_sep(tmp_path, monkeypatch):
+    config = _state(tmp_path, monkeypatch)
+    from dipcast.forecast_log import covered_site_days
+    from dipcast.ingest import live
+    monkeypatch.setattr(config, "LIVE_FEEDS", {"X": "u"})
+    # The 16 Sep poller wrote counts only: no stale count, no slot mask.
+    pd.DataFrame({"site_id": ["A", "A"], "day": pd.to_datetime(["2026-09-13", "2026-09-14"]),
+                  "n_known": [12, 5], "n_unknown": [0, 0]}).to_parquet(tmp_path / live.COVERAGE_FILE, index=False)
+    t = pd.Timestamp("2026-09-14 06:00", tz="UTC")
+    live.save_live(pd.DataFrame({"site_id": ["A"], "company": "X", "status": [0], "status_start": pd.Timestamp("2026-09-01", tz="UTC"),
+                                 "latest_event_start": pd.NaT, "latest_event_end": pd.NaT, "lat": 54.0, "lon": -2.0,
+                                 "receiving_watercourse": "r", "last_updated": t, "fetched_at": t}))
+    cov = pd.read_parquet(tmp_path / live.COVERAGE_FILE)
+    cov["day"] = pd.to_datetime(cov["day"]).dt.date
+    a13 = cov[cov.day == date(2026, 9, 13)].iloc[0]
+    a14 = cov[cov.day == date(2026, 9, 14)].iloc[0]
+    assert cov["slots"].dtype == "int64"
+    # old rows keep their counts with an empty mask; the new poll adds its slot (06:00Z = 07:00 BST, slot 14)
+    assert a13.n_known == 12 and a13.n_stale == 0 and int(a13.slots) == 0
+    assert a14.n_known == 6 and int(a14.slots) == 1 << 14
+    # an empty mask is an unobserved day: days scored under the old rule are withdrawn, not rescored
+    assert covered_site_days(cov).empty
+
+
 # ---------------------------------------------------------------- build guard
 def test_build_health_refuses_mostly_failed_builds():
     import sys

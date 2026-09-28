@@ -1,0 +1,266 @@
+{
+ "note": "Live spill-forecast scores under the coverage rule of 16 Sep 2026 (>= 6 known polls on the day, one the next), as published on the verification page at the last build before the 17 Sep rules (08:00 decision time with missed deadlines, per-overflow slot masks, feed-freshness check) went live. Those rules cannot be applied to days observed before them, so these scores were withdrawn from the live table; this file keeps them. Target days 17-27 Sep 2026, a dry spell.",
+ "source": "https://ethanbuckley.github.io/dipcast/data/verification.json, fetched 2026-09-28",
+ "live": {
+  "generated_at": "2026-09-28T10:09:30.604940+01:00",
+  "first_forecast_day": "2026-09-12",
+  "n_point_forecasts": 44300,
+  "n_scored": 49380,
+  "rules": {
+   "decision_hour_local": 8,
+   "min_known_polls": 6,
+   "baseline": "annual spill count / 365 (spill-days per counted spill = 1.00 at United Utilities 2023-25)"
+  },
+  "n_candidates": 65630,
+  "share_issued_by_decision_hour": 0.9187871400274265,
+  "coverage_from": "2026-09-17",
+  "n_uncovered": 16250,
+  "overall": {
+   "raw": {
+    "brier": 0.013450553321891242,
+    "log_loss": 0.061985810435472966,
+    "auc": 0.8064972405372405,
+    "base_rate": 0.01275820170109356,
+    "n": 49380
+   },
+   "calibrated": {
+    "brier": 0.012874622124544889,
+    "log_loss": 0.0616966325728911,
+    "auc": 0.8057638420838422,
+    "base_rate": 0.01275820170109356,
+    "n": 49380
+   },
+   "climatology_brier": 0.025537592729350675,
+   "period_base_rate_brier": 0.012595429990447776
+  },
+  "by_lead": [
+   {
+    "lead": 0,
+    "n": 9876,
+    "base_rate": 0.01275820170109356,
+    "brier_raw": 0.012508866127290493,
+    "brier_cal": 0.012521942823347785,
+    "climatology_brier": 0.025537592729350675,
+    "same_day": true
+   },
+   {
+    "lead": 1,
+    "n": 9876,
+    "base_rate": 0.01275820170109356,
+    "brier_raw": 0.011611777843158273,
+    "brier_cal": 0.01159320691675018,
+    "climatology_brier": 0.025537592729350675,
+    "same_day": false
+   },
+   {
+    "lead": 2,
+    "n": 9876,
+    "base_rate": 0.01275820170109356,
+    "brier_raw": 0.012577955919340128,
+    "brier_cal": 0.012387174721049044,
+    "climatology_brier": 0.025537592729350675,
+    "same_day": false
+   },
+   {
+    "lead": 3,
+    "n": 9876,
+    "base_rate": 0.01275820170109356,
+    "brier_raw": 0.014161032969035899,
+    "brier_cal": 0.013349239736481002,
+    "climatology_brier": 0.02553759272935068,
+    "same_day": false
+   },
+   {
+    "lead": 4,
+    "n": 9876,
+    "base_rate": 0.01275820170109356,
+    "brier_raw": 0.01639313375063142,
+    "brier_cal": 0.014521546425096439,
+    "climatology_brier": 0.025537592729350675,
+    "same_day": false
+   }
+  ],
+  "in_advance": {
+   "n": 39504,
+   "brier_cal": 0.012962791949844165,
+   "climatology_brier": 0.025537592729350675,
+   "auc": 0.8051904507529507
+  },
+  "by_company": [
+   {
+    "company": "Wessex Water",
+    "n": 12285,
+    "sites": 247,
+    "base_rate": 0.002442002442002442,
+    "brier_cal": 0.002959268674841719,
+    "climatology_brier": 0.016660561336928156,
+    "skill": 0.822378813354716,
+    "auc": 0.6175329797361622
+   },
+   {
+    "company": "Thames Water",
+    "n": 8120,
+    "sites": 165,
+    "base_rate": 0.0018472906403940886,
+    "brier_cal": 0.0025824754599551142,
+    "climatology_brier": 0.01846167352020895,
+    "skill": 0.860116935925217,
+    "auc": 0.5031503187332922
+   },
+   {
+    "company": "Anglian Water",
+    "n": 6100,
+    "sites": 123,
+    "base_rate": 0.018032786885245903,
+    "brier_cal": 0.017940526432972084,
+    "climatology_brier": 0.0241797393019265,
+    "skill": 0.25803474516606195,
+    "auc": 0.5892259826984367
+   },
+   {
+    "company": "Yorkshire Water",
+    "n": 5850,
+    "sites": 119,
+    "base_rate": 0.013675213675213675,
+    "brier_cal": 0.01618471673284964,
+    "climatology_brier": 0.030255371178569412,
+    "skill": 0.46506302509639497,
+    "auc": 0.7258167244367418
+   },
+   {
+    "company": "United Utilities",
+    "n": 5655,
+    "sites": 116,
+    "base_rate": 0.0610079575596817,
+    "brier_cal": 0.05602068297269399,
+    "climatology_brier": 0.07098050408783801,
+    "skill": 0.2107595783855144,
+    "auc": 0.8602865798739048
+   },
+   {
+    "company": "Southern Water",
+    "n": 5550,
+    "sites": 111,
+    "base_rate": 0.0018018018018018018,
+    "brier_cal": 0.002330834876512157,
+    "climatology_brier": 0.01151740299347644,
+    "skill": 0.7976249613014008,
+    "auc": 0.8767870036101084
+   },
+   {
+    "company": "Severn Trent Water",
+    "n": 4970,
+    "sites": 101,
+    "base_rate": 0.006036217303822937,
+    "brier_cal": 0.006751884692526572,
+    "climatology_brier": 0.01896699022475618,
+    "skill": 0.6440191821413053,
+    "auc": 0.7167105263157895
+   },
+   {
+    "company": "South West Water",
+    "n": 450,
+    "sites": 9,
+    "base_rate": 0.0,
+    "brier_cal": 0.000510431330068837,
+    "climatology_brier": 0.022925074471139808,
+    "skill": 0.9777348016595796,
+    "auc": null
+   },
+   {
+    "company": "Northumbrian Water",
+    "n": 400,
+    "sites": 8,
+    "base_rate": 0.025,
+    "brier_cal": 0.026967657952113616,
+    "climatology_brier": 0.030184126677813335,
+    "skill": 0.10656159643220575,
+    "auc": 0.7051282051282051
+   }
+  ],
+  "by_week": [
+   {
+    "week": "2026-09-14",
+    "n": 19790,
+    "base_rate": 0.019454269833249115,
+    "brier_cal": 0.016413914012775196
+   },
+   {
+    "week": "2026-09-21",
+    "n": 29590,
+    "base_rate": 0.008279824264954376,
+    "brier_cal": 0.010507518830591603
+   }
+  ],
+  "reliability": [
+   {
+    "n": 46202,
+    "forecast": 0.0121,
+    "observed": 0.0062,
+    "lo": 0.0,
+    "hi": 0.1
+   },
+   {
+    "n": 1721,
+    "forecast": 0.1395,
+    "observed": 0.0476,
+    "lo": 0.1,
+    "hi": 0.2
+   },
+   {
+    "n": 694,
+    "forecast": 0.2424,
+    "observed": 0.0951,
+    "lo": 0.2,
+    "hi": 0.3
+   },
+   {
+    "n": 298,
+    "forecast": 0.3451,
+    "observed": 0.1779,
+    "lo": 0.3,
+    "hi": 0.4
+   },
+   {
+    "n": 176,
+    "forecast": 0.4492,
+    "observed": 0.233,
+    "lo": 0.4,
+    "hi": 0.5
+   },
+   {
+    "n": 131,
+    "forecast": 0.547,
+    "observed": 0.2366,
+    "lo": 0.5,
+    "hi": 0.6
+   },
+   {
+    "n": 84,
+    "forecast": 0.6481,
+    "observed": 0.3452,
+    "lo": 0.6,
+    "hi": 0.7
+   },
+   {
+    "n": 50,
+    "forecast": 0.755,
+    "observed": 0.54,
+    "lo": 0.7,
+    "hi": 0.8
+   },
+   {
+    "n": 24,
+    "forecast": 0.828,
+    "observed": 0.6667,
+    "lo": 0.8,
+    "hi": 0.9
+   }
+  ],
+  "ecoli_live": {
+   "n_forecasts": 5160,
+   "n_scored": 0,
+   "rule": "latest forecast issued before the sample time, per lead"
+  }
+ }
+}

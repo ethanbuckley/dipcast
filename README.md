@@ -319,7 +319,13 @@ as coverage for every overflow, and the history file, which keeps one row per
 distinct status, could not say which overflows had actually been seen. Scores
 from before the rule change are withdrawn; the table restarts as coverage
 accumulates, and the page reports the same scores under a stricter 3 h gap rule
-alongside. The climatology baseline divides each overflow's annual spill count
+alongside. The withdrawn scores are kept in
+`data/processed/verification_live_oldrule_2026-09-28.json` (49,380
+overflow-days, 17-27 Sep 2026, a dry spell). They were not good: forecasts
+averaged 2.7% against 1.3% observed, forecasts between 10% and 70% verified at
+a third to a half of their stated value, and only at United Utilities, the one
+company in the training data, did they beat a flat forecast at the period's
+own spill rate. The climatology baseline divides each overflow's annual spill count
 by 365, an approximation: the returns count spills by the 12/24-hour block
 method, and `scripts/spill_day_ratio.py` finds 1.00 spill-days per counted
 spill pooled over 5,886 United Utilities site-years, which supports the
