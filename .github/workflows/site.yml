@@ -2,7 +2,9 @@ name: Build and publish site
 
 on:
   schedule:
-    - cron: "*/30 * * * *"        # every 30 minutes; GitHub may delay by a few minutes
+    # Asks for every 30 minutes. GitHub treats schedules as best effort: 13-28 Sep 2026 the
+    # builds were a median 2.9 h apart, at most 8.1 h. No step may depend on the clock time.
+    - cron: "*/30 * * * *"
   workflow_dispatch: {}
   push:
     branches: [main]

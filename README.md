@@ -3,7 +3,7 @@
 Probabilistic sewage-pollution risk for river and lake swim spots in England.
 
 Live site: https://ethanbuckley.github.io/dipcast/ (forecasts for 88 named
-spots, refreshed every 30 minutes by a scheduled GitHub Actions job; free to
+spots, rebuilt several times a day by a scheduled GitHub Actions job; free to
 run, never sleeps). Source: https://github.com/ethanbuckley/dipcast (MIT).
 Every forecast issued is scored later and published on the site's
 verification page.
@@ -520,8 +520,12 @@ bathing waters and about 50 well-known river and lake spots. Add one by pull
 request, or ask for one with the "Request a spot" issue template; it appears
 in the next run. Inclusion is not a statement that a spot is safe.
 
-`.github/workflows/site.yml` runs every 30 minutes and on every push. It
-restores the mutable state (live polls, forecast log, rainfall cache) from
+`.github/workflows/site.yml` is scheduled every 30 minutes and also runs on
+every push. GitHub starts scheduled runs when it can: the 113 builds of 13-28
+Sep 2026 were a median 2.9 h apart and at most 8.1 h, so no step depends on a
+run starting at a particular time, and the map's "Stale" banner waits until the
+forecast is 8 hours old (at the earlier 2 hours it would have shown 48% of the
+time; at 8 hours, never in that period). The job restores the mutable state (live polls, forecast log, rainfall cache) from
 the Actions cache, or from the rolling `state` release if the cache is cold;
 downloads the river network from the `data-v1` release (113 MB, too big for
 git); runs `scripts/build_site.py`, which polls the nine live feeds, rebuilds
