@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write     # release assets for state, monthly heartbeat commit
+  contents: write     # release assets for state, heartbeat commit
   pages: write
   id-token: write
 
@@ -97,13 +97,30 @@ jobs:
             echo "All ${#files[@]} release copies are under $max_h h old; not publishing."
           fi
 
-      - name: Monthly heartbeat commit (keeps the schedule enabled)
+      - name: Heartbeat commit once the last is 25 days old (GitHub disables schedules after 60 idle days)
         if: github.event_name == 'schedule'
         continue-on-error: true
         run: |
-          if [ "$(date -u +%d)" = "01" ] && [ "$(date -u +%H)" = "03" ] && [ "$(date -u +%M)" -lt 30 ]; then
+          # Scheduled runs start a few times a day at irregular times, so a fixed clock window can be
+          # missed for months. The first scheduled run after HEARTBEAT.md is max_d days old commits a
+          # new one. A missing file, or a first line that is not a past date in the form written here,
+          # counts as due. A failed push (main moved on since checkout, say) is retried by the next run.
+          max_d=25
+          fmt="%Y-%m-%d %H:%M UTC"
+          now=$(date -u +%s)
+          last=$(head -n 1 HEARTBEAT.md 2>/dev/null || true)
+          # date -d reads "" as today's midnight and "now" as now, so check the written form first.
+          re='^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2} UTC$'
+          if [[ $last =~ $re ]] && last_s=$(date -u -d "$last" +%s) && [ "$last_s" -le "$now" ]; then
+            due_s=$(( last_s + max_d * 86400 ))
+            echo "Last heartbeat $last; the next is due from $(date -u -d "@$due_s" +"$fmt")."
+          else
+            due_s=$now
+            echo "HEARTBEAT.md is missing or its first line is not a past date like $(date -u +"$fmt"): '$last'"
+          fi
+          if [ "$now" -ge "$due_s" ]; then
             git config user.name "dipcast-bot"; git config user.email "bot@dipcast.invalid"
-            date -u +"%Y-%m-%d %H:%M UTC" > HEARTBEAT.md && git add HEARTBEAT.md && git commit -m "Monthly heartbeat" && git push
+            date -u +"$fmt" > HEARTBEAT.md && git add HEARTBEAT.md && git commit -m "Heartbeat (keeps the site schedule enabled)" && git push
           fi
 
       - uses: actions/upload-pages-artifact@v3

@@ -529,8 +529,10 @@ the overflow table, forecasts every spot with `forecast_point`, scores logged
 forecasts against the accumulated polls, and writes `site/`; saves the state
 back to the cache and, when the release copy is over 12 hours old, to the
 release (GitHub runs the schedule only a few times a day, at irregular times);
-and deploys `site/` to GitHub Pages. Nothing is committed by the job except a
-monthly heartbeat, so the repository does not grow.
+and deploys `site/` to GitHub Pages. Nothing is committed by the job except
+`HEARTBEAT.md`, so the repository does not grow. The first scheduled run after
+that file is 25 days old rewrites it, because GitHub disables the schedule of
+a public repository after 60 days without activity.
 
 The click-anywhere API (below) is the same code behind a FastAPI server. It
 is what to run when someone needs forecasts for arbitrary points or an API,
