@@ -104,7 +104,8 @@ const dayWord = iso => iso === today() ? 'today' : iso === addDays(today(), 1) ?
   : 'on ' + new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'long'});
 const shortDay = iso => iso === today() ? 'Today' : new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short'});
 
-// One plain sentence or three: what is happening now, the worst day ahead and why, and when it eases.
+// One plain sentence or four: what is happening now, the worst day ahead and why, when it eases,
+// and whether it rises again after that.
 function summary(d) {
   const days = d.days.slice(0, 5), known = days.filter(hasData), n = d.now.discharging_upstream, out = [];
   // No monitored overflow upstream: the exposure is zero whatever the weather, so "low" would
@@ -126,6 +127,9 @@ function summary(d) {
   }
   const eases = ORDER[peak.label] ? days.slice(days.indexOf(peak) + 1).find(x => hasData(x) && x.label === 'low') : null;
   if (eases) out.push(`Low again ${dayWord(eases.date)}.`);
+  // Without this, "Low again on Thursday" read as the all-clear when Friday rose again.
+  const rises = eases ? days.slice(days.indexOf(eases) + 1).find(x => hasData(x) && ORDER[x.label]) : null;
+  if (rises) out.push(`${cap(rises.label)}${rises.label === peak.label ? ' again' : ''} ${dayWord(rises.date)}${rain(rises)}.`);
   return out.join(' ');
 }
 const strip = d => { const none = !d.upstream_summary.overflows;   // then there is no exposure to colour, only rain
@@ -147,12 +151,16 @@ async function loadOverflows() {
 }
 map.on('moveend', loadOverflows);
 
-const STALE_MIN = 120;   // builds run every 30 min; older than this and something has failed
+// The build is scheduled every 30 min but GitHub starts it when it can: over 113 builds on
+// 13-28 Sep 2026 they were a median 2.9 h apart, at most 8.1 h. At the old 120 min the banner
+// would have shown 48% of the time; at 6 h, 1%; at 8 h, never. So 8 h means a build has failed.
+const STALE_MIN = 8 * 60;
 const ageMin = () => (Date.now() - new Date(DATA.generated_at).getTime()) / 60000;
+const ago = m => { const t = Math.round(m); return t < 60 ? `${t} min` : `${Math.floor(t / 60)} h ${t % 60} min`; };
 function freshness() {
   const m = ageMin(); const b = DATA.build || {};
   let h = '';
-  if (m > STALE_MIN) h += `<div class="card" style="border-color:var(--high);background:#fff7ed"><b>Stale.</b> This forecast is ${m >= 120 ? Math.round(m/60) + ' hours' : Math.round(m) + ' minutes'} old (issued ${new Date(DATA.generated_at).toLocaleString('en-GB')}). The automatic update has not run since; treat everything below as out of date.</div>`;
+  if (m > STALE_MIN) h += `<div class="card" style="border-color:var(--high);background:#fff7ed"><b>Stale.</b> This forecast is ${ago(m)} old (issued ${new Date(DATA.generated_at).toLocaleString('en-GB')}). The automatic update has not run since; treat everything below as out of date.</div>`;
   if (b.forecast_failed) h += `<div class="small muted">${b.forecast_failed} of ${b.spots} spots have no forecast in this build${b.today_rain_unavailable ? `; ${b.today_rain_unavailable} more have no rainfall data for today` : ''}.</div>`;
   else if (b.today_rain_unavailable) h += `<div class="small muted">${b.today_rain_unavailable} spots have no rainfall data for today in this build.</div>`;
   return h;
@@ -162,7 +170,7 @@ function renderList(filter='') {
   const q = filter.trim().toLowerCase();
   const items = DATA.spots.filter(s => !q || s.name.toLowerCase().includes(q)).sort((a,b) => a.name.localeCompare(b.name));
   let h = freshness();
-  h += `<p class="hint">Updated ${new Date(DATA.generated_at).toLocaleString('en-GB', {weekday:'short', hour:'2-digit', minute:'2-digit'})} (${Math.round(ageMin())} min ago) · ${DATA.n} spots. Pick one on the map or below.</p>`;
+  h += `<p class="hint">Updated ${new Date(DATA.generated_at).toLocaleString('en-GB', {weekday:'short', hour:'2-digit', minute:'2-digit'})} (${ago(ageMin())} ago) · ${DATA.n} spots, updated several times a day. Pick one on the map or below.</p>`;
   h += `<input type="search" id="q" placeholder="Find a river or lake…" value="${filter.replace(/"/g,'&quot;')}">`;
   h += `<ul class="spots">` + items.map(s => `<li data-id="${s.id}"><span>${s.name}<div class="k">${[s.kind, s.source === 'designated' ? 'designated bathing water' : null, later(s)].filter(Boolean).join(' · ')}</div></span><span><span class="badge ${cls(worst(s))}">${worst(s)}</span></span></li>`).join('') + `</ul>`;
   h += `<p class="hint small" style="margin-top:8px">Badge shows the worse of right now and the next two days; a worse day after that is named under the spot. Zoom in to see storm overflows:
