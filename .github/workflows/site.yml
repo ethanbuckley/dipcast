@@ -70,13 +70,31 @@ jobs:
           path: state
           key: dipcast-state-${{ github.run_id }}
 
-      - name: Publish state to the rolling release (durable copy, twice a day)
+      - name: Publish state to the rolling release (durable copy, when over 12 hours old)
         continue-on-error: true
         run: |
-          H=$(date -u +%H); M=$(date -u +%M)
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] || { [ "$M" -lt 30 ] && { [ "$H" = "03" ] || [ "$H" = "15" ]; }; }; then
-            gh release view state >/dev/null 2>&1 || gh release create state --title "Rolling state" --notes "Live polls, forecast log and live scores. Replaced twice a day by the site workflow." --latest=false
-            gh release upload state state/live_history.parquet state/live_latest.parquet state/dipcast.duckdb state/verification_live.json --clobber
+          # GitHub runs the schedule a few times a day at irregular times, so a fixed clock window
+          # was missed for a week at a time. Publish when the release copy of any of these files is
+          # over max_h hours old or missing (a failed --clobber upload deletes it), and on every
+          # manual run. All files go up together, so the copy is one run's snapshot.
+          max_h=12
+          files=(state/live_history.parquet state/live_latest.parquet state/dipcast.duckdb state/verification_live.json)
+          for f in state/live_coverage.parquet state/poll_log.parquet state/ecoli_samples.parquet state/ecoli_samples_status.json; do
+            if [ -f "$f" ]; then files+=("$f"); fi   # later additions, uploaded once the build has written them
+          done
+          if ! assets=$(gh release view state --json assets); then
+            gh release create state --title "Rolling state" --notes "Live polls, forecast log and live scores. Replaced twice a day by the site workflow." --latest=false
+            assets='{"assets":[]}'
+          fi
+          stale=$(jq -r --argjson h "$max_h" --args '
+              (now - $h*3600 | todate) as $cutoff | (.assets | map({(.name): .updatedAt}) | add // {}) as $up
+              | [$ARGS.positional[] | select(($up[.] // "") < $cutoff)] | join(" ")
+            ' "${files[@]#state/}" <<<"$assets") || stale="(could not read the release's assets)"
+          if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ -n "$stale" ]; then
+            echo "Publishing ${#files[@]} files. Over $max_h h old or missing in the release: ${stale:-none (manual run)}"
+            gh release upload state "${files[@]}" --clobber
+          else
+            echo "All ${#files[@]} release copies are under $max_h h old; not publishing."
           fi
 
       - name: Monthly heartbeat commit (keeps the schedule enabled)

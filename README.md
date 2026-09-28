@@ -527,9 +527,10 @@ downloads the river network from the `data-v1` release (113 MB, too big for
 git); runs `scripts/build_site.py`, which polls the nine live feeds, rebuilds
 the overflow table, forecasts every spot with `forecast_point`, scores logged
 forecasts against the accumulated polls, and writes `site/`; saves the state
-back to the cache and, twice a day, to the release; and deploys `site/` to
-GitHub Pages. Nothing is committed by the job except a monthly heartbeat, so
-the repository does not grow.
+back to the cache and, when the release copy is over 12 hours old, to the
+release (GitHub runs the schedule only a few times a day, at irregular times);
+and deploys `site/` to GitHub Pages. Nothing is committed by the job except a
+monthly heartbeat, so the repository does not grow.
 
 The click-anywhere API (below) is the same code behind a FastAPI server. It
 is what to run when someone needs forecasts for arbitrary points or an API,
