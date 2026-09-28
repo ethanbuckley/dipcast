@@ -319,3 +319,18 @@ def test_build_health_refuses_mostly_failed_builds():
     nodata = {"name": "nd", "days": [{"data_status": "rain unavailable"}]}
     with pytest.raises(BuildUnhealthy):
         build_health([good] * 4 + [nodata] * 6)
+
+
+def test_page_view_counter_is_off_by_default_and_disclosed_when_on():
+    import sys
+    from pathlib import Path
+    root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(root / "scripts"))
+    from build_site import NO_COUNTER, WITH_COUNTER, with_counter
+    privacy = (root / "src" / "dipcast" / "api" / "static" / "privacy.html").read_text()
+    assert all(s in privacy for s in NO_COUNTER)          # the swap targets still exist in the page
+    assert with_counter(privacy, "") == privacy and with_counter(privacy, None) == privacy
+    assert with_counter(privacy, "not-a-token'><script>") == privacy     # a malformed token cannot inject markup
+    on = with_counter(privacy, "0123456789abcdef0123456789abcdef")
+    assert on.count("static.cloudflareinsights.com/beacon.min.js") == 1 and '"token": "0123456789abcdef0123456789abcdef"' in on
+    assert all(s in on for s in WITH_COUNTER) and not any(s in on for s in NO_COUNTER)

@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import re
 import shutil
 import sys
 import time
@@ -44,6 +46,34 @@ MAX_NO_DATA_SHARE = 0.5   # more of today's forecasts without rainfall data than
 REWRITES = [('href="/verification"', 'href="verification.html"'), ('href="/terms"', 'href="terms.html"'),
             ('href="/privacy"', 'href="privacy.html"'), ('href="/"', 'href="index.html"'),
             ('href="/static/page.css"', 'href="page.css"'), ("fetch('/api/verification')", "fetch('data/verification.json')")]
+# Optional page-view counter (Cloudflare Web Analytics). Off unless the repository
+# variable is set; the token is public (it sits in the page), so it is a variable,
+# not a secret.
+COUNTER_TOKEN_ENV = "DIPCAST_CF_BEACON_TOKEN"
+NO_COUNTER = ("Last updated 12 September 2026.", "There is no analytics script and no third-party tracking.")
+WITH_COUNTER = ("Last updated 28 September 2026 (page-view counter).",
+                ("Page views are counted with Cloudflare Web Analytics. Cloudflare states that it sets no cookies, "
+                 "uses no local storage and does not fingerprint visitors. It sees your IP address when the counter "
+                 "loads, as any web server would, and its "
+                 '<a href="https://www.cloudflare.com/privacypolicy/">privacy policy</a> applies to that. '
+                 "There is no other analytics or tracking."))
+
+
+def with_counter(html: str, token: str | None) -> str:
+    """Add the counter's script to a page and, on the privacy page, say so. Without a
+    plausible token (16-64 letters and digits, so nothing can break out of the
+    attribute) the page is returned unchanged."""
+    if not token:
+        return html
+    if not re.fullmatch(r"[A-Za-z0-9]{16,64}", token):
+        log.warning("%s is not 16-64 letters and digits: page-view counter left off", COUNTER_TOKEN_ENV)
+        return html
+    beacon = ('<script defer src="https://static.cloudflareinsights.com/beacon.min.js" '
+              "data-cf-beacon='" + json.dumps({"token": token}) + "'></script>")
+    html = html.replace("</head>", beacon + "</head>", 1)
+    for a, b in zip(NO_COUNTER, WITH_COUNTER):
+        html = html.replace(a, b)
+    return html
 
 
 def prefetch_rain(spots: pd.DataFrame) -> None:
@@ -117,13 +147,14 @@ def build(refresh: bool = True) -> dict:
         "spots": results}, default=str))
     (SITE / "data" / "overflows.geojson").write_text(json.dumps(overflows_geojson(limit=20000), default=str))
     (SITE / "data" / "verification.json").write_text(json.dumps(load_verification(), default=str))
+    token = os.environ.get(COUNTER_TOKEN_ENV, "").strip()
     for name in ["verification.html", "terms.html", "privacy.html"]:
         s = (STATIC / name).read_text()
         for a, b in REWRITES:
             s = s.replace(a, b)
-        (SITE / name).write_text(s)
+        (SITE / name).write_text(with_counter(s, token))
     shutil.copy(STATIC / "page.css", SITE / "page.css")
-    (SITE / "index.html").write_text(TEMPLATE.read_text())
+    (SITE / "index.html").write_text(with_counter(TEMPLATE.read_text(), token))
     (SITE / ".nojekyll").write_text("")
     summary = {**health, "seconds": round(time.time() - t0, 1), "generated_at": generated.isoformat()}
     summary.pop("failed_spots", None)

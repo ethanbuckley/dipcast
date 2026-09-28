@@ -59,6 +59,8 @@ jobs:
           test -f data/processed/river_network.pkl || gh release download data-v1 -p river_network.pkl -D data/processed
 
       - name: Build forecasts and site
+        env:
+          DIPCAST_CF_BEACON_TOKEN: ${{ vars.DIPCAST_CF_BEACON_TOKEN }}   # page-view counter; unset = off
         run: uv run python scripts/build_site.py
 
       - name: Save mutable state
