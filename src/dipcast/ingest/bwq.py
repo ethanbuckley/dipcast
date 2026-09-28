@@ -3,6 +3,8 @@
 List endpoint: /doc/bathing-water-quality/in-season/sample.json filtered by
 bwq_samplingPoint.notation. The point notation is the numeric suffix of the
 bathing water's EU id (ukd1203-45650 -> 45650). Weekly samples May-September.
+GitHub's runners are refused by this service (HTTP 403 from its gateway, 28 Sep 2026);
+ingest.wqa gets the same results from the Water Quality Archive, a few days later.
 """
 
 from __future__ import annotations
@@ -31,7 +33,7 @@ def _val(x):
 
 def fetch_point(point: str, since: str = "2023-01-01T00:00:00") -> list[dict]:
     rows, page = [], 0
-    with httpx.Client(timeout=120) as c:
+    with httpx.Client(timeout=120, headers=config.EA_HEADERS) as c:
         while True:
             params = {"bwq_samplingPoint.notation": point, "_pageSize": 500, "_page": page,
                       "_sort": "-sampleDateTime.inXSDDateTime",

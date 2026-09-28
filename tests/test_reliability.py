@@ -302,12 +302,164 @@ def test_save_live_upgrades_a_coverage_file_from_before_17_sep(tmp_path, monkeyp
     assert covered_site_days(cov).empty
 
 
+# ---------------------------------------------------------------- EA sample fetch
+def _refuse(point, since):
+    """What GitHub's runners get from the bathing-water service (28 Sep 2026)."""
+    import httpx
+    req = httpx.Request("GET", "https://environment.data.gov.uk/doc/bathing-water-quality/in-season/sample.json")
+    httpx.Response(403, request=req).raise_for_status()
+
+
+def _archive_down(points, since, purposes=None):
+    import httpx
+    req = httpx.Request("POST", "https://environment.data.gov.uk/water-quality/data/observation")
+    httpx.Response(502, request=req).raise_for_status()
+
+
+def _log_ecoli(fl, s, p=0.6):
+    """One E. coli forecast at bathing water `s`, issued 10 Sep 07:00 for 10-11 Sep."""
+    days = pd.date_range("2026-09-09", periods=3, freq="D", tz=TZ)
+    fl.log_forecast(pd.Timestamp("2026-09-10 07:00", tz=TZ), round(s["lat"], 5), round(s["lon"], 5), "river", "R", 0.1,
+                    days, np.array([0.1, 0.2, 0.3]), pd.DataFrame(), np.zeros((0, 3)), np.zeros((0, 3)),
+                    p_ecoli=np.array([np.nan, p, p / 2]), rain_48h=np.array([np.nan, 12.0, 3.0]))
+
+
+def test_total_sample_fetch_failure_is_flagged_not_silent(tmp_path, monkeypatch):
+    _state(tmp_path, monkeypatch)
+    from dipcast import forecast_log as fl
+    from dipcast.ingest import bwq, wqa
+    asked = []
+
+    def refuse(point, since):
+        asked.append(point)
+        _refuse(point, since)
+    monkeypatch.setattr(bwq, "fetch_point", refuse)
+    monkeypatch.setattr(wqa, "fetch_ecoli", _archive_down)
+    sites = fl._bathing_sites()
+    _log_ecoli(fl, sites.iloc[0])
+    out = fl.verify_ecoli(as_of=date(2026, 9, 12))
+    st = out["samples"]
+    assert out["n_scored"] == 0 and out["n_forecasts"] == 2
+    assert st["all_failed"] and st["n_failed"] == st["n_sites"] == len(sites)
+    assert st["sources"]["bathing_water"] == {"answered": 0, "errors": {"HTTP 403": 1}, "refused": True}
+    assert st["sources"]["archive"]["error"] == "HTTP 502" and st["sources"]["archive"]["answered"] == 0
+    assert len(asked) == 1                                   # refused once: the other sites were not asked
+    assert st["last_ok_at"] is None and st["n_samples"] == 0
+    assert not (tmp_path / fl.ECOLI_SAMPLES).exists()        # nothing written, so the next build retries
+    good = {"name": "ok", "days": [{"data_status": "ok"}]}
+    h = _build_site().build_health([good] * 5, fl.samples_status())   # flagged, but the site still publishes
+    assert h["ecoli_samples"]["n_failed"] == len(sites) and len(h["warnings"]) == 1
+    assert "no EA source answered" in h["warnings"][0] and "HTTP 403" in h["warnings"][0] and "HTTP 502" in h["warnings"][0]
+    assert _build_site().build_health([good] * 5, None)["warnings"] == []
+
+
+def test_refused_bathing_water_service_falls_back_to_the_archive(tmp_path, monkeypatch):
+    _state(tmp_path, monkeypatch)
+    from dipcast import forecast_log as fl
+    from dipcast.ingest import bwq, wqa
+    sites = fl._bathing_sites()
+    s = sites.iloc[0]
+    monkeypatch.setattr(bwq, "fetch_point", _refuse)
+    monkeypatch.setattr(wqa, "fetch_ecoli", lambda points, since, purposes=None: [
+        {"wqa_point": s["wqa_point"], "sample_time": "2026-09-10T11:00:00", "ecoli": 1500.0, "ecoli_qual": "=", "purpose": "MS"},
+        {"wqa_point": "XX-NOT-OURS", "sample_time": "2026-09-10T11:00:00", "ecoli": 5.0, "ecoli_qual": "=", "purpose": "MS"}])
+    _log_ecoli(fl, s)                                        # issued 07:00, before the 11:00 sample
+    out = fl.verify_ecoli(as_of=date(2026, 9, 12))
+    st = out["samples"]
+    assert out["n_scored"] == 1 and abs(out["by_lead"][0]["brier"] - 0.16) < 1e-9     # (0.6 - 1)^2
+    assert not st["all_failed"] and st["n_failed"] == 0 and st["sources"]["bathing_water"]["refused"]
+    assert st["sources"]["archive"] == {"answered": len(sites), "error": None, "n_samples": 1}   # the stray point is dropped
+    saved = pd.read_parquet(tmp_path / fl.ECOLI_SAMPLES)
+    assert saved["source"].tolist() == ["archive"] and saved["bw_id"].tolist() == [s["bw_id"]]
+    assert _build_site().build_health([{"name": "ok", "days": [{"data_status": "ok"}]}], st)["warnings"] == []
+
+
+def test_partial_sample_fetch_failure_keeps_earlier_samples(tmp_path, monkeypatch):
+    import httpx
+    _state(tmp_path, monkeypatch)
+    from dipcast import forecast_log as fl
+    from dipcast.ingest import bwq, wqa
+    sites = fl._bathing_sites().head(2)
+    yr = pd.Timestamp.now(tz=TZ).year
+    old = pd.DataFrame({"bw_id": sites["bw_id"], "name": sites["name"], "kind": sites["kind"], "ecoli": [100.0, 200.0],
+                        "sample_time": pd.to_datetime([f"{yr}-06-01 10:00", f"{yr}-06-01 11:00"]).tz_localize(TZ)})
+    old.to_parquet(tmp_path / fl.ECOLI_SAMPLES, index=False)
+    down = sites["bw_id"].iloc[0].split("-")[-1]
+
+    def fetch(point, since):
+        if point == down:
+            raise httpx.ConnectTimeout("timed out")
+        return [{"point": point, "sample_time": f"{yr}-06-08T10:00:00", "ecoli": 300}]
+    monkeypatch.setattr(bwq, "fetch_point", fetch)
+    monkeypatch.setattr(wqa, "fetch_ecoli", lambda points, since, purposes=None: [])   # answered, nothing new
+    df = fl.refresh_ecoli_samples(force=True)
+    assert df[df["bw_id"] == sites["bw_id"].iloc[0]]["ecoli"].tolist() == [100.0]   # timed out: keeps its June 1 sample
+    assert df[df["bw_id"] == sites["bw_id"].iloc[1]]["ecoli"].tolist() == [300.0]   # answered: replaced by the answer
+    st = fl.samples_status()
+    bw = st["sources"]["bathing_water"]
+    assert not st["all_failed"] and bw["errors"] == {"ConnectTimeout": 1} and not bw["refused"]
+    assert bw["answered"] == len(fl._bathing_sites()) - 1 and st["last_ok_at"] == st["checked_at"]
+    assert _build_site().build_health([{"name": "ok", "days": [{"data_status": "ok"}]}], st)["warnings"] == []
+
+
+def test_archive_fetch_pages_batches_and_parses(monkeypatch):
+    import httpx
+
+    from dipcast.ingest import wqa
+    asked = []
+
+    def handler(request):
+        q = dict(request.url.params)
+        asked.append(q)
+        pts = q["pointNotation"].split(",")
+        n = {"0": wqa.PAGE, str(wqa.PAGE): 1}.get(q["skip"], 0) if len(pts) == wqa.MAX_POINTS else 1
+        member = [{"hasSamplingPoint": {"notation": pts[0]}, "phenomenonTime": "2026-09-14T09:31:00",
+                   "hasSimpleResult": "<10" if i == 0 else "620",
+                   "hasSample": {"isResultOf": {"samplingPurpose": {"notation": "MS"}}}} for i in range(n)]
+        return httpx.Response(200, json={"member": member})
+    real_client = httpx.Client
+    monkeypatch.setattr(httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
+    monkeypatch.setattr(wqa.time, "sleep", lambda s: None)
+    rows = wqa.fetch_ecoli([f"P-{i}" for i in range(wqa.MAX_POINTS + 10)], "2026-05-01T00:00:00")
+    assert len(rows) == wqa.PAGE + 2 and [q["skip"] for q in asked] == ["0", str(wqa.PAGE), "0"]   # 2 pages, then batch 2
+    assert {q["determinand"] for q in asked} == {"2348"} and {q["samplingPurpose"] for q in asked} == {"MS"}
+    assert asked[0]["dateFrom"] == "2026-05-01" and len(asked[2]["pointNotation"].split(",")) == 10
+    assert rows[0] == {"wqa_point": "P-0", "sample_time": "2026-09-14T09:31:00", "ecoli": 10.0, "ecoli_qual": "<", "purpose": "MS"}
+    assert (rows[1]["ecoli"], rows[1]["ecoli_qual"]) == (620.0, "=")
+    assert wqa._count(">15000") == (15000.0, ">") and wqa._count(None) == (None, "=")
+
+
+def test_ea_requests_send_a_contact_user_agent(monkeypatch):
+    import httpx
+
+    from dipcast import config
+    from dipcast.ingest import bwq, flows, wqa
+    seen = []
+
+    def handler(request):
+        seen.append(request.headers["user-agent"])
+        return httpx.Response(200, json={"result": {"items": []}, "items": []})
+    real_client = httpx.Client
+    monkeypatch.setattr(httpx, "Client", lambda **kw: real_client(transport=httpx.MockTransport(handler), **kw))
+    monkeypatch.setattr(httpx, "get", lambda url, **kw: real_client(transport=httpx.MockTransport(handler)).get(url, **kw))
+    assert bwq.fetch_point("08901", "2026-05-01T00:00:00") == []
+    assert flows._nearest_level_station(54.2, -2.6) is None
+    assert wqa.fetch_ecoli(["NE-49705000"], "2026-09-01") == []
+    assert len(seen) == 3 and set(seen) == {config.USER_AGENT}
+    assert "github.com/ethanbuckley/dipcast" in config.USER_AGENT and "python-httpx" not in seen[0]
+
+
 # ---------------------------------------------------------------- build guard
-def test_build_health_refuses_mostly_failed_builds():
+def _build_site():
     import sys
     from pathlib import Path
     sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
-    from build_site import BuildUnhealthy, build_health
+    import build_site
+    return build_site
+
+
+def test_build_health_refuses_mostly_failed_builds():
+    BuildUnhealthy, build_health = _build_site().BuildUnhealthy, _build_site().build_health
     good = {"name": "ok", "days": [{"data_status": "ok"}]}
     bad = {"name": "bad", "error": "forecast failed"}
     isolated = {"name": "tarn", "error": "An isolated lake", "days": []}   # an answer, not a failure

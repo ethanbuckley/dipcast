@@ -377,46 +377,145 @@ def _finish(out: dict, as_of: date) -> dict:
 # --- E. coli: score the map's exceedance forecast against new EA lab samples ----------------
 
 ECOLI_SAMPLES = "ecoli_samples.parquet"
+ECOLI_STATUS = "ecoli_samples_status.json"   # the last fetch attempt, for build health and the page
 ECOLI_REFRESH_H = 24
 
 
 def _bathing_sites() -> pd.DataFrame:
+    cols = ["bw_id", "name", "kind", "lat", "lon", "wqa_point"]
     p = config.RAW / "bathing_waters_inland.json"
     if not p.exists():
-        return pd.DataFrame(columns=["bw_id", "name", "kind", "lat", "lon"])
+        return pd.DataFrame(columns=cols)
     d = pd.DataFrame(json.loads(p.read_text()))
-    return d.rename(columns={"id": "bw_id"})[["bw_id", "name", "kind", "lat", "lon"]]
+    return d.rename(columns={"id": "bw_id"}).reindex(columns=cols)
+
+
+def _fetch_error(e: Exception) -> str:
+    """A short, countable label for a failed request: 'HTTP 403', 'ConnectTimeout'."""
+    code = getattr(getattr(e, "response", None), "status_code", None)
+    return f"HTTP {code}" if code else type(e).__name__
+
+
+def _local_times(s: pd.Series) -> pd.Series:
+    """Sample times as published (local, no offset) to Europe/London; converted if an offset is given."""
+    t = pd.to_datetime(s)
+    return t.dt.tz_convert(LOCAL_TZ) if t.dt.tz is not None else t.dt.tz_localize(
+        LOCAL_TZ, ambiguous="NaT", nonexistent="shift_forward")
+
+
+def _from_bathing_water_service(sites: pd.DataFrame, since: str) -> tuple[pd.DataFrame, set, dict]:
+    """One request per site: (samples, sites that answered, errors by kind). Stops at the
+    first HTTP 403, which is the service's gateway refusing this machine (GitHub's runners
+    since 28 Sep 2026); the other sites would be refused too."""
+    from dipcast.ingest.bwq import fetch_point
+    frames, answered, errors = [], set(), {}
+    for s in sites.itertuples(index=False):
+        try:
+            rows = fetch_point(s.bw_id.split("-")[-1], since)
+        except Exception as e:  # noqa: BLE001 - one site's outage must not lose the rest
+            k = _fetch_error(e)
+            errors[k] = errors.get(k, 0) + 1
+            if k == "HTTP 403":
+                log.warning("EA bathing-water service refused the request for %s (%s); not asking for the other %d sites",
+                            s.name, k, len(sites) - len(answered) - sum(errors.values()))
+                break
+            log.warning("EA samples %s: %s", s.name, e)
+            continue
+        answered.add(s.bw_id)
+        if rows:
+            frames.append(pd.DataFrame(rows).assign(bw_id=s.bw_id, name=s.name, kind=s.kind, source="bathing water"))
+    return (pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()), answered, errors
+
+
+def _from_archive(sites: pd.DataFrame, since: str) -> tuple[pd.DataFrame | None, str | None]:
+    """One request for every mapped site: (samples, or None if the request failed; error)."""
+    from dipcast.ingest.wqa import fetch_ecoli
+    mapped = sites.dropna(subset=["wqa_point"]).set_index("wqa_point")[["bw_id", "name", "kind"]]
+    if mapped.empty:
+        return None, "no site mapped"
+    try:
+        rows = fetch_ecoli(list(mapped.index), since)
+    except Exception as e:  # noqa: BLE001 - the other source may still have answered
+        log.warning("EA Water Quality Archive: %s", e)
+        return None, _fetch_error(e)
+    a = pd.DataFrame(rows, columns=["wqa_point", "sample_time", "ecoli", "ecoli_qual"])
+    a = a[a["wqa_point"].isin(mapped.index)].join(mapped, on="wqa_point")
+    return a.drop(columns=["wqa_point"]).assign(source="archive").reset_index(drop=True), None
+
+
+def describe_fetch(status: dict) -> str:
+    """'bathing-water service: HTTP 403 x1; archive: HTTP 502', for logs and warnings."""
+    src = status.get("sources") or {}
+    bw, ar = src.get("bathing_water") or {}, src.get("archive") or {}
+    b = ", ".join(f"{k} x{v}" for k, v in (bw.get("errors") or {}).items())
+    return f"bathing-water service: {b or 'answered'}; archive: {ar.get('error') or 'answered'}"
 
 
 def refresh_ecoli_samples(force: bool = False) -> pd.DataFrame:
     """This season's EA samples at the inland bathing waters, refreshed at most once a day
-    (38 small requests). Kept in the state directory alongside the live polls."""
-    from dipcast.ingest.bwq import fetch_point
+    and kept in the state directory. Two sources: the bathing-water service (a request per
+    site, first to publish) and the Water Quality Archive (one request; the same results
+    days later, and it answers GitHub's runners, which the other refuses). A sample in both
+    is taken from the bathing-water service; a site that service did not answer for keeps
+    the samples it had, merged with the archive's. Each attempt is recorded in ECOLI_STATUS
+    (see samples_status). When no source answers nothing is written, so the next build retries."""
     p = config.state_read(ECOLI_SAMPLES)
     if p.exists() and not force:
         age_h = (pd.Timestamp.now(tz="UTC") - pd.Timestamp(p.stat().st_mtime, unit="s", tz="UTC")).total_seconds() / 3600
         if age_h < ECOLI_REFRESH_H:
             return pd.read_parquet(p)
+    old = pd.read_parquet(p) if p.exists() else pd.DataFrame()
     sites = _bathing_sites()
     since = f"{pd.Timestamp.now(tz=LOCAL_TZ).year}-05-01T00:00:00"
-    frames = []
-    for s in sites.itertuples(index=False):
-        try:
-            rows = fetch_point(s.bw_id.split("-")[-1], since)
-        except Exception as e:  # noqa: BLE001 - one site's outage must not lose the rest
-            log.warning("EA samples %s: %s", s.name, e)
-            continue
-        if rows:
-            frames.append(pd.DataFrame(rows).assign(bw_id=s.bw_id, name=s.name, kind=s.kind))
-    if not frames:
-        return pd.read_parquet(p) if p.exists() else pd.DataFrame()
-    df = pd.concat(frames, ignore_index=True)
-    df["sample_time"] = pd.to_datetime(df["sample_time"]).dt.tz_localize(LOCAL_TZ, ambiguous="NaT", nonexistent="shift_forward")
-    df["ecoli"] = pd.to_numeric(df["ecoli"], errors="coerce")
-    df = df.dropna(subset=["sample_time", "ecoli"])
+    bw, bw_answered, bw_errors = _from_bathing_water_service(sites, since)
+    archive, archive_error = _from_archive(sites, since)
+    answered = bw_answered | (set(sites.dropna(subset=["wqa_point"])["bw_id"]) if archive is not None else set())
+
+    def clean(part: pd.DataFrame | None) -> pd.DataFrame | None:
+        if part is None or not len(part):
+            return None
+        part = part.assign(sample_time=_local_times(part["sample_time"]), ecoli=pd.to_numeric(part["ecoli"], errors="coerce"))
+        return part.dropna(subset=["sample_time", "ecoli"])
+    # Sites the bathing-water service did not answer for keep this season's earlier samples.
+    kept = old[~old["bw_id"].isin(bw_answered) & (old["sample_time"] >= pd.Timestamp(since, tz=LOCAL_TZ))] if len(old) else None
+    # In order of preference, so a sample found twice is kept from the first.
+    parts = [x for x in (clean(bw), kept, clean(archive)) if x is not None and len(x)]
+    df = pd.concat(parts, ignore_index=True).drop_duplicates(["bw_id", "sample_time"], keep="first") if parts else pd.DataFrame()
+    now = pd.Timestamp.now(tz=LOCAL_TZ).isoformat(timespec="seconds")
+    if answered:
+        last_ok = now
+    else:   # carried over; before the status file existed, the samples file's age says when a fetch last worked
+        last_ok = (samples_status() or {}).get("last_ok_at")
+        if last_ok is None and p.exists():
+            last_ok = pd.Timestamp(p.stat().st_mtime, unit="s", tz="UTC").tz_convert(LOCAL_TZ).isoformat(timespec="seconds")
+    use = df if answered and len(df) else old
+    n_mapped = int(sites["wqa_point"].notna().sum())
+    status = {"checked_at": now, "n_sites": len(sites), "n_failed": len(sites) - len(answered),
+              "all_failed": bool(len(sites)) and not answered, "last_ok_at": last_ok, "n_samples": len(use),
+              "sources": {"bathing_water": {"answered": len(bw_answered), "errors": bw_errors, "refused": "HTTP 403" in bw_errors},
+                          "archive": {"answered": n_mapped if archive is not None else 0, "error": archive_error,
+                                      "n_samples": 0 if archive is None else len(archive)}}}
+    config.state_write(ECOLI_STATUS).write_text(json.dumps(status, indent=1))
+    if status["all_failed"]:
+        log.error("EA samples: no source answered (%s); E. coli scoring gets no new samples. Last good fetch: %s",
+                  describe_fetch(status), last_ok or "never")
+    if not (answered and len(df)):
+        return old
     df.to_parquet(config.state_write(ECOLI_SAMPLES), index=False)
-    log.info("EA samples refreshed: %d this season at %d sites", len(df), df.bw_id.nunique())
+    log.info("EA samples refreshed: %d this season at %d sites (%s)", len(df), df.bw_id.nunique(), describe_fetch(status))
     return df
+
+
+def samples_status() -> dict | None:
+    """The last EA sample-fetch attempt: when, how many sites failed and why, when a fetch
+    last worked. None before the first attempt."""
+    p = config.state_read(ECOLI_STATUS)
+    if not p.exists():
+        return None
+    try:
+        return json.loads(p.read_text())
+    except ValueError:
+        return None
 
 
 def match_points_to_sites(points: pd.DataFrame, sites: pd.DataFrame) -> pd.Series:
@@ -450,6 +549,7 @@ def verify_ecoli(as_of: date | None = None) -> dict:
     pts["bw_id"] = match_points_to_sites(pts, sites)
     pts = pts.dropna(subset=["bw_id"])
     samples = refresh_ecoli_samples()
+    out["samples"] = samples_status()   # a fetch that failed everywhere must not read as "nothing to score yet"
     if pts.empty or samples.empty:
         return out
     samples = samples.assign(day=samples["sample_time"].dt.date)

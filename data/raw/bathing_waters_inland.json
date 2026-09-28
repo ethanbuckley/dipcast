@@ -7,7 +7,8 @@
   "lon": -1.816182633584011,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2021",
-  "undertaker": "Yorkshire Water Services Limited"
+  "undertaker": "Yorkshire Water Services Limited",
+  "wqa_point": "NE-49705000"
  },
  {
   "id": "uke2203-08903",
@@ -17,7 +18,8 @@
   "lon": -1.45145,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "Yorkshire Water Services Limited"
+  "undertaker": "Yorkshire Water Services Limited",
+  "wqa_point": "NE-49800258"
  },
  {
   "id": "uke4200-08904",
@@ -27,7 +29,8 @@
   "lon": -1.38542,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "Yorkshire Water Services Limited"
+  "undertaker": "Yorkshire Water Services Limited",
+  "wqa_point": "NE-49700408"
  },
  {
   "id": "uke2204-08905",
@@ -37,7 +40,8 @@
   "lon": -1.734679072511629,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2026",
-  "undertaker": "Yorkshire Water Services Limited"
+  "undertaker": "Yorkshire Water Services Limited",
+  "wqa_point": "NE-49902000"
  },
  {
   "id": "ukf2208-09701",
@@ -47,7 +51,8 @@
   "lon": -0.631862,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2023",
-  "undertaker": "Anglian Water Services Limited"
+  "undertaker": "Anglian Water Services Limited",
+  "wqa_point": "AN-RUTWHCR"
  },
  {
   "id": "ukf2208-09702",
@@ -57,7 +62,8 @@
   "lon": -0.61313993149942,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2023",
-  "undertaker": "Anglian Water Services Limited"
+  "undertaker": "Anglian Water Services Limited",
+  "wqa_point": "AN-RUTSYKLN"
  },
  {
   "id": "ukf1400-09750",
@@ -67,7 +73,8 @@
   "lon": -1.098153763924492,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2013",
-  "undertaker": "Severn Trent Water Limited"
+  "undertaker": "Severn Trent Water Limited",
+  "wqa_point": "MD-36739550"
  },
  {
   "id": "ukh1201-09801",
@@ -77,7 +84,8 @@
   "lon": 0.11683,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "Anglian Water Services Limited"
+  "undertaker": "Anglian Water Services Limited",
+  "wqa_point": "AN-33M30"
  },
  {
   "id": "ukh1406-10712",
@@ -87,7 +95,8 @@
   "lon": 1.443042065642678,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2026",
-  "undertaker": "Anglian Water Services Limited"
+  "undertaker": "Anglian Water Services Limited",
+  "wqa_point": "AN-WAV1192"
  },
  {
   "id": "ukh1401-11051",
@@ -97,7 +106,8 @@
   "lon": 0.73489,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "Anglian Water Services Limited"
+  "undertaker": "Anglian Water Services Limited",
+  "wqa_point": "AN-ST0695"
  },
  {
   "id": "ukk1302-11760",
@@ -107,7 +117,8 @@
   "lon": -1.960909719962519,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/1998",
-  "undertaker": "Thames Water Utilities Limited"
+  "undertaker": "Thames Water Utilities Limited",
+  "wqa_point": "TH-PGWL0118"
  },
  {
   "id": "uki1101-11910",
@@ -117,7 +128,8 @@
   "lon": -0.160094351971831,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/1998",
-  "undertaker": "Thames Water Utilities Limited"
+  "undertaker": "Thames Water Utilities Limited",
+  "wqa_point": "TH-PGWB0001"
  },
  {
   "id": "uki1101-11920",
@@ -127,7 +139,8 @@
   "lon": -0.15662381451985,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/1998",
-  "undertaker": "Thames Water Utilities Limited"
+  "undertaker": "Thames Water Utilities Limited",
+  "wqa_point": "TH-PGWB0002"
  },
  {
   "id": "uki1101-11930",
@@ -137,7 +150,8 @@
   "lon": -0.166252403338055,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/1998",
-  "undertaker": "Thames Water Utilities Limited"
+  "undertaker": "Thames Water Utilities Limited",
+  "wqa_point": "TH-PGWB0003"
  },
  {
   "id": "uki1106-11940",
@@ -147,7 +161,8 @@
   "lon": -0.169070691536189,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/1998",
-  "undertaker": "Thames Water Utilities Limited"
+  "undertaker": "Thames Water Utilities Limited",
+  "wqa_point": "TH-PGWB0004"
  },
  {
   "id": "ukj1102-11941",
@@ -157,7 +172,8 @@
   "lon": -1.083940641648369,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2026",
-  "undertaker": "Thames Water Utilities Limited"
+  "undertaker": "Thames Water Utilities Limited",
+  "wqa_point": "TH-PGWL0338"
  },
  {
   "id": "uki2203-11942",
@@ -167,7 +183,8 @@
   "lon": -0.310741348239147,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2026",
-  "undertaker": "Thames Water Utilities Limited"
+  "undertaker": "Thames Water Utilities Limited",
+  "wqa_point": "TH-PGWL0039"
  },
  {
   "id": "ukj2310-11945",
@@ -177,7 +194,8 @@
   "lon": -0.791803740453079,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/1998",
-  "undertaker": "Thames Water Utilities Limited"
+  "undertaker": "Thames Water Utilities Limited",
+  "wqa_point": "TH-PGWL0034"
  },
  {
   "id": "ukj1402-11946",
@@ -187,7 +205,8 @@
   "lon": -1.295961521722681,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2022",
-  "undertaker": "Thames Water Utilities Limited"
+  "undertaker": "Thames Water Utilities Limited",
+  "wqa_point": "TH-PGWL0228"
  },
  {
   "id": "ukj1403-11947",
@@ -197,7 +216,8 @@
   "lon": -1.12032,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "Thames Water Utilities Limited"
+  "undertaker": "Thames Water Utilities Limited",
+  "wqa_point": "TH-PGWL0231"
  },
  {
   "id": "ukj3308-19001",
@@ -207,7 +227,8 @@
   "lon": -1.78854,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "Wessex Water Services Limited"
+  "undertaker": "Wessex Water Services Limited",
+  "wqa_point": "SW-50280580"
  },
  {
   "id": "ukk1500-19002",
@@ -217,7 +238,8 @@
   "lon": -1.802179259170573,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2026",
-  "undertaker": "Wessex Water Services Limited"
+  "undertaker": "Wessex Water Services Limited",
+  "wqa_point": "SW-50210050"
  },
  {
   "id": "ukk2304-35201",
@@ -227,7 +249,8 @@
   "lon": -3.11285,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "Wessex Water Services Limited"
+  "undertaker": "Wessex Water Services Limited",
+  "wqa_point": "SW-61006190"
  },
  {
   "id": "ukk1100-36050",
@@ -237,7 +260,8 @@
   "lon": -2.605706908746493,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2014",
-  "undertaker": "Wessex Water Services Limited"
+  "undertaker": "Wessex Water Services Limited",
+  "wqa_point": "SW-60110129"
  },
  {
   "id": "ukk2301-36051",
@@ -247,7 +271,8 @@
   "lon": -2.28093,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "Wessex Water Services Limited"
+  "undertaker": "Wessex Water Services Limited",
+  "wqa_point": "SW-61260169"
  },
  {
   "id": "ukg2200-36060",
@@ -257,7 +282,8 @@
   "lon": -2.72537,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "Severn Trent Water Limited"
+  "undertaker": "Severn Trent Water Limited",
+  "wqa_point": "MD-13618600"
  },
  {
   "id": "ukg2100-36070",
@@ -267,7 +293,8 @@
   "lon": -2.49179,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "Severn Trent Water Limited"
+  "undertaker": "Severn Trent Water Limited",
+  "wqa_point": "MD-00046970"
  },
  {
   "id": "ukg2200-36071",
@@ -277,7 +304,8 @@
   "lon": -2.7567062,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "Severn Trent Water Limited"
+  "undertaker": "Severn Trent Water Limited",
+  "wqa_point": "MD-00054540"
  },
  {
   "id": "ukd6300-40752",
@@ -287,7 +315,8 @@
   "lon": -2.87006710945084,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2026",
-  "undertaker": "Dwr Cymru Cyfyngedig"
+  "undertaker": "Dwr Cymru Cyfyngedig",
+  "wqa_point": "NW-88026007"
  },
  {
   "id": "ukd1203-45625",
@@ -297,7 +326,8 @@
   "lon": -2.961464279216157,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/1998",
-  "undertaker": "United Utilities Water Limited"
+  "undertaker": "United Utilities Water Limited",
+  "wqa_point": "NW-88010481"
  },
  {
   "id": "ukd1203-45650",
@@ -307,7 +337,8 @@
   "lon": -2.922541305375967,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/1998",
-  "undertaker": "United Utilities Water Limited"
+  "undertaker": "United Utilities Water Limited",
+  "wqa_point": "NW-88004538"
  },
  {
   "id": "ukd1203-45675",
@@ -317,7 +348,8 @@
   "lon": -2.922499452360544,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2015",
-  "undertaker": "United Utilities Water Limited"
+  "undertaker": "United Utilities Water Limited",
+  "wqa_point": "NW-88023689"
  },
  {
   "id": "ukd1203-45700",
@@ -327,7 +359,8 @@
   "lon": -2.953765741222596,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/1998",
-  "undertaker": "United Utilities Water Limited"
+  "undertaker": "United Utilities Water Limited",
+  "wqa_point": "NW-88004556"
  },
  {
   "id": "ukd1230-45725",
@@ -337,7 +370,8 @@
   "lon": -3.09122,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "United Utilities Water Limited"
+  "undertaker": "United Utilities Water Limited",
+  "wqa_point": "NW-88024698"
  },
  {
   "id": "ukd1230-45750",
@@ -347,7 +381,8 @@
   "lon": -3.06608,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "United Utilities Water Limited"
+  "undertaker": "United Utilities Water Limited",
+  "wqa_point": "NW-88025869"
  },
  {
   "id": "ukd1230-45775",
@@ -357,7 +392,8 @@
   "lon": -3.05435,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "United Utilities Water Limited"
+  "undertaker": "United Utilities Water Limited",
+  "wqa_point": "NW-88025870"
  },
  {
   "id": "ukd1101-45800",
@@ -367,7 +403,8 @@
   "lon": -3.14218,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "United Utilities Water Limited"
+  "undertaker": "United Utilities Water Limited",
+  "wqa_point": "NW-88010777"
  },
  {
   "id": "ukd4308-46501",
@@ -377,6 +414,7 @@
   "lon": -2.41728,
   "rain_impacted": false,
   "year_designated": "http://reference.data.gov.uk/id/year/2024",
-  "undertaker": "United Utilities Water Limited"
+  "undertaker": "United Utilities Water Limited",
+  "wqa_point": "NW-88003439"
  }
 ]

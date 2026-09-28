@@ -306,6 +306,19 @@ rivers and lakes, same-day and in-advance leads reported separately, with the
 most recent samples listed against what the map said. It appears on the
 verification page as results arrive, usually within a week of sampling. The 2026
 season ends in September, so the first real read of this table is next May.
+Samples come from two EA services. The bathing-water service is asked first,
+since it publishes first, but from 28 Sep 2026 its gateway refuses GitHub's
+runners (HTTP 403 whatever the User-Agent), so the build stops at the first
+refusal. The Water Quality Archive holds the same results about 3-7 days later
+and answers the runners: on 28 Sep it had 675 of the service's 702 samples as
+statutory monitoring, all with identical counts. Each bathing water's archive
+point is recorded as `wqa_point` in `data/raw/bathing_waters_inland.json` by
+`scripts/map_bathing_waters_wqa.py`, which matches samples, not just distance. A
+sample found in both is taken from the bathing-water service. Each fetch attempt
+is recorded (`ecoli_samples_status.json` in the state directory), and a site no
+source answered for keeps its earlier samples. If no source answers at all, the
+build log, the Actions run page (as an annotation) and the verification page say
+so, instead of showing zero scores as if nothing had been sampled yet.
 
 **Live scoring rules for the spill forecasts (16-17 Sep 2026).** The forecast
 scored for each overflow and day is the latest one issued by 08:00 local time on
@@ -433,7 +446,10 @@ held-out year (table above). Unit tests (run by the site workflow before every
 build) cover the label exploder, rainfall features, the risk combination,
 missing-rain handling, the travel-time history window, the decision-time and
 coverage rules of the live scorer, the issued-before-sample rule of the E. coli
-scorer, coverage accumulation in the poller and the build-health guard.
+scorer, coverage accumulation in the poller, the build-health guard, and the EA
+sample fetch (the archive stands in when the bathing-water service refuses, a
+total failure is flagged, a partial one keeps earlier samples, requests carry the
+contact User-Agent).
 
 Done since v1: reliability release of 16-17 Sep (missing rain is unknown not dry;
 strict 08:00 headline with missed deadlines reported; per-overflow observation
@@ -485,7 +501,10 @@ unset, run `scripts/refresh.py` on a schedule and call `POST /api/reload`
 (`deploy/com.ethanbuckley.dipcast.refresh.plist` does this on macOS). Mutable
 files (live polls, the overflow table, the forecast log, live scores) go to
 `DIPCAST_STATE` if set, else `data/processed`. All raw pulls are cached under
-`data/cache/` so re-running the ingestion is cheap. `scripts/verify_leads.py
+`data/cache/` so re-running the ingestion is cheap. Requests to
+environment.data.gov.uk carry the User-Agent `dipcast/<version>
+(+https://github.com/ethanbuckley/dipcast)`; a fork should set its own with
+`DIPCAST_USER_AGENT`. `scripts/verify_leads.py
 2025` reproduces the lead-time table; `scripts/validate_ecoli.py` then
 `scripts/validate_ecoli_combined.py` reproduce the E. coli tables.
 

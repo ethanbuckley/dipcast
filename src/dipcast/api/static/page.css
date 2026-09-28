@@ -11,5 +11,6 @@ th,td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); v
 th { color:var(--muted); font-weight:600; }
 td.num, th.num { text-align:right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
 .muted { color:var(--muted); } .small { font-size:13px; }
+.alert { border:1px solid #f59e0b; background:#fff7ed; border-radius:6px; padding:10px 12px; margin:8px 0 12px; }
 nav { font-size:14px; margin-bottom:24px; } nav a { margin-right:14px; }
 footer { margin-top:48px; padding-top:16px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
