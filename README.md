@@ -201,8 +201,8 @@ pandas, which reads an all-missing window as 0 mm, and Open-Meteo's archive has
 no lead 1-4 rain for 2023, so those samples counted as dry at every lead but the
 same day. It now uses the production window rule (`ecoli.rain_windows`: 90% of
 the hours must carry a value) and compares every lead on the same 2024-26
-samples. The river figures moved by one to two points (lead 2 from 68% to 69%,
-the same day from 75% to 75%); the conclusions did not change.
+samples. The river figures moved by one to two points (lead 2 from 68% to 69%;
+the same-day figure stayed at 75%); the conclusions did not change.
 
 **E. coli exceedance model.** The map's "E. coli > 900" column: the estimated
 probability that a midday sample exceeds 900 cfu/100 ml. `scripts/train_ecoli.py`
