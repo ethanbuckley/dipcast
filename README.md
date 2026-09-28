@@ -306,12 +306,19 @@ rivers and lakes, same-day and in-advance leads reported separately, with the
 most recent samples listed against what the map said. It appears on the
 verification page as results arrive, usually within a week of sampling. The 2026
 season ends in September, so the first real read of this table is next May.
-Each fetch attempt is recorded (`ecoli_samples_status.json` in the state
-directory). A site whose request fails keeps its earlier samples. If every
-request fails, the build log, the Actions run page (as an annotation) and the
-verification page all say so, instead of showing zero scores as if nothing had
-been sampled yet (28 Sep 2026: GitHub's runners get HTTP 403 from the EA's sample
-endpoint).
+Samples come from two EA services. The bathing-water service is asked first,
+since it publishes first, but from 28 Sep 2026 its gateway refuses GitHub's
+runners (HTTP 403 whatever the User-Agent), so the build stops at the first
+refusal. The Water Quality Archive holds the same results about 3-7 days later
+and answers the runners: on 28 Sep it had 675 of the service's 702 samples as
+statutory monitoring, all with identical counts. Each bathing water's archive
+point is recorded as `wqa_point` in `data/raw/bathing_waters_inland.json` by
+`scripts/map_bathing_waters_wqa.py`, which matches samples, not just distance. A
+sample found in both is taken from the bathing-water service. Each fetch attempt
+is recorded (`ecoli_samples_status.json` in the state directory), and a site no
+source answered for keeps its earlier samples. If no source answers at all, the
+build log, the Actions run page (as an annotation) and the verification page say
+so, instead of showing zero scores as if nothing had been sampled yet.
 
 **Live scoring rules for the spill forecasts (16-17 Sep 2026).** The forecast
 scored for each overflow and day is the latest one issued by 08:00 local time on
@@ -440,8 +447,9 @@ build) cover the label exploder, rainfall features, the risk combination,
 missing-rain handling, the travel-time history window, the decision-time and
 coverage rules of the live scorer, the issued-before-sample rule of the E. coli
 scorer, coverage accumulation in the poller, the build-health guard, and the EA
-sample fetch (a total failure is flagged, a partial one keeps earlier samples,
-requests carry the contact User-Agent).
+sample fetch (the archive stands in when the bathing-water service refuses, a
+total failure is flagged, a partial one keeps earlier samples, requests carry the
+contact User-Agent).
 
 Done since v1: reliability release of 16-17 Sep (missing rain is unknown not dry;
 strict 08:00 headline with missed deadlines reported; per-overflow observation

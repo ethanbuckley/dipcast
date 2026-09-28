@@ -19,7 +19,7 @@ import time
 import pandas as pd
 
 from dipcast import __version__, config
-from dipcast.forecast_log import load_verification, samples_status
+from dipcast.forecast_log import describe_fetch, load_verification, samples_status
 from dipcast.ingest.rainfall import cells_for_sites, fetch_forecast
 from dipcast.jobs import refresh_all
 from dipcast.model.forecast import (
@@ -104,7 +104,7 @@ class BuildUnhealthy(RuntimeError):
 def build_health(results: list[dict], ecoli_samples: dict | None = None) -> dict:
     """Counts the workflow and the page use to judge a build; raises BuildUnhealthy
     when the site should not be published. `ecoli_samples` is the last EA sample fetch
-    (forecast_log.samples_status); if every request failed it goes in `warnings`. That
+    (forecast_log.samples_status); if no source answered it goes in `warnings`. That
     stalls the E. coli scores, not the forecasts, so it does not stop the publish."""
     n = len(results)
     # A spot the model cannot say anything about (an isolated lake, no river within
@@ -122,11 +122,11 @@ def build_health(results: list[dict], ecoli_samples: dict | None = None) -> dict
         raise BuildUnhealthy(f"{today_no_data}/{len(ok)} forecasts have no rainfall data for today; not publishing")
     if ecoli_samples:
         s = ecoli_samples
-        health["ecoli_samples"] = {k: s.get(k) for k in ("checked_at", "n_sites", "n_failed", "errors", "last_ok_at")}
+        health["ecoli_samples"] = {k: s.get(k) for k in ("checked_at", "n_sites", "n_failed", "last_ok_at", "sources")}
         if s.get("all_failed"):
-            why = ", ".join(f"{k} x{v}" for k, v in (s.get("errors") or {}).items())
-            health["warnings"].append(f"E. coli scoring stalled: all {s.get('n_sites')} EA sample requests failed "
-                                      f"at {s.get('checked_at')} ({why}); last good fetch {s.get('last_ok_at') or 'never'}")
+            health["warnings"].append(f"E. coli scoring stalled: no EA source answered for any of the {s.get('n_sites')} "
+                                      f"bathing waters at {s.get('checked_at')} ({describe_fetch(s)}); "
+                                      f"last good fetch {s.get('last_ok_at') or 'never'}")
     return health
 
 

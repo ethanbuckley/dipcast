@@ -3,6 +3,8 @@
 List endpoint: /doc/bathing-water-quality/in-season/sample.json filtered by
 bwq_samplingPoint.notation. The point notation is the numeric suffix of the
 bathing water's EU id (ukd1203-45650 -> 45650). Weekly samples May-September.
+GitHub's runners are refused by this service (HTTP 403 from its gateway, 28 Sep 2026);
+ingest.wqa gets the same results from the Water Quality Archive, a few days later.
 """
 
 from __future__ import annotations
