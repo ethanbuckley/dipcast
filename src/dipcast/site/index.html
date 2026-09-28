@@ -3,8 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>dipcast</title>
+<title>dipcast · sewage-spill forecasts for swim spots</title>
 <meta name="description" content="Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow data, rainfall forecasts and the river network.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="dipcast">
+<meta property="og:description" content="Will sewage from upstream storm overflows reach this swim spot? Forecasts for river and lake swim spots in England.">
 <!-- Add to Home Screen: an icon, a name, and a full-screen window without the browser bars. -->
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -16,75 +19,156 @@
 <meta name="apple-mobile-web-app-title" content="dipcast">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-  :root { --ink:#1b1f23; --muted:#5b6470; --line:#e3e6ea; --bg:#fff; --accent:#0b5fff;
-          --low:#2e9e5b; --moderate:#d8a400; --high:#e06a1b; --veryhigh:#c81e1e; --unknown:#8a939e; }
+  /* Brand teal from the icon. Map markers use the bright risk colours; badges use darker
+     shades so their text passes WCAG AA (4.5:1): the bright ones measured 2.3-3.4:1. */
+  :root { --ink:#16202a; --muted:#5b6470; --line:#e3e6ea; --bg:#fff; --surface:#f5f7f8;
+          --brand:#0f5a61; --brand-2:#5cc2b5;
+          --low:#2e9e5b; --moderate:#d8a400; --high:#e06a1b; --veryhigh:#c81e1e; --unknown:#8a939e;
+          --b-low:#1d7a45; --b-moderate:#f4c542; --b-high:#b8480f; --b-veryhigh:#b01c1c; --b-na:#5f6873; }
   * { box-sizing:border-box; }
-  html,body { margin:0; height:100%; font:14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color:var(--ink); background:var(--bg);}
-  #app { display:grid; grid-template-columns: 1fr 400px; height:100%; }
-  #map { height:100%; }
-  #panel { border-left:1px solid var(--line); overflow:auto; padding:16px 18px; }
-  h1 { font-size:18px; margin:0 0 4px; letter-spacing:-.01em; }
-  .sub { color:var(--muted); margin:0 0 12px; }
-  .hint { color:var(--muted); font-size:13px; }
-  .card { border:1px solid var(--line); border-radius:8px; padding:12px 14px; margin:10px 0; }
+  html,body { margin:0; height:100%; }
+  body { font:15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color:var(--ink); background:var(--bg);
+         display:flex; flex-direction:column; }
+  a { color:var(--brand); }
+  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline:3px solid var(--brand-2); outline-offset:2px; border-radius:4px; }
+  .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  .top { flex:none; display:flex; align-items:center; gap:14px; padding:9px 18px; border-bottom:1px solid var(--line); background:var(--bg); }
+  .brand { display:flex; align-items:center; gap:9px; color:var(--ink); text-decoration:none; font-weight:700; font-size:18px; letter-spacing:-.015em; }
+  .brand img { display:block; border-radius:7px; }
+  .tagline { color:var(--muted); font-size:13.5px; }
+  .top nav { margin-left:auto; display:flex; gap:18px; font-size:14px; }
+  .top nav a { text-decoration:none; font-weight:550; }
+  .top nav a:hover { text-decoration:underline; }
+
+  #app { flex:1; min-height:0; display:grid; grid-template-columns:1fr 420px; }
+  #map { height:100%; min-height:0; background:#e8eef0; }
+  .leaflet-tile-pane { filter:saturate(.35) brightness(1.03); }   /* a quieter base map, so the risk colours carry */
+  #panel { border-left:1px solid var(--line); overflow:auto; padding:16px 20px 28px; }
+
+  .map-legend { background:rgba(255,255,255,.95); border-radius:8px; padding:8px 11px; font-size:12px; line-height:1.65; box-shadow:0 1px 5px rgba(0,0,0,.2); color:var(--ink); }
+  .map-legend .ttl { font-weight:650; }
+  .map-legend .extra { color:var(--muted); margin-top:4px; max-width:210px; line-height:1.45; }
+  .dot { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:6px; vertical-align:-1px; box-shadow:0 0 0 1.5px #fff, 0 0 0 2.5px rgba(0,0,0,.18); }
+  .dot.sm { width:8px; height:8px; margin:0 4px 0 6px; box-shadow:none; }
+
+  h2.spot-name { font-size:20px; line-height:1.25; margin:8px 0 6px; letter-spacing:-.01em; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 4px; }
+  .chip { font-size:12px; color:var(--muted); background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:1px 9px; }
+  .back { font-size:14px; text-decoration:none; font-weight:550; }
+  .card { border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:12px 0; }
+  .card h3 { font-size:15px; margin:0; }
+  .card .sub { color:var(--muted); font-size:12.5px; margin:1px 0 8px; }
+  .hero { background:var(--surface); border-left:5px solid var(--unknown); }
+  .hero.low { border-left-color:var(--low); } .hero.moderate { border-left-color:var(--moderate); }
+  .hero.high { border-left-color:var(--high); } .hero.veryhigh { border-left-color:var(--veryhigh); }
+  .hero-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+  .eyebrow { font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:650; }
+  .summary { font-size:16.5px; line-height:1.45; margin:6px 0 12px; }
+  .notice { border:1px solid var(--high); background:#fff7ed; border-radius:10px; padding:10px 14px; margin:0 0 12px; font-size:14px; }
+
+  .badge { display:inline-block; padding:2px 9px; border-radius:999px; color:#fff; font-size:12px; font-weight:650; white-space:nowrap; }
+  .b-low{background:var(--b-low)} .b-moderate{background:var(--b-moderate);color:#3d2e00} .b-high{background:var(--b-high)}
+  .b-veryhigh{background:var(--b-veryhigh)} .b-na{background:var(--b-na)}
   .risk { display:flex; align-items:baseline; gap:10px; }
-  .risk .val { font: 600 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .badge { display:inline-block; padding:2px 8px; border-radius:999px; color:#fff; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.03em; }
-  .b-low{background:var(--low)} .b-moderate{background:var(--moderate)} .b-high{background:var(--high)} .b-veryhigh{background:var(--veryhigh)} .b-unknown{background:var(--unknown)}
-  table { width:100%; border-collapse:collapse; font-size:13px; }
+  .risk .val { font:650 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; }
   th,td { text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
-  th { color:var(--muted); font-weight:600; }
-  td.num, th.num { text-align:right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-  .muted { color:var(--muted); } .small { font-size:12px; }
-  details summary { cursor:pointer; color:var(--accent); }
+  tr:last-child td { border-bottom:0; }
+  th { color:var(--muted); font-weight:600; font-size:12.5px; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .muted { color:var(--muted); } .small { font-size:12.5px; }
+  details.more > summary { cursor:pointer; color:var(--brand); font-size:13px; margin-top:8px; font-weight:550; }
+  details.more[open] > summary { margin-bottom:6px; }
   .status-1{color:var(--veryhigh);font-weight:600} .status-0{color:var(--muted)} .status--1,.status--2{color:var(--unknown)}
-  .legend span { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:4px; vertical-align:middle; }
-  input[type=search] { width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:6px; font:inherit; margin:6px 0 8px; }
-  ul.spots { list-style:none; padding:0; margin:0; max-height:46vh; overflow:auto; border:1px solid var(--line); border-radius:8px; }
-  ul.spots li { padding:7px 10px; border-bottom:1px solid var(--line); cursor:pointer; display:flex; justify-content:space-between; gap:8px; }
-  ul.spots li:hover { background:#f6f8fa; } ul.spots li .k { color:var(--muted); font-size:12px; }
-  .back { font-size:13px; }
   .later { font-weight:600; } .later.moderate { color:#7a6000; } .later.high { color:#b04a0e; } .later.veryhigh { color:#a31a1a; }
-  /* The answer first: one sentence, then the five days at a glance. */
-  .summary { font-size:16px; line-height:1.4; margin:10px 0 8px; }
+
   .days { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:4px; margin:0 0 4px; }
-  .day { border-radius:6px; border-top:4px solid var(--unknown); background:#eef0f2; color:#3d434a; padding:5px 3px 6px; text-align:center; }
+  .day { border-radius:6px; border-top:4px solid var(--unknown); background:#e9ecef; color:#3d434a; padding:5px 3px 6px; text-align:center; }
   .day .d, .day .r { font-size:11px; } .day .l { font-size:12px; font-weight:700; line-height:1.15; margin:1px 0; }
-  .day.low { border-color:var(--low); background:#e6f4ec; color:#1e5a36; }
-  .day.moderate { border-color:var(--moderate); background:#fbf2d2; color:#5e4a00; }
-  .day.high { border-color:var(--high); background:#fde8da; color:#7f3508; }
-  .day.veryhigh { border-color:var(--veryhigh); background:#f9dcdc; color:#8a1616; }
+  .day.low { border-color:var(--low); background:#e2f2e8; color:#1e5a36; }
+  .day.moderate { border-color:var(--moderate); background:#faf0cc; color:#5e4a00; }
+  .day.high { border-color:var(--high); background:#fce4d4; color:#7f3508; }
+  .day.veryhigh { border-color:var(--veryhigh); background:#f8d8d8; color:#8a1616; }
+
+  .overview { font-size:15px; margin:0 0 10px; }
+  input[type=search] { width:100%; padding:9px 11px; border:1px solid #cfd4da; border-radius:8px; font:inherit; margin:0 0 8px; }
+  .controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin:0 0 10px; }
+  .seg { display:flex; flex-wrap:wrap; gap:6px; }
+  .seg button, .btn, select { font:inherit; font-size:13px; padding:4px 11px; border-radius:999px; border:1px solid #cfd4da; background:var(--bg); color:var(--ink); cursor:pointer; }
+  .seg button[aria-pressed=true] { background:var(--brand); border-color:var(--brand); color:#fff; }
+  select { border-radius:8px; padding:4px 8px; }
+  .btn { border-radius:8px; padding:6px 12px; }
+  ul.spots { list-style:none; padding:0; margin:0; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  ul.spots li + li { border-top:1px solid var(--line); }
+  ul.spots a { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 12px; color:inherit; text-decoration:none; }
+  ul.spots a:hover { background:var(--surface); }
+  ul.spots .nm { font-weight:550; }
+  ul.spots .k { display:block; color:var(--muted); font-size:12.5px; font-weight:400; }
+  .empty { padding:14px 12px; color:var(--muted); }
+
+  .about { margin-top:26px; padding-top:16px; border-top:1px solid var(--line); font-size:14px; }
+  .about h2 { font-size:16px; margin:0 0 6px; }
+  .about dl { margin:6px 0 0; } .about dt { font-weight:650; margin-top:8px; } .about dd { margin:2px 0 0; color:var(--muted); font-size:13px; }
+  footer.fine { margin-top:18px; padding-top:12px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); }
+  footer.fine p { margin:0 0 8px; }
+
   /* Phones: one page that scrolls, a shorter map, the list on the first screen. */
   @media (max-width: 800px) {
-    html, body { height:auto; }
-    #app { display:block; height:auto; }
+    html, body { height:auto; } body { display:block; }
+    .top { padding:8px 14px; } .tagline { display:none; } .top nav { gap:14px; }
+    #app { display:block; }
     #map { height:40vh; min-height:220px; max-height:380px; }
     #panel { border-left:0; border-top:1px solid var(--line); overflow:visible; padding:14px 16px 32px; }
-    ul.spots { max-height:none; overflow:visible; }
+    .map-legend { padding:5px 8px; line-height:1.5; } .map-legend .ttl, .map-legend .extra { display:none; }
+    .map-legend .row { display:inline-block; margin-right:6px; }
   }
 </style>
 </head>
 <body>
+<header class="top">
+  <a class="brand" href="./"><img src="icons/icon.svg" alt="" width="28" height="28">dipcast</a>
+  <span class="tagline">Will sewage from upstream storm overflows reach this swim spot?</span>
+  <nav aria-label="Site"><a href="verification.html">Accuracy</a><a href="#about">About</a></nav>
+</header>
 <div id="app">
-  <div id="map"></div>
-  <aside id="panel">
-    <h1>dipcast</h1>
-    <p class="sub">Will sewage from upstream storm overflows reach this swim spot?</p>
-    <div id="result"></div>
-    <p class="hint small" style="margin-top:18px">Up to four things are shown. <b>Observed</b>: which upstream storm overflows are discharging now or finished within 48 h, from the water companies' live feeds. <b>Exposure index (0–100)</b>: the modelled chance that at least one upstream overflow spills and its discharge reaches the spot after travel time, die-off and dilution. The spill part is verified against what the overflows did; the die-off and dilution weights are physical estimates, not calibrated against water samples, so it is an index, not a probability. <b>E. coli &gt; 900</b>: the estimated probability that a midday water sample would exceed 900 E. coli cfu/100 ml, from rainfall at the spot, the exposure index, water-body type and season, fitted to Environment Agency samples at river and lake bathing waters and tested on years and sites it never saw. 900 is the threshold used in the inland "sufficient" classification, which is a 90th-percentile calculation over four seasons, not a pass/fail test of one sample. It is validated on rivers in the May–September sampling season only; on lakes it has no demonstrated skill and is not shown. <b>Algae</b> (designated bathing waters only): the Environment Agency sampler's latest look at the water, an observation, not a forecast; it does not tell blue-green algae from harmless kinds. The rest are forecasts, not measurements: the model knows nothing about a specific farm, outfall or algal bloom, and "low" is not a guarantee of clean water. Inclusion of a spot is not a statement that it is safe to swim there. <a href="verification.html">How accurate is it?</a></p>
-    <p class="hint small">Data: water company live feeds via the National Storm Overflow Hub (CC BY 4.0) · Environment Agency annual returns, bathing waters and lake water bodies (OGL v3; contains Environment Agency information © Environment Agency and database right) · Contains OS data © Crown copyright and database right 2026 · Weather data by <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0) · Map © OpenStreetMap contributors.</p>
-    <p class="hint small"><a href="terms.html">Terms of use</a> · <a href="privacy.html">Privacy</a> · <a href="https://github.com/ethanbuckley/dipcast">Source code</a> (MIT) · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">Request a spot</a></p>
-  </aside>
+  <div id="map" role="region" aria-label="Map of swim spots"></div>
+  <main id="panel">
+    <div id="result"><p class="muted">Loading forecasts…</p></div>
+    <section class="about" id="about">
+      <h2>About these forecasts</h2>
+      <p>For each spot, dipcast traces the river upstream, finds every monitored storm overflow whose water reaches it, and combines what those overflows are doing now with how likely each is to spill over the next five days, allowing for travel time, bacterial die-off and dilution. It is a forecast, not a water test: "low" is not a guarantee of clean water, and inclusion of a spot is not a statement that it is safe to swim there. <a href="verification.html">How accurate is it?</a></p>
+      <details class="more"><summary>What each part of a spot's page means</summary>
+        <dl>
+          <dt>Right now</dt><dd>Which upstream storm overflows are discharging now or finished within 48 hours, from the water companies' live feeds.</dd>
+          <dt>Exposure index (0–100)</dt><dd>The modelled chance that at least one upstream overflow spills and its discharge reaches the spot after travel time, die-off and dilution. The spill part is verified against what the overflows did; the die-off and dilution weights are physical estimates, not calibrated against water samples, so it is an index, not a probability. The colour levels (low to very high) come from it.</dd>
+          <dt>E. coli &gt; 900</dt><dd>The estimated probability that a midday water sample would exceed 900 E. coli cfu/100 ml, from rainfall at the spot, the exposure index, water-body type and season, fitted to Environment Agency samples at river and lake bathing waters and tested on years and sites it never saw. 900 is the threshold used in the inland "sufficient" classification, which is a 90th-percentile calculation over four seasons, not a pass/fail test of one sample. It is validated on rivers in the May–September sampling season only; on lakes it has no demonstrated skill and is not shown.</dd>
+          <dt>Algae</dt><dd>Designated bathing waters only: the Environment Agency sampler's latest look at the water, an observation, not a forecast. It does not tell blue-green algae from harmless kinds.</dd>
+          <dt>What it does not know</dt><dd>Anything about a specific farm, road, outfall or algal bloom: only monitored storm overflows are modelled.</dd>
+        </dl>
+      </details>
+    </section>
+    <footer class="fine">
+      <p>Data: water company live feeds via the National Storm Overflow Hub (CC BY 4.0) · Environment Agency annual returns, bathing waters and lake water bodies (OGL v3; contains Environment Agency information © Environment Agency and database right) · Contains OS data © Crown copyright and database right 2026 · Weather data by <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0) · Map © OpenStreetMap contributors.</p>
+      <p><a href="terms.html">Terms of use</a> · <a href="privacy.html">Privacy</a> · <a href="https://github.com/ethanbuckley/dipcast">Source code</a> (MIT) · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">Request a spot</a></p>
+    </footer>
+  </main>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const map = L.map('map', { zoomControl: true }).setView([53.6, -2.0], 6);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19,
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
-const spotLayer = L.layerGroup().addTo(map), contribLayer = L.layerGroup().addTo(map), ovLayer = L.layerGroup().addTo(map);
-let DATA = null, OVERFLOWS = null, serverToday = null, current = null;
+const spotLayer = L.layerGroup().addTo(map), contribLayer = L.layerGroup().addTo(map), ovLayer = L.layerGroup().addTo(map), selLayer = L.layerGroup().addTo(map);
+let DATA = null, OVERFLOWS = null, serverToday = null, current = null, listShown = false;
+const VIEW = { q: '', filter: 'all', sort: 'risk', here: null, geoMsg: '' };
+// Names and descriptions come from spots.csv and the water companies' feeds: escape them.
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'})[c]);
 const fmt = (x, d=0) => (x === null || x === undefined) ? '–' : Number(x).toFixed(d);
-const cls = l => 'b-' + String(l||'unknown').replace(' ', '');
+const ORDER = {low:0, moderate:1, high:2, 'very high':3};
+const NOT_COVERED = 'not covered', NO_FORECAST = 'no forecast', NO_OVERFLOWS = 'no overflows';
+const cls = l => ORDER[l] === undefined ? 'b-na' : 'b-' + l.replace(' ', '');
+const tone = l => ORDER[l] === undefined ? 'na' : l.replace(' ', '');
 const colour = l => ({low:'#2e9e5b', moderate:'#d8a400', high:'#e06a1b', 'very high':'#c81e1e'})[l] || '#8a939e';
 const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const addDays = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return localISO(d); };
@@ -93,16 +177,20 @@ const dateLabel = iso => { const t = serverToday ?? localISO(new Date());
   return new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'}); };
 const statusText = s => ({1:'discharging', 0:'not discharging', '-1':'monitor offline', '-2':'no live feed'})[s] ?? '?';
 const colourFor = s => s === 1 ? '#c81e1e' : s === 0 ? '#5b6470' : '#b3bac2';
-const headline = s => s.error ? 'unknown' : (['very high','high','moderate','low'].find(l => l === s.now.label || l === (s.days[0]||{}).label) || 'low');
-const worst = s => { const order = {low:0, moderate:1, high:2, 'very high':3}; if (s.error) return 'unknown';
-  const labels = [s.now.label, ...(s.days.slice(0,2).map(d => d.label))]; return labels.sort((a,b) => (order[b]||0)-(order[a]||0))[0]; };
-const ORDER = {low:0, moderate:1, high:2, 'very high':3};
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const hasData = x => x.risk !== null && x.risk !== undefined;
 const today = () => serverToday ?? localISO(new Date());
 const dayWord = iso => iso === today() ? 'today' : iso === addDays(today(), 1) ? 'tomorrow'
   : 'on ' + new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'long'});
 const shortDay = iso => iso === today() ? 'Today' : new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short'});
+// The worse of right now, today and tomorrow. A spot the model cannot reach, or with no monitored
+// overflow upstream, gets no risk level: "low" there would read as clean water.
+const worst = s => { const labels = [s.now.label, ...(s.days.slice(0,2).map(d => d.label))];
+  return labels.sort((a,b) => (ORDER[b]||0)-(ORDER[a]||0))[0]; };
+const level = s => s.error ? (String(s.error).startsWith('forecast failed') ? NO_FORECAST : NOT_COVERED)
+  : !(s.upstream_summary || {}).overflows ? NO_OVERFLOWS : worst(s);
+const km = (a, b) => { const r = Math.PI / 180, dLat = (b[0]-a[0])*r, dLon = (b[1]-a[1])*r;
+  const h = Math.sin(dLat/2)**2 + Math.cos(a[0]*r) * Math.cos(b[0]*r) * Math.sin(dLon/2)**2; return 12742 * Math.asin(Math.sqrt(h)); };
 
 // One plain sentence or four: what is happening now, the worst day ahead and why, when it eases,
 // and whether it rises again after that.
@@ -139,16 +227,16 @@ const algae = a => { if (!a) return '';
   const season = a.season === thisYear ? 'this season' : `in the ${a.season} season`;
   const tally = a.n_seen ? `Algae seen at ${a.n_seen} of ${a.n_checks} checks ${season}${a.n_objectionable ? `, ${a.n_objectionable} of them enough to be objectionable` : ''}.`
     : `No algae seen at any of ${a.n_checks} check${a.n_checks === 1 ? '' : 's'} ${season}.`;
-  return `<div class="card"><div><b>Algae</b> <span class="muted small">· Environment Agency sampler's visual check</span></div>`
-    + `<div style="margin-top:4px">${when}: <b${a.level >= 3 ? ' style="color:var(--high)"' : ''}>${a.phrase}</b>.</div>`
-    + `<div class="small muted" style="margin-top:4px">${tally}${age > 14 ? ' No check since: the EA checks bathing waters from May to September, and results take about a week to be published.' : ''} A look at the water, not a lab test: it does not tell blue-green algae, which can be toxic, from harmless kinds.</div></div>`; };
+  return `<section class="card"><h3>Algae</h3><p class="sub">Environment Agency sampler's visual check</p>`
+    + `<div>${when}: <b${a.level >= 3 ? ' style="color:var(--b-high)"' : ''}>${esc(a.phrase)}</b>.</div>`
+    + `<div class="small muted" style="margin-top:4px">${tally}${age > 14 ? ' No check since: the EA checks bathing waters from May to September, and results take about a week to be published.' : ''} A look at the water, not a lab test: it does not tell blue-green algae, which can be toxic, from harmless kinds.</div></section>`; };
 const strip = d => { const none = !d.upstream_summary.overflows;   // then there is no exposure to colour, only rain
-  return `<div class="days">` + d.days.slice(0, 5).map(x => `<div class="day ${hasData(x) && !none ? cls(x.label).slice(2) : ''}"><div class="d">${shortDay(x.date)}</div><div class="l">${none ? '–' : hasData(x) ? cap(x.label) : 'No data'}</div><div class="r">${x.rain_48h_mm === null || x.rain_48h_mm === undefined ? '–' : Math.round(x.rain_48h_mm) + ' mm'}</div></div>`).join('')
+  return `<div class="days">` + d.days.slice(0, 5).map(x => `<div class="day ${hasData(x) && !none ? tone(x.label) : ''}"><div class="d">${shortDay(x.date)}</div><div class="l">${none ? '–' : hasData(x) ? cap(x.label) : 'No data'}</div><div class="r">${x.rain_48h_mm === null || x.rain_48h_mm === undefined ? '–' : Math.round(x.rain_48h_mm) + ' mm'}</div></div>`).join('')
     + `</div><div class="small muted">${none ? 'No overflow exposure to show; rain in the previous 48 h.' : 'Exposure by day, with rain in the previous 48 h.'}</div>`; };
-// A later day worse than the badge, which covers only now and the next two days.
-const later = s => { if (s.error) return null; const w = ORDER[worst(s)] ?? 0;
+// A later day worse than the badge, which covers only now, today and tomorrow.
+const later = s => { if (ORDER[level(s)] === undefined) return null; const w = ORDER[worst(s)] ?? 0;
   const x = s.days.slice(2, 5).filter(hasData).reduce((a, b) => !a || ORDER[b.label] > ORDER[a.label] ? b : a, null);
-  return x && ORDER[x.label] > w ? `<span class="later ${cls(x.label).slice(2)}">${cap(x.label)} on ${shortDay(x.date)}</span>` : null; };
+  return x && ORDER[x.label] > w ? `<span class="later ${tone(x.label)}">${cap(x.label)} on ${shortDay(x.date)}</span>` : null; };
 const scrollTop = () => { if (matchMedia('(max-width: 800px)').matches) window.scrollTo(0, 0); else document.getElementById('panel').scrollTop = 0; };
 
 async function loadOverflows() {
@@ -156,10 +244,20 @@ async function loadOverflows() {
   if (!OVERFLOWS) OVERFLOWS = await (await fetch('data/overflows.geojson')).json();
   const b = map.getBounds(); ovLayer.clearLayers();
   const feats = OVERFLOWS.features.filter(f => b.contains([f.geometry.coordinates[1], f.geometry.coordinates[0]]));
-  L.geoJSON({type:'FeatureCollection', features: feats}, { pointToLayer: (f, ll) => L.circleMarker(ll, { radius: f.properties.status === 1 ? 7 : 4, color: colourFor(f.properties.status), fillColor: colourFor(f.properties.status), fillOpacity: .85, weight: 1 })
-    .bindPopup(`<b>${f.properties.site_name ?? f.properties.site_id}</b><br>${f.properties.company}<br>${f.properties.receiving_watercourse ?? ''}<br>Status: ${statusText(f.properties.status)}<br>Last spill ended: ${f.properties.latest_event_end ? new Date(f.properties.latest_event_end).toLocaleString('en-GB') : '–'}<br>Long-term avg spills/yr: ${fmt(f.properties.lta_spills,1)}`) }).addTo(ovLayer);
+  L.geoJSON({type:'FeatureCollection', features: feats}, { pointToLayer: (f, ll) => { const p = f.properties;
+    return L.circleMarker(ll, { radius: p.status === 1 ? 7 : 4, color: colourFor(p.status), fillColor: colourFor(p.status), fillOpacity: .85, weight: 1 })
+      .bindPopup(`<b>${esc(p.site_name ?? p.site_id)}</b><br>${esc(p.company)}<br>${esc(p.receiving_watercourse)}<br>Status: ${statusText(p.status)}<br>Last spill ended: ${p.latest_event_end ? new Date(p.latest_event_end).toLocaleString('en-GB') : '–'}<br>Long-term average spills a year: ${fmt(p.lta_spills,1)}`); } }).addTo(ovLayer);
 }
 map.on('moveend', loadOverflows);
+
+const legend = L.control({ position: 'bottomleft' });
+legend.onAdd = () => { const el = L.DomUtil.create('div', 'map-legend');
+  el.innerHTML = `<div class="ttl">Today and tomorrow</div>`
+    + [['low','Low'], ['moderate','Moderate'], ['high','High'], ['very high','Very high'], ['', 'No risk level']]
+      .map(([l, t]) => `<div class="row"><span class="dot" style="background:${colour(l)}"></span>${t}</div>`).join('')
+    + `<div class="extra">Zoom in to see storm overflows:<br><span class="dot sm" style="background:#c81e1e"></span>discharging<span class="dot sm" style="background:#5b6470"></span>not discharging<span class="dot sm" style="background:#b3bac2"></span>offline</div>`;
+  L.DomEvent.disableClickPropagation(el); return el; };
+legend.addTo(map);
 
 // The build is scheduled every 30 min but GitHub starts it when it can: over 113 builds on
 // 13-28 Sep 2026 they were a median 2.9 h apart, at most 8.1 h. At the old 120 min the banner
@@ -170,90 +268,179 @@ const ago = m => { const t = Math.round(m); return t < 60 ? `${t} min` : `${Math
 function freshness() {
   const m = ageMin(); const b = DATA.build || {};
   let h = '';
-  if (m > STALE_MIN) h += `<div class="card" style="border-color:var(--high);background:#fff7ed"><b>Stale.</b> This forecast is ${ago(m)} old (issued ${new Date(DATA.generated_at).toLocaleString('en-GB')}). The automatic update has not run since; treat everything below as out of date.</div>`;
-  if (b.forecast_failed) h += `<div class="small muted">${b.forecast_failed} of ${b.spots} spots have no forecast in this build${b.today_rain_unavailable ? `; ${b.today_rain_unavailable} more have no rainfall data for today` : ''}.</div>`;
-  else if (b.today_rain_unavailable) h += `<div class="small muted">${b.today_rain_unavailable} spots have no rainfall data for today in this build.</div>`;
+  if (m > STALE_MIN) h += `<div class="notice" role="alert"><b>Stale.</b> This forecast is ${ago(m)} old (issued ${new Date(DATA.generated_at).toLocaleString('en-GB')}). The automatic update has not run since; treat everything below as out of date.</div>`;
+  if (b.forecast_failed) h += `<p class="small muted">${b.forecast_failed} of ${b.spots} spots have no forecast in this build${b.today_rain_unavailable ? `; ${b.today_rain_unavailable} more have no rainfall data for today` : ''}.</p>`;
+  else if (b.today_rain_unavailable) h += `<p class="small muted">${b.today_rain_unavailable} spots have no rainfall data for today in this build.</p>`;
   return h;
 }
 
-function renderList(filter='') {
-  const q = filter.trim().toLowerCase();
-  const items = DATA.spots.filter(s => !q || s.name.toLowerCase().includes(q)).sort((a,b) => a.name.localeCompare(b.name));
+// ------------------------------------------------------------------------------ the list
+const FILTERS = { all: 'All', river: 'Rivers', lake: 'Lakes', designated: 'Bathing waters' };
+function overview() {
+  const rated = DATA.spots.filter(s => ORDER[level(s)] !== undefined);
+  const up = rated.filter(s => ORDER[level(s)] >= 1), high = up.filter(s => ORDER[level(s)] >= 2);
+  if (!up.length) return `All ${rated.length} spots with overflows upstream are <b>low</b> for today and tomorrow.`;
+  return `<b>${up.length}</b> of ${rated.length} spots with overflows upstream ${up.length === 1 ? 'is' : 'are'} moderate or higher today or tomorrow${high.length ? `, ${high.length} high or very high` : ''}.`;
+}
+function renderList() {
+  contribLayer.clearLayers(); selLayer.clearLayers(); current = null; listShown = true;
+  document.title = 'dipcast · sewage-spill forecasts for swim spots';
+  const canLocate = 'geolocation' in navigator;
   let h = freshness();
-  h += `<p class="hint">Updated ${new Date(DATA.generated_at).toLocaleString('en-GB', {weekday:'short', hour:'2-digit', minute:'2-digit'})} (${ago(ageMin())} ago) · ${DATA.n} spots, updated several times a day. Pick one on the map or below.</p>`;
-  h += `<input type="search" id="q" placeholder="Find a river or lake…" value="${filter.replace(/"/g,'&quot;')}">`;
-  h += `<ul class="spots">` + items.map(s => `<li data-id="${s.id}"><span>${s.name}<div class="k">${[s.kind, s.source === 'designated' ? 'designated bathing water' : null, later(s)].filter(Boolean).join(' · ')}</div></span><span><span class="badge ${cls(worst(s))}">${worst(s)}</span></span></li>`).join('') + `</ul>`;
-  h += `<p class="hint small" style="margin-top:8px">Badge shows the worse of right now and the next two days; a worse day after that is named under the spot. Zoom in to see storm overflows:
-    <span class="legend"><span style="background:var(--veryhigh)"></span>discharging now</span> <span class="legend"><span style="background:var(--muted)"></span>not discharging</span> <span class="legend"><span style="background:var(--unknown)"></span>offline / no live feed</span>. Missing your spot? <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">Request it</a>.</p>`;
+  h += `<p class="overview">${overview()}</p>`;
+  h += `<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake…" autocomplete="off" value="${esc(VIEW.q)}">`;
+  h += `<div class="controls"><div class="seg" role="group" aria-label="Show">`
+    + Object.entries(FILTERS).map(([k, t]) => `<button type="button" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')
+    + `</div><label class="small muted">Sort <select id="sort"><option value="risk">Highest risk first</option><option value="name">Name</option>${canLocate ? '<option value="near">Nearest to me</option>' : ''}</select></label></div>`;
+  h += `<p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p>`;
+  h += `<ul class="spots" id="spots"></ul>`;
+  h += `<p class="small muted" style="margin-top:8px" id="count"></p>`;
+  h += `<p class="small muted">Updated ${new Date(DATA.generated_at).toLocaleString('en-GB', {weekday:'short', hour:'2-digit', minute:'2-digit'})} (${ago(ageMin())} ago), several times a day. The badge is the worse of right now, today and tomorrow; a worse day after that is named under the spot. Missing your spot? <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">Request it</a>.</p>`;
   document.getElementById('result').innerHTML = h;
-  document.getElementById('q').addEventListener('input', e => renderList(e.target.value));
-  document.querySelectorAll('ul.spots li').forEach(li => li.addEventListener('click', () => select(li.dataset.id, true)));
+  const sort = document.getElementById('sort'); sort.value = VIEW.sort;
+  // Only the list redraws as you type; redrawing the box itself dropped the focus after one letter.
+  document.getElementById('q').addEventListener('input', e => { VIEW.q = e.target.value; drawSpots(); });
+  document.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => {
+    VIEW.filter = b.dataset.filter;
+    document.querySelectorAll('[data-filter]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    drawSpots(); }));
+  sort.addEventListener('change', () => { if (sort.value === 'near' && !VIEW.here) locate(); else { VIEW.sort = sort.value; drawSpots(); } });
+  drawSpots();
+}
+// The position stays in this page: it only orders the list, and is not sent anywhere.
+function locate() {
+  const msg = t => { VIEW.geoMsg = t; const g = document.getElementById('geo'); if (g) g.textContent = t; };
+  msg('Finding your location…');
+  navigator.geolocation.getCurrentPosition(p => { VIEW.here = [p.coords.latitude, p.coords.longitude]; VIEW.sort = 'near'; msg(''); drawSpots(); },
+    e => { VIEW.sort = 'risk'; const s = document.getElementById('sort'); if (s) s.value = 'risk';
+      msg(e.code === 1 ? 'Location permission was declined, so the list is sorted by risk.' : 'Your location is not available right now, so the list is sorted by risk.'); drawSpots(); },
+    { maximumAge: 10 * 60 * 1000, timeout: 10000 });
+}
+function drawSpots() {
+  const q = VIEW.q.trim().toLowerCase();
+  const keep = s => (!q || s.name.toLowerCase().includes(q)) && (VIEW.filter === 'all'
+    || (VIEW.filter === 'designated' ? s.source === 'designated' : s.kind === VIEW.filter));
+  const rank = s => ORDER[level(s)] ?? -1;
+  const dist = s => VIEW.here ? km(VIEW.here, [s.lat, s.lon]) : null;
+  const items = DATA.spots.filter(keep).sort((a, b) => VIEW.sort === 'near' && VIEW.here ? dist(a) - dist(b)
+    : VIEW.sort === 'risk' ? rank(b) - rank(a) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name));
+  const ul = document.getElementById('spots');
+  ul.innerHTML = items.length ? items.map(s => { const l = level(s), d = dist(s);
+    const meta = [cap(s.kind), s.source === 'designated' ? 'bathing water' : null, d !== null ? `${d < 10 ? d.toFixed(1) : Math.round(d)} km away` : null, later(s)].filter(Boolean).join(' · ');
+    return `<li><a href="?spot=${encodeURIComponent(s.id)}" data-id="${esc(s.id)}"><span><span class="nm">${esc(s.name)}</span><span class="k">${meta}</span></span><span class="badge ${cls(l)}">${cap(l)}</span></a></li>`; }).join('')
+    : `<li class="empty">No spots match. Try another name, or show all spots.</li>`;
+  document.getElementById('count').textContent = items.length === DATA.spots.length ? `${items.length} spots.` : `Showing ${items.length} of ${DATA.spots.length} spots.`;
+  ul.querySelectorAll('a[data-id]').forEach(a => a.addEventListener('click', e => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;   // new tab or window: let the link work
+    e.preventDefault(); select(a.dataset.id, true); }));
 }
 
-function select(id, fly=false) {
+// ------------------------------------------------------------------------------ one spot
+// Opening a spot is a history entry, so a phone's back button returns to the list, not off the site.
+function select(id, fly=false, push=true) {
   const s = DATA.spots.find(x => x.id === id); if (!s) return; current = s;
-  history.replaceState(null, '', `?spot=${encodeURIComponent(id)}`);
+  if (push) history.pushState({ spot: id, fromList: listShown }, '', `?spot=${encodeURIComponent(id)}`);
+  listShown = false;
   if (fly) map.setView([s.lat, s.lon], Math.max(map.getZoom(), 12));
+  selLayer.clearLayers();
+  L.circleMarker([s.lat, s.lon], { radius: 14, color: '#0f5a61', weight: 3, fill: false, interactive: false }).addTo(selLayer);
   render(s); scrollTop();
+}
+window.addEventListener('popstate', () => { if (!DATA) return;
+  const id = new URLSearchParams(location.search).get('spot');
+  if (id && DATA.spots.some(s => s.id === id)) select(id, true, false); else { renderList(); scrollTop(); } });
+
+function shareRow(d) {
+  return `<p style="margin:14px 0 6px"><button type="button" class="btn" id="share">Copy link to this spot</button> <span class="small muted" id="share-msg" aria-live="polite"></span></p>`;
+}
+function bindShare(d) {
+  const b = document.getElementById('share'); if (!b) return;
+  const url = `${location.origin}${location.pathname}?spot=${encodeURIComponent(d.id)}`;
+  const touch = matchMedia('(pointer: coarse)').matches && navigator.share;
+  if (touch) b.textContent = 'Share this spot';
+  b.addEventListener('click', async () => { const m = document.getElementById('share-msg');
+    try {
+      if (touch) await navigator.share({ title: `${d.name} · dipcast`, url });
+      else { await navigator.clipboard.writeText(url); m.textContent = 'Link copied.'; }
+    } catch (e) { if (e.name !== 'AbortError') m.textContent = url; } });
 }
 
 function render(d) {
   serverToday = DATA.generated_at.slice(0, 10);
   contribLayer.clearLayers();
-  let h = `<p class="back"><a href="#" id="back">← All spots</a></p>`;
-  const tags = [d.kind, d.source === 'designated' ? 'Environment Agency designated bathing water' : null, d.notes];
-  h += `<h2 style="font-size:16px;margin:4px 0 2px">${d.name}</h2><div class="muted small">${tags.filter((t, i) => t && tags.indexOf(t) === i).join(' · ')}</div>`;
-  if (d.error) { h += `<div class="card">No forecast: ${d.error}</div>`; document.getElementById('result').innerHTML = h; bindBack(); return; }
+  document.title = `${d.name} · dipcast`;
+  const lv = level(d), loc = d.location || {};
+  const tags = [cap(d.kind), d.source === 'designated' ? 'Environment Agency designated bathing water' : null,
+    loc.watercourse ? esc(loc.watercourse) : null, loc.lake_area_km2 ? `${loc.lake_area_km2} km²` : null,
+    loc.adopted_main_channel ? 'side channel, traced as main river' : null,
+    d.notes && d.notes !== 'Environment Agency designated bathing water' ? esc(d.notes) : null].filter(Boolean);
+  let h = `<a href="./" class="back" id="back">← All spots</a>`;
+  h += `<h2 class="spot-name">${esc(d.name)}</h2><div class="chips">${tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>`;
+  if (d.error) {
+    h += `<section class="card hero"><div class="hero-head"><span class="eyebrow">Forecast</span><span class="badge b-na">${cap(lv)}</span></div><p class="summary">${esc(d.error)}</p></section>`;
+    h += algae(d.algae) + shareRow(d);
+    document.getElementById('result').innerHTML = h; bindBack(); bindShare(d); return;
+  }
   h += freshness();
-  h += `<p class="summary">${summary(d)}</p>` + strip(d) + algae(d.algae);
-  const loc = d.location, now = d.now, isLake = loc.mode === 'lake';
-  const scope = d.ecoli_scope || {};
-  h += `<div class="card"><div class="muted small">${isLake ? 'Lake' : 'River'}${loc.watercourse ? ': ' + loc.watercourse : ''}${loc.lake_area_km2 ? ' (' + loc.lake_area_km2 + ' km²)' : ''}${loc.adopted_main_channel ? ' · side channel, traced as main river' : ''}</div>`;
-  h += `<div style="margin-top:8px"><b>Observed now</b> <span class="muted small">· live feeds, ${now.monitored_upstream} of ${d.upstream_summary.overflows} upstream overflows monitored</span></div>`;
-  h += `<div class="risk" style="margin-top:4px"><span class="val" style="color:${now.discharging_upstream ? 'var(--veryhigh)' : 'inherit'}">${now.discharging_upstream}</span><span>upstream overflow${now.discharging_upstream===1?'':'s'} discharging now · ${now.recent_upstream} finished within ${d.assumptions.recent_spill_hours} h</span></div>`;
-  h += `<div class="small muted" style="margin-top:6px">Exposure index from what is observed right now: <b>${Math.round(now.risk*100)}</b> <span class="badge ${cls(now.label)}">${now.label}</span></div></div>`;
-  h += `<div class="card"><div><b>Modelled</b> <span class="muted small">· rainfall forecast through the spill and transport models</span></div>`;
-  h += `<table style="margin-top:6px"><tr><th>Day</th><th class="num">Exposure index</th><th></th><th class="num">E.&nbsp;coli &gt;900</th><th class="num">Rain 48&nbsp;h</th></tr>`;
+  h += `<section class="card hero ${tone(lv)}"><div class="hero-head"><span class="eyebrow">Today and tomorrow</span><span class="badge ${cls(lv)}">${cap(lv)}</span></div>`
+    + `<p class="summary">${summary(d)}</p>${strip(d)}</section>`;
+  h += algae(d.algae);
+  const now = d.now, isLake = loc.mode === 'lake', scope = d.ecoli_scope || {}, total = d.upstream_summary.overflows;
+  if (total) {
+    h += `<section class="card"><h3>Right now</h3><p class="sub">Live status from the water companies' feeds · ${now.monitored_upstream} of ${total} upstream overflows report live</p>`;
+    h += `<div class="risk"><span class="val" style="color:${now.discharging_upstream ? 'var(--b-veryhigh)' : 'inherit'}">${now.discharging_upstream}</span><span>upstream overflow${now.discharging_upstream===1?'':'s'} discharging now · ${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h</span></div>`;
+    h += `<div class="small muted" style="margin-top:6px">Exposure index from what is happening now: <b>${Math.round(now.risk*100)}</b> <span class="badge ${cls(now.label)}">${cap(now.label)}</span></div></section>`;
+  }
+  h += `<section class="card"><h3>Five-day forecast</h3><p class="sub">Rainfall forecast through the spill and transport models</p>`;
+  h += `<table><tr><th>Day</th><th class="num">Exposure</th><th></th><th class="num">E.&nbsp;coli &gt;900</th><th class="num">Rain 48&nbsp;h</th></tr>`;
   let anyNoData = false, anyOffSeason = false;
   for (const day of d.days) {
-    const noData = day.risk === null || day.risk === undefined; anyNoData = anyNoData || noData;
+    const noData = !hasData(day); anyNoData = anyNoData || noData;
     const off = day.in_validated_season === false; anyOffSeason = anyOffSeason || off;
     const pe = day.p_ecoli_gt900;
     const ecoli = isLake ? '<span class="muted" title="Not validated on lakes">n/a</span>' : (pe === null || pe === undefined) ? '–' : Math.round(pe*100) + '%' + (off ? '<sup>†</sup>' : '');
-    h += `<tr><td>${dateLabel(day.date)}</td><td class="num">${noData ? '<span class="muted" title="' + day.data_status + '">no data</span>' : Math.round(day.risk*100)}</td><td><span class="badge ${cls(day.label)}">${noData ? 'no data' : day.label}</span></td><td class="num">${ecoli}</td><td class="num">${day.rain_48h_mm === null || day.rain_48h_mm === undefined ? '–' : fmt(day.rain_48h_mm,0) + '&nbsp;mm'}</td></tr>`;
+    // No overflow upstream: the exposure is zero whatever the weather, so show a dash, not "Low".
+    const exp = !total ? '–' : noData ? '<span class="muted" title="' + esc(day.data_status) + '">no data</span>' : Math.round(day.risk*100);
+    const badge = !total ? '' : `<span class="badge ${noData ? 'b-na' : cls(day.label)}">${noData ? 'No data' : cap(day.label)}</span>`;
+    h += `<tr><td>${dateLabel(day.date)}</td><td class="num">${exp}</td><td>${badge}</td><td class="num">${ecoli}</td><td class="num">${day.rain_48h_mm === null || day.rain_48h_mm === undefined ? '–' : fmt(day.rain_48h_mm,0) + '&nbsp;mm'}</td></tr>`;
   }
-  h += `</table><div class="small muted" style="margin-top:6px">Exposure index (0–100): modelled chance that an upstream spill reaches here, from Open-Meteo rainfall through a spill model trained on 743,735 United Utilities discharge events (2023–25) and verified on a held-out year, then travel time, die-off and dilution. An index, not a probability. <b>E. coli &gt; 900</b>: estimated probability that a midday sample would exceed 900 cfu/100 ml, from rain at the spot in the previous 48 h, the exposure index, and season. Daily resolution.`;
-  if (isLake) h += ` <b>Not shown for lakes</b>: ${scope.note || 'no ranking skill on lakes in the fitting data.'}`;
-  if (anyOffSeason) h += ` <sup>†</sup>Outside the May–September season the model was fitted on: an extrapolation.`;
-  if (anyNoData) h += ` <b>No data</b>: the rainfall forecast for that day did not arrive; no figure is shown rather than one computed as if it were dry.`;
-  h += `</div></div>`;
+  h += `</table>`;
+  const notes = [];
+  if (isLake) notes.push(`<b>E. coli not shown for lakes</b>: ${esc(scope.note || 'no ranking skill on lakes in the fitting data.')}`);
+  if (anyOffSeason) notes.push(`<sup>†</sup>Outside the May–September season the model was fitted on: an extrapolation.`);
+  if (anyNoData) notes.push(`<b>No data</b>: the rainfall forecast for that day did not arrive; no figure is shown rather than one computed as if it were dry.`);
+  if (notes.length) h += `<div class="small muted" style="margin-top:6px">${notes.join(' ')}</div>`;
+  h += `<details class="more"><summary>What these numbers mean</summary><div class="small muted">Exposure index (0–100): modelled chance that an upstream spill reaches here, from Open-Meteo rainfall through a spill model trained on 743,735 United Utilities discharge events (2023–25) and verified on a held-out year, then travel time, die-off and dilution. An index, not a probability. <b>E. coli &gt; 900</b>: estimated probability that a midday sample would exceed 900 cfu/100 ml, from rain at the spot in the previous 48 h, the exposure index, and season. Daily resolution. <a href="verification.html">How accurate is it?</a></div></details></section>`;
   if (d.contributors.length) {
-    h += `<div class="card"><b>Upstream overflows that matter most</b> <span class="muted small">· observed status, modelled spill chance</span><table style="margin-top:6px"><tr><th>Overflow</th><th class="num">km</th><th class="num">h</th><th class="num">reach</th><th class="num">P(spill) today</th></tr>`;
+    h += `<section class="card"><h3>Upstream overflows that matter most</h3><p class="sub">Live status and today's modelled chance of a spill</p><table><tr><th>Overflow</th><th class="num">km</th><th class="num">hours</th><th class="num">reach</th><th class="num">spill today</th></tr>`;
     for (const c of d.contributors) {
-      h += `<tr><td><span class="status-${c.status}">●</span> ${c.site_name ?? c.site_id}<div class="muted small">${c.company} · ${statusText(c.status)}${c.latest_event_end ? ' · last ended ' + new Date(c.latest_event_end).toLocaleDateString('en-GB') : ''}${c.snap_confidence && c.snap_confidence !== 'high' ? ' · river match: ' + c.snap_confidence : ''}</div></td><td class="num">${fmt(c.distance_km + c.lake_distance_km,1)}</td><td class="num">${fmt(c.travel_h,0)}</td><td class="num">${fmt(c.weight,2)}</td><td class="num">${Math.round(c.p_spill_today*100)}%</td></tr>`;
+      h += `<tr><td><span class="status-${c.status}" aria-hidden="true">●</span> ${esc(c.site_name ?? c.site_id)}<div class="muted small">${esc(c.company)} · ${statusText(c.status)}${c.latest_event_end ? ' · last ended ' + new Date(c.latest_event_end).toLocaleDateString('en-GB') : ''}${c.snap_confidence && c.snap_confidence !== 'high' ? ' · river match: ' + esc(c.snap_confidence) : ''}</div></td><td class="num">${fmt(c.distance_km + c.lake_distance_km,1)}</td><td class="num">${fmt(c.travel_h,0)}</td><td class="num">${fmt(c.weight,2)}</td><td class="num">${Math.round(c.p_spill_today*100)}%</td></tr>`;
       L.circleMarker([c.lat, c.lon], { radius: 5 + 8*c.weight, color: colourFor(c.status), fillColor: colourFor(c.status), fillOpacity: .5, weight: 2 })
-        .bindTooltip(`${c.site_name ?? c.site_id}: ${(c.distance_km + c.lake_distance_km).toFixed(1)} km, reach ${c.weight.toFixed(2)}`).addTo(contribLayer);
+        .bindTooltip(`${esc(c.site_name ?? c.site_id)}: ${(c.distance_km + c.lake_distance_km).toFixed(1)} km, reach ${c.weight.toFixed(2)}`).addTo(contribLayer);
     }
-    h += `</table><div class="small muted" style="margin-top:6px">“reach” = probability a spill there affects this spot: die-off over travel time × dilution by upstream network size.</div></div>`;
-  } else h += `<div class="card">No monitored overflows within ${d.assumptions.max_upstream_km} km upstream. Risk from farms, wildlife and unmonitored sources is not modelled.</div>`;
-  h += `<p class="small muted">Share: <a href="${location.pathname}?spot=${encodeURIComponent(d.id)}">${location.host}${location.pathname}?spot=${encodeURIComponent(d.id)}</a></p>`;
-  h += `<details class="small"><summary>Assumptions</summary><pre style="white-space:pre-wrap">${JSON.stringify(d.assumptions, null, 1)}</pre></details>`;
-  document.getElementById('result').innerHTML = h; bindBack();
+    h += `</table><div class="small muted" style="margin-top:6px">km and hours: distance and travel time along the river. Reach: the probability a spill there affects this spot, from die-off over the travel time and dilution by the size of the river network upstream.</div></section>`;
+  } else h += `<section class="card"><h3>No monitored overflows upstream</h3><div class="small muted">None within ${d.assumptions.max_upstream_km} km upstream. Risk from farms, wildlife and unmonitored sources is not modelled.</div></section>`;
+  h += shareRow(d);
+  h += `<details class="more small"><summary>Model assumptions</summary><pre style="white-space:pre-wrap">${esc(JSON.stringify(d.assumptions, null, 1))}</pre></details>`;
+  document.getElementById('result').innerHTML = h; bindBack(); bindShare(d);
 }
-function bindBack() { const b = document.getElementById('back'); if (b) b.addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', location.pathname); contribLayer.clearLayers(); renderList(); scrollTop(); }); }
+function bindBack() { const b = document.getElementById('back'); if (b) b.addEventListener('click', e => { e.preventDefault();
+  if (history.state && history.state.fromList) history.back();   // came from the list: back to it
+  else { history.pushState(null, '', location.pathname); renderList(); scrollTop(); } }); }   // a shared link: stay on the site
 
 async function main() {
   DATA = await (await fetch('data/spots.json')).json();
   serverToday = DATA.generated_at.slice(0, 10);
   for (const s of DATA.spots) {
-    const lab = worst(s);
+    const lab = level(s);
     L.circleMarker([s.lat, s.lon], { radius: 8, color: '#fff', weight: 1.5, fillColor: colour(lab), fillOpacity: .95 })
-      .bindTooltip(`${s.name}: ${lab}`).on('click', () => select(s.id)).addTo(spotLayer);
+      .bindTooltip(`${esc(s.name)}: ${cap(lab)}`).on('click', () => select(s.id)).addTo(spotLayer);
   }
   const q = new URLSearchParams(location.search).get('spot');
-  if (q && DATA.spots.some(s => s.id === q)) select(q, true); else renderList();
+  if (q && DATA.spots.some(s => s.id === q)) select(q, true, false);
+  else renderList();
 }
-main().catch(e => { document.getElementById('result').innerHTML = `<p class="hint">Could not load forecasts: ${e.message}</p>`; });
+main().catch(e => { document.getElementById('result').innerHTML = `<p class="notice">Could not load forecasts: ${esc(e.message)}</p>`; });
 // Opened from the home screen there is no reload button, and a phone keeps the page for days:
 // coming back to it after half an hour fetches the latest forecast (the same spot stays open).
 const LOADED = Date.now();
