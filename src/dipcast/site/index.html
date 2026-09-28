@@ -35,7 +35,24 @@
   ul.spots li { padding:7px 10px; border-bottom:1px solid var(--line); cursor:pointer; display:flex; justify-content:space-between; gap:8px; }
   ul.spots li:hover { background:#f6f8fa; } ul.spots li .k { color:var(--muted); font-size:12px; }
   .back { font-size:13px; }
-  @media (max-width: 800px) { #app { grid-template-columns:1fr; grid-template-rows: 50% 50%; } #panel{border-left:0;border-top:1px solid var(--line);} ul.spots{max-height:30vh;} }
+  .later { font-weight:600; } .later.moderate { color:#7a6000; } .later.high { color:#b04a0e; } .later.veryhigh { color:#a31a1a; }
+  /* The answer first: one sentence, then the five days at a glance. */
+  .summary { font-size:16px; line-height:1.4; margin:10px 0 8px; }
+  .days { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:4px; margin:0 0 4px; }
+  .day { border-radius:6px; border-top:4px solid var(--unknown); background:#eef0f2; color:#3d434a; padding:5px 3px 6px; text-align:center; }
+  .day .d, .day .r { font-size:11px; } .day .l { font-size:12px; font-weight:700; line-height:1.15; margin:1px 0; }
+  .day.low { border-color:var(--low); background:#e6f4ec; color:#1e5a36; }
+  .day.moderate { border-color:var(--moderate); background:#fbf2d2; color:#5e4a00; }
+  .day.high { border-color:var(--high); background:#fde8da; color:#7f3508; }
+  .day.veryhigh { border-color:var(--veryhigh); background:#f9dcdc; color:#8a1616; }
+  /* Phones: one page that scrolls, a shorter map, the list on the first screen. */
+  @media (max-width: 800px) {
+    html, body { height:auto; }
+    #app { display:block; height:auto; }
+    #map { height:40vh; min-height:220px; max-height:380px; }
+    #panel { border-left:0; border-top:1px solid var(--line); overflow:visible; padding:14px 16px 32px; }
+    ul.spots { max-height:none; overflow:visible; }
+  }
 </style>
 </head>
 <body>
@@ -70,6 +87,46 @@ const colourFor = s => s === 1 ? '#c81e1e' : s === 0 ? '#5b6470' : '#b3bac2';
 const headline = s => s.error ? 'unknown' : (['very high','high','moderate','low'].find(l => l === s.now.label || l === (s.days[0]||{}).label) || 'low');
 const worst = s => { const order = {low:0, moderate:1, high:2, 'very high':3}; if (s.error) return 'unknown';
   const labels = [s.now.label, ...(s.days.slice(0,2).map(d => d.label))]; return labels.sort((a,b) => (order[b]||0)-(order[a]||0))[0]; };
+const ORDER = {low:0, moderate:1, high:2, 'very high':3};
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const hasData = x => x.risk !== null && x.risk !== undefined;
+const today = () => serverToday ?? localISO(new Date());
+const dayWord = iso => iso === today() ? 'today' : iso === addDays(today(), 1) ? 'tomorrow'
+  : 'on ' + new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'long'});
+const shortDay = iso => iso === today() ? 'Today' : new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short'});
+
+// One plain sentence or three: what is happening now, the worst day ahead and why, and when it eases.
+function summary(d) {
+  const days = d.days.slice(0, 5), known = days.filter(hasData), n = d.now.discharging_upstream, out = [];
+  // No monitored overflow upstream: the exposure is zero whatever the weather, so "low" would
+  // read as clean water. Say what the forecast does not cover, and when the rain is heaviest.
+  if (!d.upstream_summary.overflows) {
+    const wet = days.filter(x => x.rain_48h_mm >= 10).reduce((a, b) => !a || b.rain_48h_mm > a.rain_48h_mm ? b : a, null);
+    return 'No monitored storm overflows upstream, so this forecast has nothing to flag. It does not cover runoff from farms, roads or wildlife, which rain also washes in'
+      + (wet ? `. The wettest day ahead is ${dayWord(wet.date).replace(/^on /, '')}, with about ${Math.round(wet.rain_48h_mm)}&nbsp;mm of rain in the 48 hours before.` : '.');
+  }
+  if (n) out.push(`${n} upstream overflow${n === 1 ? ' is' : 's are'} discharging now; exposure right now is ${d.now.label}.`);
+  if (!known.length) return out.concat('No rainfall forecast has arrived, so there is no forecast for the days ahead.').join(' ');
+  const peak = known.reduce((a, b) => ORDER[b.label] > ORDER[a.label] ? b : a);
+  const rain = x => x.rain_48h_mm >= 1 ? `, after about ${Math.round(x.rain_48h_mm)}&nbsp;mm of ${x.date > today() ? 'forecast ' : ''}rain` : '';
+  if (!ORDER[peak.label]) out.push(known.length === days.length ? 'Low today and for the next four days.' : 'Low on every day with a forecast.');
+  else if (peak === days[0]) out.push(`${cap(peak.label)} today${rain(peak)}.`);
+  else {
+    out.push(hasData(days[0]) ? `${cap(days[0].label)} today.` : 'No forecast for today.');
+    out.push(`${cap(peak.label)} ${dayWord(peak.date)}${rain(peak)}.`);
+  }
+  const eases = ORDER[peak.label] ? days.slice(days.indexOf(peak) + 1).find(x => hasData(x) && x.label === 'low') : null;
+  if (eases) out.push(`Low again ${dayWord(eases.date)}.`);
+  return out.join(' ');
+}
+const strip = d => { const none = !d.upstream_summary.overflows;   // then there is no exposure to colour, only rain
+  return `<div class="days">` + d.days.slice(0, 5).map(x => `<div class="day ${hasData(x) && !none ? cls(x.label).slice(2) : ''}"><div class="d">${shortDay(x.date)}</div><div class="l">${none ? '–' : hasData(x) ? cap(x.label) : 'No data'}</div><div class="r">${x.rain_48h_mm === null || x.rain_48h_mm === undefined ? '–' : Math.round(x.rain_48h_mm) + ' mm'}</div></div>`).join('')
+    + `</div><div class="small muted">${none ? 'No overflow exposure to show; rain in the previous 48 h.' : 'Exposure by day, with rain in the previous 48 h.'}</div>`; };
+// A later day worse than the badge, which covers only now and the next two days.
+const later = s => { if (s.error) return null; const w = ORDER[worst(s)] ?? 0;
+  const x = s.days.slice(2, 5).filter(hasData).reduce((a, b) => !a || ORDER[b.label] > ORDER[a.label] ? b : a, null);
+  return x && ORDER[x.label] > w ? `<span class="later ${cls(x.label).slice(2)}">${cap(x.label)} on ${shortDay(x.date)}</span>` : null; };
+const scrollTop = () => { if (matchMedia('(max-width: 800px)').matches) window.scrollTo(0, 0); else document.getElementById('panel').scrollTop = 0; };
 
 async function loadOverflows() {
   if (map.getZoom() < 9) { ovLayer.clearLayers(); return; }
@@ -96,11 +153,11 @@ function renderList(filter='') {
   const q = filter.trim().toLowerCase();
   const items = DATA.spots.filter(s => !q || s.name.toLowerCase().includes(q)).sort((a,b) => a.name.localeCompare(b.name));
   let h = freshness();
-  h += `<p class="hint">Issued ${new Date(DATA.generated_at).toLocaleString('en-GB', {weekday:'short', hour:'2-digit', minute:'2-digit'})} (${Math.round(ageMin())} min ago) · ${DATA.n} spots, rebuilt every 30 minutes. Pick a spot on the map or below. Storm overflows appear as dots when you zoom in:
-    <span class="legend"><span style="background:var(--veryhigh)"></span>discharging now</span> <span class="legend"><span style="background:var(--muted)"></span>not discharging</span> <span class="legend"><span style="background:var(--unknown)"></span>offline / no live feed</span></p>`;
+  h += `<p class="hint">Updated ${new Date(DATA.generated_at).toLocaleString('en-GB', {weekday:'short', hour:'2-digit', minute:'2-digit'})} (${Math.round(ageMin())} min ago) · ${DATA.n} spots. Pick one on the map or below.</p>`;
   h += `<input type="search" id="q" placeholder="Find a river or lake…" value="${filter.replace(/"/g,'&quot;')}">`;
-  h += `<ul class="spots">` + items.map(s => `<li data-id="${s.id}"><span>${s.name}<div class="k">${s.kind}${s.source === 'designated' ? ' · designated bathing water' : ''}</div></span><span><span class="badge ${cls(worst(s))}">${worst(s)}</span></span></li>`).join('') + `</ul>`;
-  h += `<p class="hint small" style="margin-top:8px">Badge shows the worse of right now and the next two days. Missing your spot? <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">Request it</a>.</p>`;
+  h += `<ul class="spots">` + items.map(s => `<li data-id="${s.id}"><span>${s.name}<div class="k">${[s.kind, s.source === 'designated' ? 'designated bathing water' : null, later(s)].filter(Boolean).join(' · ')}</div></span><span><span class="badge ${cls(worst(s))}">${worst(s)}</span></span></li>`).join('') + `</ul>`;
+  h += `<p class="hint small" style="margin-top:8px">Badge shows the worse of right now and the next two days; a worse day after that is named under the spot. Zoom in to see storm overflows:
+    <span class="legend"><span style="background:var(--veryhigh)"></span>discharging now</span> <span class="legend"><span style="background:var(--muted)"></span>not discharging</span> <span class="legend"><span style="background:var(--unknown)"></span>offline / no live feed</span>. Missing your spot? <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">Request it</a>.</p>`;
   document.getElementById('result').innerHTML = h;
   document.getElementById('q').addEventListener('input', e => renderList(e.target.value));
   document.querySelectorAll('ul.spots li').forEach(li => li.addEventListener('click', () => select(li.dataset.id, true)));
@@ -110,16 +167,18 @@ function select(id, fly=false) {
   const s = DATA.spots.find(x => x.id === id); if (!s) return; current = s;
   history.replaceState(null, '', `?spot=${encodeURIComponent(id)}`);
   if (fly) map.setView([s.lat, s.lon], Math.max(map.getZoom(), 12));
-  render(s);
+  render(s); scrollTop();
 }
 
 function render(d) {
   serverToday = DATA.generated_at.slice(0, 10);
   contribLayer.clearLayers();
   let h = `<p class="back"><a href="#" id="back">← All spots</a></p>`;
-  h += `<h2 style="font-size:16px;margin:4px 0 2px">${d.name}</h2><div class="muted small">${d.kind}${d.source === 'designated' ? ' · Environment Agency designated bathing water' : ''}${d.notes ? ' · ' + d.notes : ''}</div>`;
+  const tags = [d.kind, d.source === 'designated' ? 'Environment Agency designated bathing water' : null, d.notes];
+  h += `<h2 style="font-size:16px;margin:4px 0 2px">${d.name}</h2><div class="muted small">${tags.filter((t, i) => t && tags.indexOf(t) === i).join(' · ')}</div>`;
   if (d.error) { h += `<div class="card">No forecast: ${d.error}</div>`; document.getElementById('result').innerHTML = h; bindBack(); return; }
   h += freshness();
+  h += `<p class="summary">${summary(d)}</p>` + strip(d);
   const loc = d.location, now = d.now, isLake = loc.mode === 'lake';
   const scope = d.ecoli_scope || {};
   h += `<div class="card"><div class="muted small">${isLake ? 'Lake' : 'River'}${loc.watercourse ? ': ' + loc.watercourse : ''}${loc.lake_area_km2 ? ' (' + loc.lake_area_km2 + ' km²)' : ''}${loc.adopted_main_channel ? ' · side channel, traced as main river' : ''}</div>`;
@@ -134,7 +193,7 @@ function render(d) {
     const off = day.in_validated_season === false; anyOffSeason = anyOffSeason || off;
     const pe = day.p_ecoli_gt900;
     const ecoli = isLake ? '<span class="muted" title="Not validated on lakes">n/a</span>' : (pe === null || pe === undefined) ? '–' : Math.round(pe*100) + '%' + (off ? '<sup>†</sup>' : '');
-    h += `<tr><td>${dateLabel(day.date)}</td><td class="num">${noData ? '<span class="muted" title="' + day.data_status + '">no data</span>' : Math.round(day.risk*100)}</td><td><span class="badge ${cls(day.label)}">${noData ? 'no data' : day.label}</span></td><td class="num">${ecoli}</td><td class="num">${day.rain_48h_mm === null || day.rain_48h_mm === undefined ? '–' : fmt(day.rain_48h_mm,0) + ' mm'}</td></tr>`;
+    h += `<tr><td>${dateLabel(day.date)}</td><td class="num">${noData ? '<span class="muted" title="' + day.data_status + '">no data</span>' : Math.round(day.risk*100)}</td><td><span class="badge ${cls(day.label)}">${noData ? 'no data' : day.label}</span></td><td class="num">${ecoli}</td><td class="num">${day.rain_48h_mm === null || day.rain_48h_mm === undefined ? '–' : fmt(day.rain_48h_mm,0) + '&nbsp;mm'}</td></tr>`;
   }
   h += `</table><div class="small muted" style="margin-top:6px">Exposure index (0–100): modelled chance that an upstream spill reaches here, from Open-Meteo rainfall through a spill model trained on 743,735 United Utilities discharge events (2023–25) and verified on a held-out year, then travel time, die-off and dilution. An index, not a probability. <b>E. coli &gt; 900</b>: estimated probability that a midday sample would exceed 900 cfu/100 ml, from rain at the spot in the previous 48 h, the exposure index, and season. Daily resolution.`;
   if (isLake) h += ` <b>Not shown for lakes</b>: ${scope.note || 'no ranking skill on lakes in the fitting data.'}`;
@@ -154,10 +213,11 @@ function render(d) {
   h += `<details class="small"><summary>Assumptions</summary><pre style="white-space:pre-wrap">${JSON.stringify(d.assumptions, null, 1)}</pre></details>`;
   document.getElementById('result').innerHTML = h; bindBack();
 }
-function bindBack() { const b = document.getElementById('back'); if (b) b.addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', location.pathname); contribLayer.clearLayers(); renderList(); }); }
+function bindBack() { const b = document.getElementById('back'); if (b) b.addEventListener('click', e => { e.preventDefault(); history.replaceState(null, '', location.pathname); contribLayer.clearLayers(); renderList(); scrollTop(); }); }
 
 async function main() {
   DATA = await (await fetch('data/spots.json')).json();
+  serverToday = DATA.generated_at.slice(0, 10);
   for (const s of DATA.spots) {
     const lab = worst(s);
     L.circleMarker([s.lat, s.lon], { radius: 8, color: '#fff', weight: 1.5, fillColor: colour(lab), fillOpacity: .95 })
