@@ -458,6 +458,24 @@ def _build_site():
     return build_site
 
 
+def test_home_screen_files_match_what_the_page_declares(tmp_path):
+    import json
+    import struct
+    bs = _build_site()
+    src, html = bs.TEMPLATE.parent, bs.TEMPLATE.read_text()
+    man = json.loads((src / "manifest.webmanifest").read_text())
+    assert man["name"] == "dipcast" and man["display"] == "standalone" and man["start_url"] == "./"
+    for ref in ("manifest.webmanifest", "icons/apple-touch-icon.png", "icons/icon.svg", "icons/icon-192.png"):
+        assert f'href="{ref}"' in html and (src / ref).exists(), ref
+    size = lambda p: "{}x{}".format(*struct.unpack(">II", p.read_bytes()[16:24]))   # the PNG header's width and height
+    for icon in man["icons"]:
+        assert (src / icon["src"]).exists() and (icon["type"] != "image/png" or size(src / icon["src"]) == icon["sizes"])
+    touch = src / "icons" / "apple-touch-icon.png"
+    assert size(touch) == "180x180" and touch.read_bytes()[25] == 2   # RGB, no alpha: iOS paints transparency black
+    bs.copy_app_files(tmp_path)
+    assert (tmp_path / "manifest.webmanifest").exists() and (tmp_path / "icons" / "icon-512.png").exists()
+
+
 def test_build_health_refuses_mostly_failed_builds():
     BuildUnhealthy, build_health = _build_site().BuildUnhealthy, _build_site().build_health
     good = {"name": "ok", "days": [{"data_status": "ok"}]}

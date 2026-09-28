@@ -15,6 +15,7 @@ import re
 import shutil
 import sys
 import time
+from pathlib import Path
 
 import pandas as pd
 
@@ -130,6 +131,13 @@ def build_health(results: list[dict], ecoli_samples: dict | None = None) -> dict
     return health
 
 
+def copy_app_files(site: Path) -> None:
+    """The web-app manifest and icons beside index.html: Add to Home Screen then gives an
+    icon, a name and a full-screen window."""
+    shutil.copy(TEMPLATE.parent / "manifest.webmanifest", site / "manifest.webmanifest")
+    shutil.copytree(TEMPLATE.parent / "icons", site / "icons", dirs_exist_ok=True)
+
+
 def announce(warning: str) -> None:
     """Log a build warning and, on GitHub Actions, raise it as an annotation on the run page."""
     log.warning("%s", warning)
@@ -172,6 +180,7 @@ def build(refresh: bool = True) -> dict:
             s = s.replace(a, b)
         (SITE / name).write_text(with_counter(s, token))
     shutil.copy(STATIC / "page.css", SITE / "page.css")
+    copy_app_files(SITE)
     (SITE / "index.html").write_text(with_counter(TEMPLATE.read_text(), token))
     (SITE / ".nojekyll").write_text("")
     summary = {**health, "seconds": round(time.time() - t0, 1), "generated_at": generated.isoformat()}

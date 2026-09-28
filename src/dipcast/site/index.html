@@ -5,6 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>dipcast</title>
 <meta name="description" content="Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow data, rainfall forecasts and the river network.">
+<!-- Add to Home Screen: an icon, a name, and a full-screen window without the browser bars. -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="theme-color" content="#ffffff">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="dipcast">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
   :root { --ink:#1b1f23; --muted:#5b6470; --line:#e3e6ea; --bg:#fff; --accent:#0b5fff;
@@ -227,6 +236,10 @@ async function main() {
   if (q && DATA.spots.some(s => s.id === q)) select(q, true); else renderList();
 }
 main().catch(e => { document.getElementById('result').innerHTML = `<p class="hint">Could not load forecasts: ${e.message}</p>`; });
+// Opened from the home screen there is no reload button, and a phone keeps the page for days:
+// coming back to it after half an hour fetches the latest forecast (the same spot stays open).
+const LOADED = Date.now();
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - LOADED > 30 * 60 * 1000) location.reload(); });
 </script>
 </body>
 </html>
