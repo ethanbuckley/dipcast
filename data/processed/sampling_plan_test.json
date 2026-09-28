@@ -1,68 +1,151 @@
 {
+ "n_samples": 1548,
+ "samples_by_year": {
+  "2024": 520,
+  "2025": 508,
+  "2026": 520
+ },
+ "rule": "leads compared on the same samples; a window needs 90% of its 48 hours",
  "all": [
   {
    "rain_source": "observed",
-   "top 50%": 0.743,
-   "top 25%": 0.491
+   "top 50%": 0.731,
+   "top 25%": 0.486
   },
   {
    "rain_source": "lead 0",
-   "top 50%": 0.725,
+   "top 50%": 0.717,
    "top 25%": 0.505
   },
   {
    "rain_source": "lead 1",
-   "top 50%": 0.674,
-   "top 25%": 0.463
+   "top 50%": 0.689,
+   "top 25%": 0.462
   },
   {
    "rain_source": "lead 2",
-   "top 50%": 0.665,
-   "top 25%": 0.459
+   "top 50%": 0.675,
+   "top 25%": 0.472
   },
   {
    "rain_source": "lead 3",
-   "top 50%": 0.642,
-   "top 25%": 0.408
+   "top 50%": 0.656,
+   "top 25%": 0.406
   },
   {
    "rain_source": "lead 4",
-   "top 50%": 0.661,
-   "top 25%": 0.422
+   "top 50%": 0.675,
+   "top 25%": 0.425
   }
  ],
+ "all_rule_5mm": {
+  "observed": {
+   "days_kept": 0.367,
+   "exceedances_kept": 0.585,
+   "rate_on_kept": 0.218,
+   "rate_on_skipped": 0.09
+  },
+  "lead 0": {
+   "days_kept": 0.312,
+   "exceedances_kept": 0.505,
+   "rate_on_kept": 0.222,
+   "rate_on_skipped": 0.099
+  },
+  "lead 1": {
+   "days_kept": 0.304,
+   "exceedances_kept": 0.472,
+   "rate_on_kept": 0.213,
+   "rate_on_skipped": 0.104
+  },
+  "lead 2": {
+   "days_kept": 0.332,
+   "exceedances_kept": 0.514,
+   "rate_on_kept": 0.212,
+   "rate_on_skipped": 0.1
+  },
+  "lead 3": {
+   "days_kept": 0.329,
+   "exceedances_kept": 0.453,
+   "rate_on_kept": 0.188,
+   "rate_on_skipped": 0.112
+  },
+  "lead 4": {
+   "days_kept": 0.316,
+   "exceedances_kept": 0.448,
+   "rate_on_kept": 0.194,
+   "rate_on_skipped": 0.11
+  }
+ },
  "river": [
   {
    "rain_source": "observed",
-   "top 50%": 0.772,
-   "top 25%": 0.51
+   "top 50%": 0.76,
+   "top 25%": 0.505
   },
   {
    "rain_source": "lead 0",
-   "top 50%": 0.752,
-   "top 25%": 0.525
+   "top 50%": 0.745,
+   "top 25%": 0.526
   },
   {
    "rain_source": "lead 1",
-   "top 50%": 0.688,
-   "top 25%": 0.475
+   "top 50%": 0.704,
+   "top 25%": 0.474
   },
   {
    "rain_source": "lead 2",
-   "top 50%": 0.683,
-   "top 25%": 0.475
+   "top 50%": 0.694,
+   "top 25%": 0.49
   },
   {
    "rain_source": "lead 3",
-   "top 50%": 0.658,
-   "top 25%": 0.421
+   "top 50%": 0.673,
+   "top 25%": 0.418
   },
   {
    "rain_source": "lead 4",
-   "top 50%": 0.678,
-   "top 25%": 0.436
+   "top 50%": 0.694,
+   "top 25%": 0.439
   }
  ],
+ "river_rule_5mm": {
+  "observed": {
+   "days_kept": 0.283,
+   "exceedances_kept": 0.582,
+   "rate_on_kept": 0.444,
+   "rate_on_skipped": 0.126
+  },
+  "lead 0": {
+   "days_kept": 0.226,
+   "exceedances_kept": 0.51,
+   "rate_on_kept": 0.488,
+   "rate_on_skipped": 0.137
+  },
+  "lead 1": {
+   "days_kept": 0.228,
+   "exceedances_kept": 0.469,
+   "rate_on_kept": 0.444,
+   "rate_on_skipped": 0.149
+  },
+  "lead 2": {
+   "days_kept": 0.26,
+   "exceedances_kept": 0.52,
+   "rate_on_kept": 0.432,
+   "rate_on_skipped": 0.14
+  },
+  "lead 3": {
+   "days_kept": 0.25,
+   "exceedances_kept": 0.449,
+   "rate_on_kept": 0.388,
+   "rate_on_skipped": 0.159
+  },
+  "lead 4": {
+   "days_kept": 0.23,
+   "exceedances_kept": 0.444,
+   "rate_on_kept": 0.416,
+   "rate_on_skipped": 0.156
+  }
+ },
  "lake": [
   {
    "rain_source": "observed",
@@ -95,31 +178,69 @@
    "top 25%": 0.25
   }
  ],
- "forecast_skill": {
+ "lake_rule_5mm": {
+  "observed": {
+   "days_kept": 0.485,
+   "exceedances_kept": 0.625,
+   "rate_on_kept": 0.032,
+   "rate_on_skipped": 0.018
+  },
   "lead 0": {
-   "mae_mm": 2.99,
-   "spearman": 0.885,
-   "hit_rate_gt10mm": 0.692
+   "days_kept": 0.434,
+   "exceedances_kept": 0.438,
+   "rate_on_kept": 0.025,
+   "rate_on_skipped": 0.025
   },
   "lead 1": {
-   "mae_mm": 3.42,
-   "spearman": 0.752,
-   "hit_rate_gt10mm": 0.593
+   "days_kept": 0.41,
+   "exceedances_kept": 0.5,
+   "rate_on_kept": 0.03,
+   "rate_on_skipped": 0.021
   },
   "lead 2": {
-   "mae_mm": 3.6,
-   "spearman": 0.731,
-   "hit_rate_gt10mm": 0.558
+   "days_kept": 0.434,
+   "exceedances_kept": 0.438,
+   "rate_on_kept": 0.025,
+   "rate_on_skipped": 0.025
   },
   "lead 3": {
-   "mae_mm": 3.69,
-   "spearman": 0.718,
-   "hit_rate_gt10mm": 0.519
+   "days_kept": 0.441,
+   "exceedances_kept": 0.5,
+   "rate_on_kept": 0.028,
+   "rate_on_skipped": 0.022
   },
   "lead 4": {
-   "mae_mm": 4.41,
-   "spearman": 0.633,
-   "hit_rate_gt10mm": 0.445
+   "days_kept": 0.437,
+   "exceedances_kept": 0.5,
+   "rate_on_kept": 0.029,
+   "rate_on_skipped": 0.022
+  }
+ },
+ "forecast_skill": {
+  "lead 0": {
+   "mae_mm": 3.07,
+   "spearman": 0.889,
+   "hit_rate_gt10mm": 0.69
+  },
+  "lead 1": {
+   "mae_mm": 3.23,
+   "spearman": 0.847,
+   "hit_rate_gt10mm": 0.657
+  },
+  "lead 2": {
+   "mae_mm": 3.44,
+   "spearman": 0.837,
+   "hit_rate_gt10mm": 0.617
+  },
+  "lead 3": {
+   "mae_mm": 3.54,
+   "spearman": 0.82,
+   "hit_rate_gt10mm": 0.574
+  },
+  "lead 4": {
+   "mae_mm": 4.35,
+   "spearman": 0.724,
+   "hit_rate_gt10mm": 0.489
   }
  }
 }

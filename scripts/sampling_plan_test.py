@@ -21,10 +21,12 @@ import pandas as pd
 
 from dipcast import config
 from dipcast.ingest.rainfall import grid_cell
+from dipcast.model.ecoli import rain_windows
 
 THRESHOLD = 900
 BUDGETS = (0.5, 0.25)
 LEADS = (0, 1, 2, 3, 4)
+RULE_MM = 5.0
 
 
 def load_leads(cells: set[tuple[float, float]]) -> pd.DataFrame:
@@ -54,21 +56,24 @@ def main() -> None:
                for k, g in leads.groupby(["cell_lat", "cell_lon"])}
     for k in LEADS:
         rows[f"fc{k}_48h"] = np.nan
-    for i, r in rows.iterrows():
-        tab = by_cell.get((r.cell_lat, r.cell_lon))
+    # The production window rule (ecoli.rain_windows): (t - 48 h, t], NaN unless 90% of the
+    # hours carry a value. Until 28 Sep 2026 this summed with pandas, so a lead with no
+    # archived rain (all of 2023 and January 2024 at leads 1-4) counted as 0 mm, a dry day.
+    for (clat, clon), idx in rows.groupby(["cell_lat", "cell_lon"]).groups.items():
+        tab = by_cell.get((clat, clon))
         if tab is None:
             continue
-        win = tab.loc[r.sample_time - pd.Timedelta(hours=48): r.sample_time]
-        if len(win) < 40:
-            continue
+        ends = pd.DatetimeIndex(rows.loc[idx, "sample_time"])
         for k in LEADS:
-            if k in win.columns:
-                rows.at[i, f"fc{k}_48h"] = win[k].sum()
+            if k in tab.columns:
+                rows.loc[idx, f"fc{k}_48h"] = rain_windows(tab[k], ends)[0]
     cols = ["rain_48h"] + [f"fc{k}_48h" for k in LEADS]
     d = rows.dropna(subset=cols)
+    years = d["sample_time"].dt.year.value_counts().sort_index().to_dict()
     print(f"{len(d)} samples with forecast rain at every lead ({d.bw_id.nunique()} sites, "
-          f"{int(d.exc.sum())} exceedances), of {len(rows)} scored")
-    out = {}
+          f"{int(d.exc.sum())} exceedances, by year {years}), of {len(rows)} scored")
+    out = {"n_samples": len(d), "samples_by_year": {int(k): int(v) for k, v in years.items()},
+           "rule": "leads compared on the same samples; a window needs 90% of its 48 hours"}
     for kind, sub in [("all", d), ("river", d[d.kind == "river"]), ("lake", d[d.kind == "lake"])]:
         if sub.exc.sum() < 10:
             continue
@@ -77,6 +82,16 @@ def main() -> None:
         print(f"\n=== {kind}: n={len(sub)}, exceedances={int(sub.exc.sum())}, random = budget fraction ===")
         print(tab.to_string())
         out[kind] = tab.reset_index().rename(columns={"index": "rain_source"}).to_dict("records")
+        # A fixed-threshold rule a volunteer group could follow: sample only if more than
+        # RULE_MM of rain is forecast for the 48 h before the sampling time.
+        rule = {}
+        for c, lab in zip(cols, tab.index, strict=True):
+            keep = sub[c] > RULE_MM
+            rule[lab] = {"days_kept": round(float(keep.mean()), 3), "exceedances_kept": round(float(sub.loc[keep, "exc"].sum() / sub["exc"].sum()), 3),
+                         "rate_on_kept": round(float(sub.loc[keep, "exc"].mean()), 3), "rate_on_skipped": round(float(sub.loc[~keep, "exc"].mean()), 3)}
+        print(f"rule: sample only if more than {RULE_MM:g} mm is forecast")
+        print(pd.DataFrame(rule).T.to_string())
+        out[f"{kind}_rule_{RULE_MM:g}mm"] = rule
     # how well does forecast rain reproduce observed 48 h rain, and the >10 mm days a planner acts on
     fit = {f"lead {k}": {"mae_mm": round(float((d[f"fc{k}_48h"] - d.rain_48h).abs().mean()), 2),
                          "spearman": round(float(d[f"fc{k}_48h"].corr(d.rain_48h, method="spearman")), 3),

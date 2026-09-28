@@ -181,19 +181,28 @@ observed-spill result was computed differently and did not change.
 water samples: if you could only afford half your sampling days, would choosing
 them from the rain forecast catch more of the failures? `scripts/sampling_plan_test.py`
 ranks each site's sampled days by rain in the previous 48 h and keeps the wettest
-half. On rivers (947 sampled days, 202 exceedances of 900) that keeps 77% of the
-exceedances with rain as it fell, 75% with the forecast issued that day, 68% with
-the forecast issued two days earlier, and 68% four days earlier; a fixed schedule
-keeps 50%. A "sample only if more than 5 mm is forecast" rule keeps a quarter of
-the days and half the exceedances (43% exceedance rate on the days it picks, 14%
-on those it skips). The skill is lost between same-day and one-day-ahead
-decisions, not after, so a plan made four days out is as good as one made the day
-before. It is the rain forecast doing this work, not the transport layer; on lakes
-(16 exceedances) there is nothing to plan around. Archived forecasts by lead
-come from `scripts/fetch_rain_leads_bathing.py`; results in
+half. On rivers (907 sampled days in 2024-26, 196 exceedances of 900) that keeps
+76% of the exceedances with rain as it fell, 75% with the forecast issued that
+day, 70% with the forecast issued the day before, and 69% with the forecast
+issued two or four days earlier; a fixed schedule keeps 50%. A "sample only if
+more than 5 mm is forecast" rule, decided two days ahead, keeps a quarter of the
+days and half the exceedances (43% exceedance rate on the days it picks, 14% on
+those it skips). Most of the skill is lost between same-day and one-day-ahead
+decisions, not after, so a plan made four days out is about as good as one made
+the day before. It is the rain forecast doing this work, not the transport
+layer; on lakes (16 exceedances) there is nothing to plan around. Archived
+forecasts by lead come from `scripts/fetch_rain_leads_bathing.py`; results in
 `data/processed/sampling_plan_test.json`. The test can only choose among days the
 EA happened to sample, so it measures ranking skill, not the value of sampling on
 days nobody did.
+
+Correction (28 Sep 2026): the first run (15 Sep) summed each 48 h window with
+pandas, which reads an all-missing window as 0 mm, and Open-Meteo's archive has
+no lead 1-4 rain for 2023, so those samples counted as dry at every lead but the
+same day. It now uses the production window rule (`ecoli.rain_windows`: 90% of
+the hours must carry a value) and compares every lead on the same 2024-26
+samples. The river figures moved by one to two points (lead 2 from 68% to 69%,
+the same day from 75% to 75%); the conclusions did not change.
 
 **E. coli exceedance model.** The map's "E. coli > 900" column: the estimated
 probability that a midday sample exceeds 900 cfu/100 ml. `scripts/train_ecoli.py`
