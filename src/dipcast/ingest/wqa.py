@@ -1,5 +1,6 @@
 """Environment Agency Water Quality Archive: the bathing-water E. coli results of
-ingest.bwq, from a different EA service.
+ingest.bwq, from a different EA service, and the sampler's visual algae check made
+at the same visits (fetch_algae).
 
 Why two sources: since at least 28 Sep 2026 the bathing-water service's gateway answers
 GitHub's runners with HTTP 403 whatever the User-Agent, and this service does not. On
@@ -21,6 +22,10 @@ from dipcast import config
 
 API = "https://environment.data.gov.uk/water-quality"
 ECOLI = "2348"                  # determinand: Escherichia coli : Confirmed : MF
+# "Bathing Water Profile : Algal Bloom": the sampler's four-level visual check, recorded
+# against the same sample as the E. coli result (at Ilkley in 2026, 20 of 20 E. coli sample
+# times also carry one). A look at the water, not a count or a toxin test.
+ALGAE = "4824"
 PAGE = 250                      # the service's page limit for JSON-LD
 MAX_POINTS = 50                 # notations per request: the documented limit is 100, but 100 got a 502 on 28 Sep 2026
 # Statutory monitoring only: the samples the bathing-water service lists (675 of its 677
@@ -39,12 +44,11 @@ def _count(s: str | None) -> tuple[float | None, str]:
         return None, q
 
 
-def fetch_ecoli(points: list[str], since: str, purposes: str | None = BATHING_PURPOSES) -> list[dict]:
-    """E. coli results at the given archive sampling points since `since` (ISO date or
-    datetime), one row per sample: wqa_point, sample_time (local, as published), ecoli,
-    ecoli_qual, purpose. About one request per 250 results."""
-    rows = []
-    params = {"determinand": ECOLI, "dateFrom": since[:10], "limit": PAGE}
+def _observations(points: list[str], since: str, determinand: str, purposes: str | None) -> list[dict]:
+    """Raw JSON-LD observations of one determinand at the given sampling points since
+    `since`, paged and batched. About one request per 250 results."""
+    out = []
+    params = {"determinand": determinand, "dateFrom": since[:10], "limit": PAGE}
     if purposes:
         params["samplingPurpose"] = purposes
     with httpx.Client(timeout=120, headers={**config.EA_HEADERS, "Accept": "application/ld+json"}) as c:
@@ -55,14 +59,36 @@ def fetch_ecoli(points: list[str], since: str, purposes: str | None = BATHING_PU
                            params={**params, "pointNotation": ",".join(points[i:i + MAX_POINTS]), "skip": skip})
                 r.raise_for_status()
                 items = r.json().get("member") or []
-                for o in items:
-                    ecoli, qual = _count(o.get("hasSimpleResult"))
-                    sampling = ((o.get("hasSample") or {}).get("isResultOf") or {})
-                    rows.append({"wqa_point": (o.get("hasSamplingPoint") or {}).get("notation"),
-                                 "sample_time": o.get("phenomenonTime"), "ecoli": ecoli, "ecoli_qual": qual,
-                                 "purpose": (sampling.get("samplingPurpose") or {}).get("notation")})
+                out.extend(items)
                 if len(items) < PAGE:
                     break
                 skip += PAGE
                 time.sleep(0.3)
+    return out
+
+
+def _row(o: dict) -> dict:
+    sampling = ((o.get("hasSample") or {}).get("isResultOf") or {})
+    return {"wqa_point": (o.get("hasSamplingPoint") or {}).get("notation"), "sample_time": o.get("phenomenonTime"),
+            "purpose": (sampling.get("samplingPurpose") or {}).get("notation")}
+
+
+def fetch_ecoli(points: list[str], since: str, purposes: str | None = BATHING_PURPOSES) -> list[dict]:
+    """E. coli results at the given archive sampling points since `since` (ISO date or
+    datetime), one row per sample: wqa_point, sample_time (local, as published), ecoli,
+    ecoli_qual, purpose. About one request per 250 results."""
+    rows = []
+    for o in _observations(points, since, ECOLI, purposes):
+        ecoli, qual = _count(o.get("hasSimpleResult"))
+        r = _row(o)
+        rows.append({"wqa_point": r["wqa_point"], "sample_time": r["sample_time"], "ecoli": ecoli, "ecoli_qual": qual,
+                     "purpose": r["purpose"]})
     return rows
+
+
+def fetch_algae(points: list[str], since: str) -> list[dict]:
+    """The visual algae check at the given sampling points since `since`, one row per
+    visit: wqa_point, sample_time (local, as published), result (the EA's wording, e.g.
+    'Some at intervals - 3 to 6 items'), purpose. Every purpose is kept: a follow-up or an
+    investigation is still a look at the water on that day."""
+    return [{**_row(o), "result": o.get("hasSimpleResult")} for o in _observations(points, since, ALGAE, None)]

@@ -39,6 +39,7 @@ part is the transport step: an overflow 2 km upstream on the same river and one
 | OS Open Rivers | 193,040 directed watercourse links incl. lake traversals, BNG | Open Government Licence |
 | EA WFD Lake Water Bodies Cycle 3 | 564 lake polygons (lakes over 50 ha, 5 ha in protected areas), names and areas | Open, no key |
 | EA flood-monitoring API | Near-real-time river levels and typical ranges | Open, no key |
+| EA Water Quality Archive | E. coli results and the sampler's visual algae check at the 38 inland bathing waters | Open, no key |
 
 Dwr Cymru (Wales) publishes no live feed to ArcGIS; its 128 overflows appear with
 annual spill history only and no "right now" status. Every English company is live.
@@ -353,6 +354,25 @@ method, and `scripts/spill_day_ratio.py` finds 1.00 spill-days per counted
 spill pooled over 5,886 United Utilities site-years, which supports the
 approximation there without establishing it per overflow or company.
 
+**Algae (an observation, not a forecast; 28 Sep 2026).** At every sampling visit to a
+bathing water the EA sampler records one of four levels of algae: none, a trace (1-2
+items), some at intervals (3-6), or enough to be objectionable (more than 6). This is
+"Bathing Water Profile : Algal Bloom", determinand 4824 in the Water Quality Archive,
+recorded against the same sample as the E. coli result. On 28 Sep the archive held 2,925 of
+these checks at the 38 sites since 2020. From 2023, algae was seen at 310 of 1,304 lake
+checks (63 objectionable) and 64 of 1,012 river checks (11). 58 of the 63 objectionable
+lake checks were at four sites: the Serpentine (21), Colwick (15), Frensham Great Pond (12)
+and Hampstead's Ladies' Pond (10).
+There are no chlorophyll, cyanobacteria-count or toxin results at these sites, and the
+check does not tell blue-green algae (which can be toxic) from harmless kinds. Too few
+objectionable checks to fit a model, so the page shows each bathing water's latest check,
+dated, and the season's tally. `dipcast/algae.py` fetches the season (from 1 May) once a
+day into `algae_checks.parquet` in the state directory. A failed or empty fetch keeps the
+checks already held, and nothing about it stops a build. The file is not in the state
+release, because the archive can refill it on any build. Where it adds something: the
+Serpentine has no monitored overflow upstream, so the forecast has nothing to flag, and
+in 2026 the sampler saw algae there at 18 of 20 visits, 12 of them objectionable.
+
 **Versions.** Every logged forecast carries a stamp of the spill model,
 calibration map and E. coli model (content hashes), the code version and git
 sha, and the weather source (`forecast.model_version`). Live scores are broken
@@ -402,6 +422,9 @@ time contributes to today (it started at yesterday before, and did not).
   2026; `verify_leads.py` also reports a cross-fitted score (each month
   calibrated by a map fitted on the year's other months) as the honest estimate
   of what it does for an unseen day.
+- The algae check covers only the 38 designated bathing waters, is a sampler's look at
+  the water rather than a lab test, and reaches the archive about a week after the visit.
+  From October to April it is last season's final check, dated as such.
 - The E. coli column is validated on river bathing waters in the May-September
   sampling season. On lakes it has no ranking skill and is not shown; outside
   the season it is an extrapolation and is marked as such.
