@@ -20,6 +20,7 @@ from pathlib import Path
 import pandas as pd
 
 from dipcast import __version__, config
+from dipcast.algae import by_site, refresh_algae
 from dipcast.forecast_log import describe_fetch, load_verification, samples_status
 from dipcast.ingest.rainfall import cells_for_sites, fetch_forecast
 from dipcast.jobs import refresh_all
@@ -131,6 +132,24 @@ def build_health(results: list[dict], ecoli_samples: dict | None = None) -> dict
     return health
 
 
+def attach_algae(results: list[dict], fetch: bool = True) -> int:
+    """The EA sampler's latest visual algae check, and this season's tally, on each
+    bathing-water spot (spot id 'bw-' + the EA id). Returns how many spots got one; a
+    failure leaves the spots without it rather than failing the build."""
+    try:
+        checks = by_site(refresh_algae(fetch=fetch))
+    except Exception as e:  # noqa: BLE001 - an observation beside the forecast must not sink the site
+        log.warning("algae checks: %s", e)
+        return 0
+    n = 0
+    for r in results:
+        c = checks.get(str(r["id"]).removeprefix("bw-")) if str(r["id"]).startswith("bw-") else None
+        if c:
+            r["algae"] = c
+            n += 1
+    return n
+
+
 def copy_app_files(site: Path) -> None:
     """The web-app manifest and icons beside index.html: Add to Home Screen then gives an
     icon, a name and a full-screen window."""
@@ -163,8 +182,10 @@ def build(refresh: bool = True) -> dict:
             f = {"error": f"forecast failed: {e}"}
         results.append({"id": r.id, "name": r.name, "kind": r.kind, "source": r.source, "notes": r.notes,
                         "lat": float(r.lat), "lon": float(r.lon), **f})
+    n_algae = attach_algae(results, fetch=refresh)
     generated = pd.Timestamp.now(tz="Europe/London")
     health = build_health(results, samples_status())   # raises before anything is written if the build is bad
+    health["algae_checks"] = n_algae
     for w in health["warnings"]:
         announce(w)
     (SITE / "data").mkdir(parents=True, exist_ok=True)
