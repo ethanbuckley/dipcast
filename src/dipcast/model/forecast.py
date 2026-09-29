@@ -226,7 +226,7 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
         pool.shutdown(wait=False)
         out["error"] = ("No river or lake within 1.5 km of this point." if pin.mode == "none" else
                         "An isolated lake with no river connection in the network: storm overflows cannot reach it "
-                        "by water, so dipcast has nothing to say about it. Risk from wildlife, runoff and bathers is not modelled.")
+                        "by water, so the forecast has nothing to say about it. Risk from wildlife, runoff and bathers is not modelled.")
         out["now"] = {"risk": 0.0, "label": "unknown"}
         out["days"] = []
         out["contributors"] = []

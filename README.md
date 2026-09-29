@@ -573,9 +573,33 @@ repository's GitHub Pages address. `icons/og.png` is the preview image
 (`uv run --with pillow python scripts/make_share_image.py` redraws it after a
 name change). `sw.js` keeps the page and the latest forecast on the device, so
 the home-screen app opens without signal and says how old the forecast is. A
-saved spot is kept in the browser's local storage only. The "Feedback" link
-opens `.github/ISSUE_TEMPLATE/feedback.yml`, which asks whether the forecast
-changed what the person did.
+saved spot is kept in the browser's local storage only, and `saved/` lists the
+saved spots with their five days; `saved/#spots=a,b` offers a list someone
+shared (after the `#`, so it never reaches a server). An iPhone's Home Screen
+app has storage of its own: spots saved in Safari do not appear in it (checked
+in the iOS 27 simulator, 29 Sep 2026), and the Saved page says so. The
+"Feedback" link opens `.github/ISSUE_TEMPLATE/feedback.yml`, which asks whether
+the forecast changed what the person did.
+
+**The level on the map and in the list** is the worst of four things, worked
+out in the page (`risk()` in `index.html`): the spill forecast's level; on
+rivers with overflows upstream, the E. coli column in bands of under 10%, 25%,
+50% and over (the minimum inland standard lets about one sample in ten be over
+900); the Environment Agency's rating, where "poor" (the EA advises against
+bathing all season) makes every day at least high; and the sampler's algae
+check if under two weeks old. On 29 Sep 2026 the spill forecast alone had all
+nine Thames spots on "low", and all 13 poor-rated bathing waters on "low" for
+that day (7 of them for the next day too). The ratings are in
+`data/raw/bathing_water_classifications.json`, written by
+`uv run python scripts/fetch_classifications.py`: run it after each year's
+classifications are published (the 2026 ones are due in December) and commit
+the file. It is a file rather than a fetch in the build because the EA's
+bathing-water service has refused GitHub's runners since 28 Sep 2026 (seen on
+its sample endpoint; the ratings come from the same service). The EA's short-term advice
+against bathing after an incident is not included, for the same reason and
+because the service sends no CORS header, so a browser page elsewhere cannot
+read it either: on 29 Sep 2026 it covered Ham and Kingston and Frensham Great
+Pond (algae). Each bathing water's page links to the EA's page instead.
 
 `.github/workflows/site.yml` is scheduled every 30 minutes and also runs on
 every push. GitHub starts scheduled runs when it can: the 113 builds of 13-28
