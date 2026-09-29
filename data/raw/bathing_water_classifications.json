@@ -1,0 +1,1363 @@
+{
+ "fetched_at": "2026-09-29T22:40:36+01:00",
+ "source": "Environment Agency bathing water quality, compliance-rBWD (environment.data.gov.uk/bwq)",
+ "licence": "Open Government Licence v3.0",
+ "sites": {
+  "uke4100-08901": {
+   "name": "Wharfe at Cromwheel, Ilkley",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=uke4100-08901",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ],
+    [
+     2023,
+     "poor"
+    ],
+    [
+     2022,
+     "poor"
+    ],
+    [
+     2021,
+     "poor"
+    ]
+   ]
+  },
+  "uke2203-08903": {
+   "name": "Nidd at the Lido, Knaresborough",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=uke2203-08903",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  },
+  "uke4200-08904": {
+   "name": "Wharfe at Wilderness Carpark",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=uke4200-08904",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  },
+  "uke2204-08905": {
+   "name": "Swale above Richmond Falls",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=uke2204-08905"
+  },
+  "ukf2208-09701": {
+   "name": "Rutland Water Whitwell Creek",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukf2208-09701",
+   "class": "excellent",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "excellent"
+    ],
+    [
+     2024,
+     "excellent"
+    ],
+    [
+     2023,
+     "good"
+    ]
+   ]
+  },
+  "ukf2208-09702": {
+   "name": "Rutland Water Sykes Lane",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukf2208-09702",
+   "class": "excellent",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "excellent"
+    ],
+    [
+     2024,
+     "excellent"
+    ],
+    [
+     2023,
+     "excellent"
+    ]
+   ]
+  },
+  "ukf1400-09750": {
+   "name": "Colwick Country Park (West Lake)",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukf1400-09750",
+   "class": "excellent",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "excellent"
+    ],
+    [
+     2024,
+     "excellent"
+    ],
+    [
+     2023,
+     "excellent"
+    ],
+    [
+     2022,
+     "excellent"
+    ],
+    [
+     2021,
+     "excellent"
+    ],
+    [
+     2019,
+     "excellent"
+    ],
+    [
+     2018,
+     "good"
+    ],
+    [
+     2017,
+     "excellent"
+    ],
+    [
+     2016,
+     "excellent"
+    ],
+    [
+     2015,
+     "excellent"
+    ],
+    [
+     2014,
+     "excellent"
+    ],
+    [
+     2013,
+     "excellent"
+    ]
+   ]
+  },
+  "ukh1201-09801": {
+   "name": "Sheep's Green, River Cam",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukh1201-09801",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  },
+  "ukh1406-10712": {
+   "name": "Falcon Meadow, River Waveney",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukh1406-10712"
+  },
+  "ukh1401-11051": {
+   "name": "Friars Meadow, River Stour",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukh1401-11051",
+   "class": "good",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "good"
+    ],
+    [
+     2024,
+     "good"
+    ]
+   ]
+  },
+  "ukk1302-11760": {
+   "name": "Cotswold Country Park and Beach",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukk1302-11760",
+   "class": "excellent",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "excellent"
+    ],
+    [
+     2024,
+     "excellent"
+    ],
+    [
+     2023,
+     "excellent"
+    ],
+    [
+     2022,
+     "excellent"
+    ],
+    [
+     2021,
+     "excellent"
+    ],
+    [
+     2019,
+     "excellent"
+    ],
+    [
+     2018,
+     "excellent"
+    ],
+    [
+     2017,
+     "excellent"
+    ],
+    [
+     2016,
+     "excellent"
+    ],
+    [
+     2015,
+     "excellent"
+    ],
+    [
+     2014,
+     "excellent"
+    ],
+    [
+     2013,
+     "excellent"
+    ],
+    [
+     2012,
+     "excellent"
+    ],
+    [
+     2011,
+     "excellent"
+    ],
+    [
+     2010,
+     "excellent"
+    ],
+    [
+     2009,
+     "good"
+    ],
+    [
+     2008,
+     "good"
+    ],
+    [
+     2007,
+     "good"
+    ],
+    [
+     2006,
+     "good"
+    ],
+    [
+     2005,
+     "excellent"
+    ],
+    [
+     2004,
+     "excellent"
+    ]
+   ]
+  },
+  "uki1101-11910": {
+   "name": "Hampstead Heath (Ladies Pond)",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=uki1101-11910",
+   "class": "good",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "good"
+    ],
+    [
+     2024,
+     "good"
+    ],
+    [
+     2023,
+     "good"
+    ],
+    [
+     2022,
+     "good"
+    ],
+    [
+     2021,
+     "good"
+    ],
+    [
+     2019,
+     "excellent"
+    ],
+    [
+     2018,
+     "good"
+    ],
+    [
+     2017,
+     "excellent"
+    ],
+    [
+     2016,
+     "excellent"
+    ],
+    [
+     2015,
+     "excellent"
+    ],
+    [
+     2014,
+     "excellent"
+    ],
+    [
+     2013,
+     "excellent"
+    ],
+    [
+     2012,
+     "good"
+    ],
+    [
+     2011,
+     "good"
+    ],
+    [
+     2010,
+     "excellent"
+    ],
+    [
+     2009,
+     "excellent"
+    ],
+    [
+     2008,
+     "excellent"
+    ],
+    [
+     2007,
+     "excellent"
+    ],
+    [
+     2006,
+     "excellent"
+    ],
+    [
+     2005,
+     "excellent"
+    ],
+    [
+     2004,
+     "excellent"
+    ]
+   ]
+  },
+  "uki1101-11920": {
+   "name": "Hampstead Heath (Mens Pond)",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=uki1101-11920",
+   "class": "excellent",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "excellent"
+    ],
+    [
+     2024,
+     "excellent"
+    ],
+    [
+     2023,
+     "excellent"
+    ],
+    [
+     2022,
+     "excellent"
+    ],
+    [
+     2021,
+     "excellent"
+    ],
+    [
+     2019,
+     "excellent"
+    ],
+    [
+     2018,
+     "excellent"
+    ],
+    [
+     2017,
+     "excellent"
+    ],
+    [
+     2016,
+     "excellent"
+    ],
+    [
+     2015,
+     "excellent"
+    ],
+    [
+     2014,
+     "excellent"
+    ],
+    [
+     2013,
+     "good"
+    ],
+    [
+     2012,
+     "excellent"
+    ],
+    [
+     2011,
+     "excellent"
+    ],
+    [
+     2010,
+     "excellent"
+    ],
+    [
+     2009,
+     "excellent"
+    ],
+    [
+     2008,
+     "good"
+    ],
+    [
+     2007,
+     "good"
+    ],
+    [
+     2006,
+     "good"
+    ],
+    [
+     2005,
+     "excellent"
+    ],
+    [
+     2004,
+     "excellent"
+    ]
+   ]
+  },
+  "uki1101-11930": {
+   "name": "Hampstead Heath (Mixed Pond)",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=uki1101-11930",
+   "class": "excellent",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "excellent"
+    ],
+    [
+     2024,
+     "excellent"
+    ],
+    [
+     2023,
+     "excellent"
+    ],
+    [
+     2022,
+     "excellent"
+    ],
+    [
+     2021,
+     "good"
+    ],
+    [
+     2019,
+     "good"
+    ],
+    [
+     2018,
+     "good"
+    ],
+    [
+     2017,
+     "good"
+    ],
+    [
+     2016,
+     "good"
+    ],
+    [
+     2015,
+     "good"
+    ],
+    [
+     2014,
+     "good"
+    ],
+    [
+     2013,
+     "good"
+    ],
+    [
+     2012,
+     "good"
+    ],
+    [
+     2011,
+     "sufficient"
+    ],
+    [
+     2010,
+     "good"
+    ],
+    [
+     2009,
+     "good"
+    ],
+    [
+     2008,
+     "good"
+    ],
+    [
+     2007,
+     "sufficient"
+    ],
+    [
+     2006,
+     "sufficient"
+    ],
+    [
+     2005,
+     "good"
+    ],
+    [
+     2004,
+     "good"
+    ]
+   ]
+  },
+  "uki1106-11940": {
+   "name": "The Serpentine - Hyde Park",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=uki1106-11940",
+   "class": "good",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "good"
+    ],
+    [
+     2024,
+     "sufficient"
+    ],
+    [
+     2023,
+     "sufficient"
+    ],
+    [
+     2022,
+     "sufficient"
+    ],
+    [
+     2021,
+     "sufficient"
+    ],
+    [
+     2019,
+     "sufficient"
+    ],
+    [
+     2018,
+     "sufficient"
+    ],
+    [
+     2017,
+     "sufficient"
+    ],
+    [
+     2016,
+     "sufficient"
+    ],
+    [
+     2015,
+     "sufficient"
+    ],
+    [
+     2014,
+     "good"
+    ],
+    [
+     2013,
+     "good"
+    ],
+    [
+     2012,
+     "excellent"
+    ],
+    [
+     2011,
+     "excellent"
+    ],
+    [
+     2010,
+     "excellent"
+    ],
+    [
+     2009,
+     "excellent"
+    ],
+    [
+     2008,
+     "excellent"
+    ],
+    [
+     2007,
+     "excellent"
+    ],
+    [
+     2006,
+     "excellent"
+    ],
+    [
+     2005,
+     "excellent"
+    ],
+    [
+     2004,
+     "good"
+    ]
+   ]
+  },
+  "ukj1102-11941": {
+   "name": "Pangbourne Meadow, River Thames",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukj1102-11941"
+  },
+  "uki2203-11942": {
+   "name": "Ham and Kingston, River Thames",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=uki2203-11942"
+  },
+  "ukj2310-11945": {
+   "name": "Frensham Great Pond",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukj2310-11945",
+   "class": "excellent",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "excellent"
+    ],
+    [
+     2024,
+     "excellent"
+    ],
+    [
+     2023,
+     "excellent"
+    ],
+    [
+     2022,
+     "excellent"
+    ],
+    [
+     2021,
+     "excellent"
+    ],
+    [
+     2019,
+     "excellent"
+    ],
+    [
+     2018,
+     "excellent"
+    ],
+    [
+     2017,
+     "excellent"
+    ],
+    [
+     2016,
+     "excellent"
+    ],
+    [
+     2015,
+     "good"
+    ],
+    [
+     2014,
+     "good"
+    ],
+    [
+     2013,
+     "good"
+    ],
+    [
+     2012,
+     "excellent"
+    ],
+    [
+     2011,
+     "excellent"
+    ],
+    [
+     2010,
+     "excellent"
+    ],
+    [
+     2009,
+     "excellent"
+    ],
+    [
+     2008,
+     "excellent"
+    ],
+    [
+     2007,
+     "excellent"
+    ],
+    [
+     2006,
+     "excellent"
+    ],
+    [
+     2005,
+     "excellent"
+    ],
+    [
+     2004,
+     "excellent"
+    ]
+   ]
+  },
+  "ukj1402-11946": {
+   "name": "Wolvercote Mill Stream",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukj1402-11946",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ],
+    [
+     2023,
+     "poor"
+    ],
+    [
+     2022,
+     "poor"
+    ]
+   ]
+  },
+  "ukj1403-11947": {
+   "name": "Wallingford Beach, River Thames",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukj1403-11947",
+   "class": "sufficient",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "sufficient"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  },
+  "ukj3308-19001": {
+   "name": "River Avon at Fordingbridge",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukj3308-19001",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  },
+  "ukk1500-19002": {
+   "name": "River Avon at Queen Elizabeth Gardens",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukk1500-19002"
+  },
+  "ukk2304-35201": {
+   "name": "River Tone at French Weir Park",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukk2304-35201",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  },
+  "ukk1100-36050": {
+   "name": "Henleaze Lake",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukk1100-36050",
+   "class": "excellent",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "excellent"
+    ],
+    [
+     2024,
+     "good"
+    ],
+    [
+     2023,
+     "good"
+    ],
+    [
+     2022,
+     "good"
+    ],
+    [
+     2021,
+     "good"
+    ],
+    [
+     2019,
+     "good"
+    ],
+    [
+     2018,
+     "good"
+    ],
+    [
+     2017,
+     "good"
+    ],
+    [
+     2016,
+     "good"
+    ],
+    [
+     2015,
+     "good"
+    ],
+    [
+     2014,
+     "sufficient"
+    ]
+   ]
+  },
+  "ukk2301-36051": {
+   "name": "River Frome at Farleigh Hungerford",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukk2301-36051",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  },
+  "ukg2200-36060": {
+   "name": "River Teme in Ludlow",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukg2200-36060",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  },
+  "ukg2100-36070": {
+   "name": "River Severn at Ironbridge",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukg2100-36070",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  },
+  "ukg2200-36071": {
+   "name": "River Severn in Shrewsbury",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukg2200-36071",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  },
+  "ukd6300-40752": {
+   "name": "Sandy Lane, Chester",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukd6300-40752"
+  },
+  "ukd1203-45625": {
+   "name": "Windermere, Lakeside YMCA",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukd1203-45625",
+   "class": "excellent",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "excellent"
+    ],
+    [
+     2024,
+     "excellent"
+    ],
+    [
+     2023,
+     "excellent"
+    ],
+    [
+     2022,
+     "excellent"
+    ],
+    [
+     2021,
+     "excellent"
+    ],
+    [
+     2019,
+     "excellent"
+    ],
+    [
+     2018,
+     "excellent"
+    ],
+    [
+     2017,
+     "excellent"
+    ],
+    [
+     2016,
+     "excellent"
+    ],
+    [
+     2015,
+     "excellent"
+    ],
+    [
+     2014,
+     "excellent"
+    ],
+    [
+     2013,
+     "excellent"
+    ],
+    [
+     2012,
+     "excellent"
+    ],
+    [
+     2011,
+     "good"
+    ],
+    [
+     2010,
+     "excellent"
+    ],
+    [
+     2009,
+     "excellent"
+    ],
+    [
+     2008,
+     "excellent"
+    ],
+    [
+     2007,
+     "excellent"
+    ],
+    [
+     2006,
+     "excellent"
+    ],
+    [
+     2005,
+     "excellent"
+    ],
+    [
+     2004,
+     "excellent"
+    ]
+   ]
+  },
+  "ukd1203-45650": {
+   "name": "Windermere, Millerground Landing",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukd1203-45650",
+   "class": "excellent",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "excellent"
+    ],
+    [
+     2024,
+     "excellent"
+    ],
+    [
+     2023,
+     "excellent"
+    ],
+    [
+     2022,
+     "excellent"
+    ],
+    [
+     2021,
+     "excellent"
+    ],
+    [
+     2019,
+     "excellent"
+    ],
+    [
+     2018,
+     "excellent"
+    ],
+    [
+     2017,
+     "excellent"
+    ],
+    [
+     2016,
+     "excellent"
+    ],
+    [
+     2015,
+     "excellent"
+    ],
+    [
+     2014,
+     "excellent"
+    ],
+    [
+     2013,
+     "excellent"
+    ],
+    [
+     2012,
+     "good"
+    ],
+    [
+     2011,
+     "good"
+    ],
+    [
+     2010,
+     "good"
+    ],
+    [
+     2009,
+     "good"
+    ],
+    [
+     2008,
+     "good"
+    ],
+    [
+     2007,
+     "good"
+    ],
+    [
+     2006,
+     "good"
+    ],
+    [
+     2005,
+     "sufficient"
+    ],
+    [
+     2004,
+     "good"
+    ]
+   ]
+  },
+  "ukd1203-45675": {
+   "name": "Windermere, Rayrigg Meadow",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukd1203-45675",
+   "class": "excellent",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "excellent"
+    ],
+    [
+     2024,
+     "excellent"
+    ],
+    [
+     2023,
+     "excellent"
+    ],
+    [
+     2022,
+     "excellent"
+    ],
+    [
+     2021,
+     "excellent"
+    ],
+    [
+     2019,
+     "excellent"
+    ],
+    [
+     2018,
+     "excellent"
+    ],
+    [
+     2017,
+     "excellent"
+    ],
+    [
+     2016,
+     "excellent"
+    ],
+    [
+     2015,
+     "excellent"
+    ]
+   ]
+  },
+  "ukd1203-45700": {
+   "name": "Windermere, Fellfoot",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukd1203-45700",
+   "class": "excellent",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "excellent"
+    ],
+    [
+     2024,
+     "excellent"
+    ],
+    [
+     2023,
+     "excellent"
+    ],
+    [
+     2022,
+     "excellent"
+    ],
+    [
+     2021,
+     "excellent"
+    ],
+    [
+     2019,
+     "excellent"
+    ],
+    [
+     2018,
+     "excellent"
+    ],
+    [
+     2017,
+     "excellent"
+    ],
+    [
+     2016,
+     "excellent"
+    ],
+    [
+     2015,
+     "excellent"
+    ],
+    [
+     2014,
+     "good"
+    ],
+    [
+     2013,
+     "good"
+    ],
+    [
+     2012,
+     "good"
+    ],
+    [
+     2011,
+     "good"
+    ],
+    [
+     2010,
+     "good"
+    ],
+    [
+     2009,
+     "sufficient"
+    ],
+    [
+     2008,
+     "sufficient"
+    ],
+    [
+     2007,
+     "good"
+    ],
+    [
+     2006,
+     "excellent"
+    ],
+    [
+     2005,
+     "excellent"
+    ],
+    [
+     2004,
+     "excellent"
+    ]
+   ]
+  },
+  "ukd1230-45725": {
+   "name": "Coniston Water, Brown Howe",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukd1230-45725",
+   "class": "good",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "good"
+    ],
+    [
+     2024,
+     "good"
+    ]
+   ]
+  },
+  "ukd1230-45750": {
+   "name": "Coniston Water, Boating Centre",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukd1230-45750",
+   "class": "sufficient",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "sufficient"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  },
+  "ukd1230-45775": {
+   "name": "Coniston Water, Monk Coniston",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukd1230-45775",
+   "class": "good",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "good"
+    ],
+    [
+     2024,
+     "excellent"
+    ]
+   ]
+  },
+  "ukd1101-45800": {
+   "name": "Derwent Water at Crow Park",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukd1101-45800",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  },
+  "ukd4308-46501": {
+   "name": "River Ribble at Edisford Bridge",
+   "url": "https://environment.data.gov.uk/bwq/profiles/profile.html?site=ukd4308-46501",
+   "class": "poor",
+   "year": 2025,
+   "history": [
+    [
+     2025,
+     "poor"
+    ],
+    [
+     2024,
+     "poor"
+    ]
+   ]
+  }
+ }
+}

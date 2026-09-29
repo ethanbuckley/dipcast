@@ -53,6 +53,8 @@ BRAND = "Dipspot"
 HOME_TITLE = f"{BRAND} · sewage-spill forecasts for swim spots"
 DESCRIPTION = ("Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow "
                "data, rainfall forecasts and the river network.")
+SAVED_TITLE = f"Saved spots · {BRAND}"
+SAVED_DESCRIPTION = "A list of river and lake swim spots, each with its five-day sewage-spill forecast."
 # Spot ids that get a page of their own at spot/<id>/; index.html uses the same rule. Any other
 # id keeps its ?spot= address: one odd row in spots.csv must not stop the build.
 SPOT_ID = re.compile(r"[A-Za-z0-9_-]+")
@@ -161,6 +163,28 @@ def attach_algae(results: list[dict], fetch: bool = True) -> int:
     return n
 
 
+CLASSIFICATIONS = config.RAW / "bathing_water_classifications.json"
+
+
+def attach_classifications(results: list[dict], path: Path = CLASSIFICATIONS) -> int:
+    """The EA's latest classification of each bathing-water spot (spot id 'bw-' + the EA id), from
+    the file scripts/fetch_classifications.py writes, and the address of the EA's page for it.
+    Returns how many spots got a classification. A missing or unreadable file leaves every spot
+    without: the forecast stands without it, and the page then shows no rating."""
+    try:
+        sites = json.loads(path.read_text())["sites"]
+    except Exception as e:  # noqa: BLE001 - a record beside the forecast must not sink the build
+        log.warning("bathing-water classifications: %s", e)
+        return 0
+    n = 0
+    for r in results:
+        c = sites.get(str(r["id"]).removeprefix("bw-")) if str(r["id"]).startswith("bw-") else None
+        if c:
+            r["classification"] = {k: c[k] for k in ("class", "year", "history", "url") if k in c}
+            n += "class" in c
+    return n
+
+
 def copy_app_files(site: Path) -> None:
     """The web-app manifest and icons beside index.html: Add to Home Screen then gives an
     icon, a name and a full-screen window."""
@@ -185,7 +209,7 @@ def site_url() -> str:
     return url.rstrip("/") + "/"
 
 
-def page_meta(title: str, description: str, url: str, root: str, base: str | None = None) -> str:
+def page_meta(title: str, description: str, url: str, root: str, base: str | None = None, noindex: bool = False) -> str:
     """The <head> block index.html marks with page-meta. Messaging apps and search engines need
     absolute addresses for the page and its preview image. Every page gets a relative <base> at
     the site root ("./" on the home page, "../../" in spot/<id>/). The page moves between the list
@@ -196,6 +220,7 @@ def page_meta(title: str, description: str, url: str, root: str, base: str | Non
         *([f'<base href="{escape(base)}">'] if base else []),
         f"<title>{escape(title)}</title>",
         f'<meta name="description" content="{escape(description)}">',
+        *(['<meta name="robots" content="noindex">'] if noindex else []),
         f'<link rel="canonical" href="{escape(url)}">',
         '<meta property="og:type" content="website">',
         f'<meta property="og:site_name" content="{escape(BRAND)}">',
@@ -235,6 +260,16 @@ def spot_page(template: str, spot: dict, root: str) -> str:
                                  f'<p class="muted">{escape(blurb)} Loading the forecast…</p></div>', 1)
 
 
+def saved_page(template: str, root: str) -> str:
+    """The Saved page, saved/: the map page, where the script lists the spots this browser has
+    saved, or offers a list someone shared (saved/#spots=...). The list lives in the browser, not
+    in the page, so search engines are asked to leave it out and the sitemap does not list it."""
+    page = PAGE_META.sub(lambda m: page_meta(SAVED_TITLE, SAVED_DESCRIPTION, f"{root}saved/", root, base="../",
+                                             noindex=True), template, count=1)
+    return page.replace(LOADING, '<div id="result"><h1 class="page-h">Saved spots</h1>'
+                                 '<p class="muted">Loading your saved spots…</p></div>', 1)
+
+
 def sitemap(root: str, spot_ids: list[str], day: str) -> str:
     urls = [root, f"{root}verification.html"] + [f"{root}spot/{i}/" for i in spot_ids]
     body = "".join(f"<url><loc>{escape(u)}</loc><lastmod>{day}</lastmod></url>" for u in urls)
@@ -258,6 +293,8 @@ def write_pages(site: Path, results: list[dict], token: str | None = None, root:
     copy_app_files(site)
     home = PAGE_META.sub(lambda m: page_meta(HOME_TITLE, DESCRIPTION, root, root, base="./"), template, count=1)
     (site / "index.html").write_text(with_counter(home, token))
+    (site / "saved").mkdir(exist_ok=True)
+    (site / "saved" / "index.html").write_text(with_counter(saved_page(template, root), token))
     shutil.rmtree(site / "spot", ignore_errors=True)   # a spot dropped from spots.csv loses its page
     ids = []
     for r in results:
@@ -298,9 +335,10 @@ def build(refresh: bool = True) -> dict:
         results.append({"id": r.id, "name": r.name, "kind": r.kind, "source": r.source, "notes": r.notes,
                         "lat": float(r.lat), "lon": float(r.lon), **f})
     n_algae = attach_algae(results, fetch=refresh)
+    n_classified = attach_classifications(results)
     generated = pd.Timestamp.now(tz="Europe/London")
     health = build_health(results, samples_status())   # raises before anything is written if the build is bad
-    health["algae_checks"] = n_algae
+    health["algae_checks"], health["classifications"] = n_algae, n_classified
     for w in health["warnings"]:
         announce(w)
     (SITE / "data").mkdir(parents=True, exist_ok=True)

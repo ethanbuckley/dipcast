@@ -50,6 +50,12 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     sm = (tmp_path / "sitemap.xml").read_text()
     assert sm.count("<url>") == 4 and "<loc>https://example.org/swim/spot/tarn/</loc>" in sm
     assert "<lastmod>2026-09-29</lastmod>" in sm
+    # The Saved page: its list is in the browser, so nothing in it for a search engine.
+    saved = (tmp_path / "saved" / "index.html").read_text()
+    head = saved.split("</head>")[0]
+    assert '<base href="../">' in head and '<meta name="robots" content="noindex">' in head
+    assert '<link rel="canonical" href="https://example.org/swim/saved/">' in head and "<title>Saved spots · Dipspot</title>" in head
+    assert "saved/" not in sm and "noindex" not in home
 
 
 def test_the_page_view_counter_reaches_spot_pages_and_a_dropped_spot_loses_its_page(tmp_path):
@@ -82,6 +88,33 @@ def test_the_page_and_the_build_use_one_id_rule():
     assert bs.SPOT_ID.pattern == "[A-Za-z0-9_-]+"
     page = (ROOT / "src" / "dipcast" / "site" / "index.html").read_text()
     assert "const PAGE_ID = /^[A-Za-z0-9_-]+$/;" in page and "/\\/spot\\/([A-Za-z0-9_-]+)\\/?$/" in page
+    # The pages the build writes below the root, which the page strips to find the root without a <base>.
+    assert "replace(/(spot\\/[^/]+|saved)\\/?$/, '')" in page
+
+
+def test_the_ea_rating_reaches_bathing_water_spots_only(tmp_path):
+    bs = _build_site()
+    f = tmp_path / "c.json"
+    f.write_text('{"sites": {"uke4100-08901": {"class": "poor", "year": 2025, "history": [[2025, "poor"]], "url": "https://e/x", "name": "W"},'
+                 ' "uki2203-11942": {"url": "https://e/y", "name": "Ham"}}}')
+    spots = [{"id": "bw-uke4100-08901"}, {"id": "bw-uki2203-11942"}, {"id": "thames-henley"}, {"id": "bw-ukx-unknown"}]
+    assert bs.attach_classifications(spots, f) == 1   # the not-yet-rated water gets its EA page, not a rating
+    assert spots[0]["classification"] == {"class": "poor", "year": 2025, "history": [[2025, "poor"]], "url": "https://e/x"}
+    assert spots[1]["classification"] == {"url": "https://e/y"}
+    assert "classification" not in spots[2] and "classification" not in spots[3]
+    assert bs.attach_classifications(spots, tmp_path / "missing.json") == 0   # no file: no rating, and no failed build
+
+
+def test_the_committed_ratings_cover_every_inland_bathing_water():
+    import json
+    sites = json.loads((ROOT / "data" / "raw" / "bathing_waters_inland.json").read_text())
+    c = json.loads((ROOT / "data" / "raw" / "bathing_water_classifications.json").read_text())
+    assert set(c["sites"]) == {s["id"] for s in sites}
+    rated = [v for v in c["sites"].values() if "class" in v]
+    assert rated and all(v["class"] in {"excellent", "good", "sufficient", "poor"} and v["year"] >= 2020 for v in rated)
+    assert all(v["url"].startswith("https://environment.data.gov.uk/bwq/profiles/") for v in c["sites"].values())
+    page = (ROOT / "src" / "dipcast" / "site" / "index.html").read_text()   # the page's names for the four
+    assert "const CLASS_LEVEL = { excellent: 'low', good: 'low', sufficient: 'moderate', poor: 'high' };" in page
 
 
 def test_observations_from_is_the_first_day_with_a_mask():
