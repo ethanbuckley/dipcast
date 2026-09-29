@@ -1,6 +1,7 @@
 """The EA gauge lookup behind the river level index. The station list links each stage
 scale as http://, which answers 301 to https://; until 29 Sep 2026 that redirect made
-every linked scale fail and the index went missing (seen at Pangbourne, 2180TH)."""
+every linked scale fail and the index went missing (seen near Pangbourne: station
+2180TH, the Pang at Tidmarsh)."""
 
 import httpx
 import pytest
@@ -25,7 +26,7 @@ def _fake_ea(monkeypatch, stage_scale: str) -> list[str]:
             return httpx.Response(301, headers={"Location": str(req.url.copy_with(scheme="https"))})
         if path == "/flood-monitoring/id/stations":
             return httpx.Response(200, json={"items": [{
-                "stationReference": REF, "label": "Pangbourne", "riverName": "River Thames",
+                "stationReference": REF, "label": "Tidmarsh", "riverName": "River Pang",
                 "lat": 51.4856, "long": -1.0913, "stageScale": stage_scale}]})
         if path == f"/flood-monitoring/id/stations/{REF}/stageScale":
             return httpx.Response(200, json={"items": {"typicalRangeLow": 1.072, "typicalRangeHigh": 1.56}})
