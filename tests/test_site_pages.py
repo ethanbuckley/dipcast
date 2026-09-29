@@ -117,6 +117,36 @@ def test_the_committed_ratings_cover_every_inland_bathing_water():
     assert "const CLASS_LEVEL = { excellent: 'low', good: 'low', sufficient: 'moderate', poor: 'high' };" in page
 
 
+def test_the_credits_travel_with_the_data_and_the_terms_link_every_licence(tmp_path):
+    # CC BY 4.0 s.3(a) and s.4 (the water companies' feeds) and OGL v3 (EA, OS): a republished
+    # data file must carry its credits, and the page they point to must link each licence.
+    bs = _build_site()
+    c = bs.data_credits("https://example.org/")
+    assert {"attribution", "modified", "licences", "full"} <= set(c) and c["full"] == "https://example.org/terms.html#data"
+    terms = (ROOT / "src" / "dipcast" / "api" / "static" / "terms.html").read_text()
+    assert all(url in terms for url in c["licences"].values())
+    for company in ("Anglian", "Northumbrian", "Severn Trent", "South West", "Southern", "Thames", "United Utilities", "Wessex", "Yorkshire"):
+        assert company in c["attribution"] and company in terms, company
+    assert "Met Office" in c["attribution"] and "CC BY-SA 4.0" in c["attribution"]
+    src = (ROOT / "scripts" / "build_site.py").read_text()   # all three published files get them
+    assert '"credits": credits, "spots": results' in src
+    assert '{**overflows_geojson(limit=20000), "credits": credits}' in src and '{**load_verification(), "credits": credits}' in src
+    page = (ROOT / "src" / "dipcast" / "site" / "index.html").read_text()
+    assert "None of these bodies endorses Dipspot" in page and 'href="terms.html#data"' in page
+    # With the counter on, only the privacy notice changes; the terms keep their own date.
+    bs.write_pages(tmp_path, SPOTS[:1], token="abcdefghij0123456789", root="https://example.org/")
+    assert "(page-view counter)" in (tmp_path / "privacy.html").read_text()
+    assert "(page-view counter)" not in (tmp_path / "terms.html").read_text()
+    assert 'href="terms.html#data"' in (tmp_path / "verification.html").read_text()
+
+
+def test_nothing_credits_the_ea_with_advice_the_law_gives_to_the_council():
+    # Bathing Water Regulations 2013 reg 13(1)(b): at a poor water the local authority that
+    # controls it issues the advice against bathing, not the EA.
+    for p in [ROOT / "src" / "dipcast" / "site" / "index.html", ROOT / "src" / "dipcast" / "api" / "static" / "terms.html"]:
+        assert "advises against bathing" not in p.read_text(), p.name
+
+
 def test_observations_from_is_the_first_day_with_a_mask():
     from dipcast.forecast_log import observations_from
     days = pd.to_datetime(["2026-09-27", "2026-09-28", "2026-09-29"]).date

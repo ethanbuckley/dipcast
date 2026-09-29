@@ -47,7 +47,7 @@ MIN_OK_SHARE = 0.8        # fewer spots with a forecast than this and the build 
 MAX_NO_DATA_SHARE = 0.5   # more of today's forecasts without rainfall data than this: fail
 # The pages were written for the FastAPI routes; rewrite them for flat files.
 REWRITES = [('href="/verification"', 'href="verification.html"'), ('href="/terms"', 'href="terms.html"'),
-            ('href="/privacy"', 'href="privacy.html"'), ('href="/"', 'href="index.html"'),
+            ('href="/privacy"', 'href="privacy.html"'), ('href="/terms#data"', 'href="terms.html#data"'), ('href="/"', 'href="index.html"'),
             ('href="/static/page.css"', 'href="page.css"'), ("fetch('/api/verification')", "fetch('data/verification.json')")]
 BRAND = "Dipspot"
 HOME_TITLE = f"{BRAND} · sewage-spill forecasts for swim spots"
@@ -63,10 +63,13 @@ LOADING = '<div id="result"><p class="muted">Loading forecasts…</p></div>'
 SITE_URL_ENV = "DIPCAST_SITE_URL"
 # Optional page-view counter (Cloudflare Web Analytics). Off unless the repository
 # variable is set; the token is public (it sits in the page), so it is a variable,
-# not a secret.
+# not a secret. Before setting it: since 5 Feb 2026 PECR (Schedule A1) lets a counter run
+# without consent only if visitors get clear information and a free, simple way to object,
+# and there is no way to object yet. The first string is the privacy notice's own lead,
+# so the terms page's date is not touched.
 COUNTER_TOKEN_ENV = "DIPCAST_CF_BEACON_TOKEN"
-NO_COUNTER = ("Last updated 29 September 2026.", "There is no analytics script and no third-party tracking.")
-WITH_COUNTER = ("Last updated 29 September 2026 (page-view counter).",
+NO_COUNTER = ("and what it does not. Last updated 29 September 2026.", "There is no analytics script and no third-party tracking.")
+WITH_COUNTER = ("and what it does not. Last updated 29 September 2026 (page-view counter).",
                 ("Page views are counted with Cloudflare Web Analytics. Cloudflare states that it sets no cookies, "
                  "uses no local storage and does not fingerprint visitors. It sees your IP address when the counter "
                  "loads, as any web server would, and its "
@@ -161,6 +164,32 @@ def attach_algae(results: list[dict], fetch: bool = True) -> int:
             r["algae"] = c
             n += 1
     return n
+
+
+# The credits every published data file carries. A credit has to travel with republished data:
+# CC BY 4.0 s.3(a) and s.4 for the water companies' feeds, OGL v3 for the EA and OS. The full
+# notices are on the terms page ("Data sources and credits"), which the "full" link points to.
+LICENCES = {
+    "CC BY 4.0": "https://creativecommons.org/licenses/by/4.0/",
+    "CC BY-SA 4.0": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "OGL v3.0": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+}
+
+
+def data_credits(root: str) -> dict:
+    return {
+        "attribution": (
+            "Storm overflow status from Anglian Water Services, Northumbrian Water, Severn Trent Water, South West Water, "
+            "Southern Water (© 2026), Thames Water, United Utilities, Wessex Water (© 2024) and Yorkshire Water, via the "
+            "National Storm Overflow Hub, CC BY 4.0. Environment Agency data © Environment Agency copyright and/or "
+            "database right, OGL v3.0. Contains OS data © Crown copyright and database right 2026. Weather data by "
+            "Open-Meteo.com, CC BY 4.0, from Met Office forecasts © Crown copyright, CC BY-SA 4.0: rainfall figures "
+            "stay under CC BY-SA 4.0."),
+        "modified": ("Combined, filtered and modelled by Dipspot. The forecasts, levels and scores are Dipspot's own "
+                     "estimates, not the data providers'. None of the providers endorses Dipspot."),
+        "licences": LICENCES,
+        "full": f"{root}terms.html#data",
+    }
 
 
 CLASSIFICATIONS = config.RAW / "bathing_water_classifications.json"
@@ -342,11 +371,13 @@ def build(refresh: bool = True) -> dict:
     for w in health["warnings"]:
         announce(w)
     (SITE / "data").mkdir(parents=True, exist_ok=True)
+    credits = data_credits(site_url())
     (SITE / "data" / "spots.json").write_text(json.dumps({
         "generated_at": generated.isoformat(), "version": __version__, "n": len(results), "build": health,
-        "spots": results}, default=str))
-    (SITE / "data" / "overflows.geojson").write_text(json.dumps(overflows_geojson(limit=20000), default=str))
-    (SITE / "data" / "verification.json").write_text(json.dumps(load_verification(), default=str))
+        "credits": credits, "spots": results}, default=str))
+    # GeoJSON allows extra top-level members, so the credits sit beside the features.
+    (SITE / "data" / "overflows.geojson").write_text(json.dumps({**overflows_geojson(limit=20000), "credits": credits}, default=str))
+    (SITE / "data" / "verification.json").write_text(json.dumps({**load_verification(), "credits": credits}, default=str))
     token = os.environ.get(COUNTER_TOKEN_ENV, "").strip()
     health["spot_pages"] = write_pages(SITE, results, token, day=generated.date().isoformat())
     summary = {**health, "seconds": round(time.time() - t0, 1), "generated_at": generated.isoformat()}

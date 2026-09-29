@@ -161,6 +161,7 @@
   .day.high { border-color:var(--high); color:var(--k-high); } .day.veryhigh { border-color:var(--veryhigh); color:var(--k-veryhigh); }
   .strip-note { font-size:13px; color:var(--muted); margin:0; }
   .issued { font-size:13px; color:var(--muted); margin:10px 0 0; }
+  .check { font-size:14px; line-height:1.4; margin:8px 0 0; padding-top:8px; border-top:1px solid rgba(0,0,0,.09); }
   .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; margin:12px 0; }
   .card-h { font-size:17px; font-weight:750; margin:0 0 2px; }
   .sub { color:var(--muted); font-size:13.5px; margin:0 0 10px; }
@@ -292,7 +293,7 @@
         <dl>
           <dt>Sewage spills</dt><dd>The exposure index (0–100): the modelled chance that a spill from an overflow upstream reaches the spot. Low under 15, moderate 15 to 40, high 40 to 70, very high 70 or more.</dd>
           <dt>Water quality</dt><dd>On rivers with overflows upstream: the chance a water sample would show E. coli over 900 per 100 ml, from any source, runoff after rain included. Low under 10%, moderate 10 to 25%, high 25 to 50%, very high over 50%. The minimum bathing-water standard lets about one sample in ten be over 900.</dd>
-          <dt>Environment Agency rating</dt><dd>At a designated bathing water, the EA's yearly rating from up to four seasons of lab samples. When it is poor, the EA advises against bathing all season, so the level is at least high on every day. Where there is no daily forecast, the rating sets the level: excellent or good low, sufficient moderate, poor high.</dd>
+          <dt>Environment Agency rating</dt><dd>At a designated bathing water, the EA's yearly rating from up to four seasons of lab samples. When it is poor, advice against bathing applies all season, so the level is at least high on every day. Where there is no daily forecast, the rating sets the level: excellent or good low, sufficient moderate, poor high.</dd>
           <dt>Algae</dt><dd>At a designated bathing water, the EA sampler's last look, if under two weeks old: enough algae to be objectionable makes the level at least high, some at intervals at least moderate.</dd>
           <dt>Not included</dt><dd>The EA's short-term advice against bathing after a pollution incident or an algal bloom. A bathing water's page links to the EA's page, which has it.</dd>
         </dl>
@@ -315,11 +316,12 @@
       </details>
       <details class="more"><summary>Saved spots, offline use and your data</summary>
         <p class="small muted">Saved spots are kept in this browser only, not sent anywhere. After a first visit the page and the latest forecast are stored on your device, so the site opens without signal at the water's edge; it then says how old the forecast is. <a href="privacy.html">Privacy notice</a>.</p>
+        <p class="small"><button type="button" class="linkbtn small" id="offline-btn" hidden>Turn off the offline copy</button> <span class="muted" id="offline-msg" aria-live="polite"></span></p>
       </details>
     </section>
     <footer class="fine">
       <p><a href="verification.html">How accurate is it?</a> · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=feedback.yml">Feedback</a> · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">Request a spot</a> · <a href="terms.html">Terms of use</a> · <a href="privacy.html">Privacy</a> · <a href="https://github.com/ethanbuckley/dipcast">Source code</a> (MIT)</p>
-      <p>Data: water company live feeds via the National Storm Overflow Hub (CC BY 4.0) · Environment Agency annual returns, bathing waters and lake water bodies (OGL v3; contains Environment Agency information © Environment Agency and database right) · Contains OS data © Crown copyright and database right 2026 · Weather data by <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0) · Map © OpenStreetMap contributors.</p>
+      <p>Data: storm overflow status from Anglian, Northumbrian, Severn Trent, South West, Southern, Thames, United Utilities, Wessex and Yorkshire Water via the National Storm Overflow Hub (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>; combined and modelled by Dipspot) · Environment Agency data © Environment Agency copyright and/or database right (<a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">OGL v3.0</a>) · Contains OS data © Crown copyright and database right 2026 · <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a> (CC BY 4.0), from Met Office forecasts © Crown copyright (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>) · Map © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors. None of these bodies endorses Dipspot. <a href="terms.html#data">All credits and licences</a>.</p>
     </footer>
   </main>
 </div>
@@ -421,9 +423,12 @@ const initial = iso => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {
 //    tighter: on 29 Sep 2026 the model put Pangbourne and Wallingford on the Thames at 11-15%
 //    while none of the 20 samples at each this season had been over 900, so a 10% line for
 //    "high" would have called clean water poor.
-//  - The Environment Agency's rating of a designated bathing water: at "poor" it advises against
-//    bathing all season (regulation 13), so the spot is at least high on every day, whatever the
-//    forecast. 13 of the 38 designated spots were rated poor for 2025; on 29 Sep 2026 all 13 read
+//  - The Environment Agency's rating of a designated bathing water: at "poor", advice against
+//    bathing applies while the rating stands, so the spot is at least high on every day, whatever
+//    the forecast. The local authority that controls the water issues that advice, not the EA
+//    (Bathing Water Regulations 2013, reg 13(1)(b)), so the page names no one; the EA issues it
+//    for short-term pollution, which this page does not get. 13 of the 38 designated spots were
+//    rated poor for 2025; on 29 Sep 2026 all 13 read
 //    "low" for today, and 7 of them for today and tomorrow.
 //  - The EA sampler's latest look at a bathing water, if under 14 days old: algae "enough to be
 //    objectionable" makes the day at least high, "some at intervals" at least moderate. It cannot
@@ -483,7 +488,7 @@ function headParts(s) {
   if (l === NO_OVERFLOWS) return ['No monitored overflows upstream', ''];
   if (!daily(s) && rank(algaeLevel(s)) > rank(CLASS_LEVEL[classOf(s)] ?? null)) return [cap(l), 'algae at the last check'];
   if (!daily(s) || worstNear(s)[0].by === 'record')
-    return advisedAgainst(s) ? ['Rated poor', 'the EA advises against bathing'] : [`Rated ${classOf(s)} by the EA`, ''];
+    return advisedAgainst(s) ? ['Rated poor', 'advice against bathing'] : [`Rated ${classOf(s)} by the EA`, ''];
   const [r, when] = worstNear(s);
   if (rank(r.level) > 0) return [`${cap(r.level)} ${when}`, because(r)];
   const x = laterDay(s);
@@ -599,11 +604,15 @@ function factors(d) {
   // only: its service refuses the build's machines and does not answer other sites' pages.
   const live = cl.url ? ` <a href="${esc(cl.url)}">The EA's page</a> has its latest samples and any short-term advice against bathing, after pollution or algae, which this page does not include.` : '';
   if (c) rows.push(factorRow(`Environment Agency rating, ${cl.year}`, CLASS_LEVEL[c], cap(c),
-    (c === 'poor' ? '<b>The Environment Agency advises against bathing here.</b> ' : '')
+    (c === 'poor' ? '<b>Advice against bathing applies here</b> while the rating is poor, and should be shown on signs at the water. ' : '')
     + `From its lab samples over up to four seasons${ratingHistory(cl)}.${live}`));
   else if (d.classification) rows.push(factorRow('Environment Agency rating', null, 'Not yet rated', `A designated bathing water too new to have a rating.${live}`));
   return `<div class="factors">${rows.join('')}</div>`;
 }
+// Beside every reading: a forecast is not a test, and the signs at the water come first. A website
+// that, read as a whole, tells people to check for themselves owes them less (Patchett v SPATA [2009]).
+const check = d => `<p class="check">A forecast, not a water test: check the signs at the water before you swim.${d.source === 'designated' ? ''
+  : ' This is not a designated bathing water, so the Environment Agency does not test it for bathing.'}</p>`;
 // "; poor every year since 2021", or "; poor in 2024": the ratings before the latest.
 function ratingHistory(cl) {
   const h = (cl.history || []).filter(([y]) => y !== cl.year); if (!h.length) return '';
@@ -670,6 +679,7 @@ function styleMarkers() {
     m.setRadius(on ? (VIEW.lowOnly ? 9 : 8) : 4);
     if (on) m.bringToFront();
   }
+  const ln = document.getElementById('low-note-list'); if (ln) ln.hidden = !VIEW.lowOnly;
   const b = document.getElementById('lowbtn');
   if (b) { b.setAttribute('aria-pressed', String(VIEW.lowOnly)); b.querySelector('.n').textContent = DATA.spots.filter(s => level(s) === 'low').length; }
   document.querySelectorAll('[data-low]').forEach(x => x.setAttribute('aria-pressed', String(VIEW.lowOnly)));
@@ -740,7 +750,8 @@ function renderList() {
   let h = `<section class="intro"><h1>Sewage and water quality at your swim spot</h1><p class="lede">Five-day forecasts for ${DATA.spots.length} river and lake spots in England, with the Environment Agency's rating where there is one. <a href="#about">How it works</a></p>`
     + `<div class="search">${SEARCH_ICON}<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(VIEW.q)}"></div>`
     + `<div class="chips-row" role="group" aria-label="Show"><button type="button" class="chip-btn low" data-low aria-pressed="${VIEW.lowOnly}"><span class="dot" style="background:${colour('low')}"></span>Low risk</button>`
-    + `${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div></section>`;
+    + `${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div>`
+    + `<p class="small muted" id="low-note-list"${VIEW.lowOnly ? '' : ' hidden'}>Low risk from pollution today and tomorrow, going by the forecasts and the EA's ratings. Not a safety check: look at the signs at the water before you swim.</p></section>`;
   h += freshness();
   if (saved.length) h += `<section class="group" aria-labelledby="saved-h"><h2 class="group-head" id="saved-h">Saved spots</h2><ul class="spots" id="saved-list">${saved.map(spotItem).join('')}</ul></section>`;
   h += `<section class="group" aria-labelledby="all-h"><div class="group-bar"><h2 class="group-head" id="all-h">All spots</h2>`
@@ -818,7 +829,7 @@ function renderSaved() {
   INCOMING = offered.length ? INCOMING : null;
   h += freshness();
   if (spots.length) h += `<ul class="scards" id="scards">${spots.map(savedCard).join('')}</ul>`
-    + `<p class="small muted" style="margin:10px 2px 0">Updated ${issued()} (${ago(ageMin())} ago). Tap a spot for its full forecast. <a href="#levels">What the levels mean</a>.</p>`;
+    + `<p class="small muted" style="margin:10px 2px 0">Updated ${issued()} (${ago(ageMin())} ago). Tap a spot for its full forecast. <a href="#levels">What the levels mean</a>. Forecasts, not water tests: check the signs at the water before you swim.</p>`;
   else h += `<div class="card empty-saved"><div class="big-star" aria-hidden="true">☆</div><h2 class="card-h">No saved spots yet</h2>`
     + `<p class="sub" style="margin:4px 0 16px">Open a spot and press <b>☆&nbsp;Save</b>. It then shows here with the days ahead.`
     + `${navigator.standalone ? ' Spots saved in Safari do not appear in the Home Screen app: iPhones keep the two apart, so save them again here.' : ''}</p>`
@@ -999,14 +1010,14 @@ function render(d) {
   const hero = body => `<section class="hero ${headTone(d)}"><div class="kicker">Pollution risk</div><div class="headline">${head}</div>`
     + `${why ? `<div class="head-why">${cap(why)}</div>` : ''}${body}</section>`;
   if (d.error) {
-    h += hero(factors(d));
+    h += hero(factors(d) + check(d));
     h += algae(d.algae) + `<section class="card phone-only"><h2 class="card-h">Where it is</h2><div id="spot-map"></div></section>` + actions(d);
     setPanel(h); bindBack(); bindSave(d); bindShare(d); placeMap(); return;
   }
   const now = d.now, isLake = loc.mode === 'lake', scope = d.ecoli_scope || {}, total = d.upstream_summary.overflows;
   h += freshness();
   // Always say how old it is: the stored copy (sw.js) can answer when the network is slow.
-  h += hero(`${strip(d)}${factors(d)}<p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p>`);
+  h += hero(`${strip(d)}${factors(d)}<p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p>${check(d)}`);
   if (total) {
     h += `<section class="card"><h2 class="card-h">Right now</h2><div class="now-row"><span class="big${now.discharging_upstream ? ' hot' : ''}">${now.discharging_upstream}</span>`
       + `<div>of ${total} upstream overflow${total === 1 ? '' : 's'} discharging now<div class="small muted">${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h · ${now.monitored_upstream} of ${total} report live</div></div></div></section>`;
@@ -1062,7 +1073,32 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 // Back online after opening the page offline: fetch the current forecast.
 if (!navigator.onLine) window.addEventListener('online', () => location.reload(), { once: true });
 // The page and the latest forecast kept on the device, for the water's edge without signal (sw.js).
-if ('serviceWorker' in navigator) navigator.serviceWorker.register(new URL('sw.js', ROOT)).catch(() => {});
+// It can be turned off: since 5 Feb 2026 PECR (Schedule A1) allows storage the site works without
+// only with clear information (the privacy notice) and a free, simple way to object. The choice is
+// kept in this browser; turning the copy off removes the worker and everything it stored.
+const OFFLINE_KEY = 'dipcast.offline';
+const offlineOff = () => { try { return localStorage.getItem(OFFLINE_KEY) === 'off'; } catch (e) { return false; } };
+const registerSW = () => navigator.serviceWorker.register(new URL('sw.js', ROOT)).catch(() => {});
+async function setOffline(on) {   // returns false when the browser would not keep the choice
+  let kept = true;
+  try { if (on) localStorage.removeItem(OFFLINE_KEY); else localStorage.setItem(OFFLINE_KEY, 'off'); } catch (e) { kept = false; }
+  if (on) { registerSW(); return kept; }
+  for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+  if ('caches' in window) for (const k of await caches.keys()) if (k.startsWith('dipcast-')) await caches.delete(k);
+  return kept;
+}
+if ('serviceWorker' in navigator) {
+  if (!offlineOff()) registerSW();
+  const b = document.getElementById('offline-btn'), m = document.getElementById('offline-msg');
+  const label = () => { b.textContent = offlineOff() ? 'Turn the offline copy back on' : 'Turn off the offline copy'; };
+  b.hidden = false; label();
+  b.addEventListener('click', async () => {
+    const on = offlineOff(), kept = await setOffline(on).catch(() => false);
+    label();
+    m.textContent = !kept ? 'This browser is not keeping site data, so this lasts only until you close the page.'
+      : on ? 'The offline copy is on again.' : 'The offline copy is off, and deleted from this device.';
+  });
+}
 </script>
 </body>
 </html>

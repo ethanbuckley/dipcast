@@ -4,23 +4,38 @@
 <h1>Privacy notice</h1>
 <p class="lead">What Dipspot collects, and what it does not. Last updated 29 September 2026.</p>
 
-<h2>No accounts, no cookies, no tracking</h2>
-<p>Dipspot has no user accounts and sets no cookies. There is no analytics script and no third-party tracking. Map tiles are loaded from OpenStreetMap's servers, which see your IP address as any website's image server would; their <a href="https://wiki.osmfoundation.org/wiki/Privacy_Policy">privacy policy</a> applies to that. The map library (Leaflet) is loaded from unpkg.com, which sees your IP address in the same way.</p>
+<h2>Who is responsible</h2>
+<p>Dipspot is run by one person, the owner of the GitHub account <a href="https://github.com/ethanbuckley">ethanbuckley</a>, who is the controller for the personal data described here.</p>
+<p>For anything private, including a data-protection request or a complaint, email <a href="mailto:ethan@ethanbuckley.me.uk">ethan@ethanbuckley.me.uk</a>. A complaint is acknowledged within 30 days. For general questions you can also open an issue on the project's <a href="https://github.com/ethanbuckley/dipcast/issues">GitHub repository</a>; issues are public, so do not put anything personal in one.</p>
 
-<h2>What the server records</h2>
-<p>When you click the map the server receives the coordinates you clicked and your IP address, like any web request. Dipspot keeps a log of forecasts issued (the coordinates, the time and the forecast values) so that it can score its own accuracy afterwards and publish the results on the <a href="/verification">verification page</a>. This log does not contain your IP address, any identifier, or anything about you. Standard web-server access logs, which do contain IP addresses, are kept briefly for operating the service and are not analysed for anything else.</p>
+<h2>The short version</h2>
+<ul>
+<li>No accounts, no cookies and no advertising. There is no analytics script and no third-party tracking.</li>
+<li>Your saved spots and your location stay on your device.</li>
+<li>Opening the site sends your IP address to the services that supply its files, as it would for any website. They are listed below.</li>
+</ul>
 
-<h2>Shareable links</h2>
-<p>A forecast's address contains the coordinates you clicked. Anyone you send the link to can see the location. Do not share a link to your home.</p>
+<h2>Who sees your IP address</h2>
+<p>When you open the site, your browser fetches files from these services, and each one receives your IP address and basic details of your browser:</p>
+<ul>
+<li><b>GitHub</b>, which hosts the site (GitHub Pages). GitHub logs these requests for its own security purposes and is responsible for those logs. Its <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">privacy statement</a> applies.</li>
+<li><b>The OpenStreetMap Foundation</b>, for the map images. Its <a href="https://osmfoundation.org/wiki/Privacy_Policy">privacy policy</a> applies.</li>
+<li><b>unpkg.com</b>, for the map library (Leaflet).</li>
+</ul>
+<p>Dipspot asks for these files because the page cannot show its map or run without them. That is the legitimate interest these requests rest on. Dipspot itself receives no personal data from them and keeps no logs. These services may handle your IP address outside the UK, under their own safeguards.</p>
 
 <h2>Your location</h2>
-<p>The list of spots can be sorted by distance from you. Your browser asks for your location only if you choose "Nearest to me". The page uses it to order the list and for nothing else: it is not sent to Dipspot or to anyone else, it is not stored, and it is gone when you close the page. Choosing "Nearest to me" does not move the map, so the map tiles fetched from OpenStreetMap do not reveal it either.</p>
+<p>The list of spots can be sorted by distance from you. Your browser asks for your location only if you choose "Near me". The page uses it to order the list and for nothing else: it is not sent to Dipspot or to anyone else, it is not stored, and it is gone when you close the page. Choosing "Near me" does not move the map, so the map images fetched from OpenStreetMap do not reveal it either.</p>
 
 <h2>Saved spots</h2>
-<p>If you press Save on a spot, its identifier is kept in your browser's local storage so that the spot stays at the top of the list. It stays on your device: it is not sent to Dipspot or to anyone else. Clearing this site's data in your browser removes it.</p>
+<p>If you press Save on a spot, its identifier is kept in your browser's local storage, so the spot shows on your Saved page and at the top of the list. It stays on your device: it is not sent to Dipspot or to anyone else. Clearing this site's data in your browser removes it. On an iPhone, Safari and a Home Screen app keep separate lists.</p>
+<p>"Share this list" makes a link holding the identifiers of your saved spots, after a # that browsers do not send to the site. Anyone you send the link to can see which spots are on the list.</p>
 
 <h2>Offline copy</h2>
-<p>After your first visit, the browser keeps a copy of the page, its icons, the map library and the latest forecast (using a service worker), so the site still opens without signal. The copy holds only what every visitor downloads, and nothing about you. Clearing this site's data removes it.</p>
+<p>After your first visit, the browser keeps a copy of the page, its icons, the map library and the latest forecast (using a service worker), so the site still opens without signal. The copy holds only what every visitor downloads, and nothing about you. You can turn it off, which also deletes it, under "Saved spots, offline use and your data" at the bottom of the home page. Clearing this site's data removes it too.</p>
+
+<h2>If you email</h2>
+<p>If you email the operator, your address and what you write are used only to reply and to deal with any request or complaint. The basis is legitimate interests, or a legal obligation for a data-protection request. They are kept only as long as that takes, then deleted, and are never shared or sold. The operator's email provider holds them in the meantime.</p>
 
 <h2>Feedback</h2>
 <p>The feedback and "Request a spot" links open forms on GitHub. What you write there is public, and GitHub's <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">privacy statement</a> applies to it. Do not include your address or anything else personal.</p>
@@ -28,7 +43,10 @@
 <h2>If alerts are added</h2>
 <p>A planned feature would let you save a spot and receive an email when the forecast for it changes. If that is added, this notice will be updated first. Emails would be stored only to send those alerts, never shared or sold, and you would be able to delete your address at any time.</p>
 
-<h2>Contact</h2>
-<p>Questions about this notice: open an issue on the project's GitHub repository.</p>
-<footer>The operator is an individual, not a company. This notice describes current practice in plain English and is not legal advice.</footer>
+<h2>The server version</h2>
+<p>Dipspot's code can also run as a server that forecasts any point you click. No such server runs for this site. Whoever runs one receives the coordinates you click and your IP address, and keeps a log of the forecasts issued (the coordinates, the time and the forecast values, with no IP address or identifier) to score their accuracy.</p>
+
+<h2>Your rights</h2>
+<p>UK data protection law gives you rights over personal data about you, including to be told what is held, to have it corrected or deleted, and to object. Dipspot holds none, as described above; ask GitHub about its logs. You can complain to the operator by email (above) and to the <a href="https://ico.org.uk/make-a-complaint/">Information Commissioner's Office</a>.</p>
+<footer>The operator is an individual, not a company. This notice describes current practice in plain English. It was checked against UK data protection law and the ICO's guidance on 29 September 2026, but not by a lawyer.</footer>
 </main></body></html>

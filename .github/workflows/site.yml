@@ -85,8 +85,11 @@ jobs:
           for f in state/live_coverage.parquet state/poll_log.parquet state/ecoli_samples.parquet state/ecoli_samples_status.json; do
             if [ -f "$f" ]; then files+=("$f"); fi   # later additions, uploaded once the build has written them
           done
+          # The files republish the water companies' feeds (CC BY 4.0) and EA samples (OGL v3), so the
+          # notes carry the credits, and are rewritten on every publish.
+          notes="Live polls, forecast log and live scores, replaced twice a day by the site workflow. Contains storm overflow status from the English water companies via the National Storm Overflow Hub (CC BY 4.0) and Environment Agency data (© Environment Agency copyright and/or database right, OGL v3.0), combined by Dipspot. Full credits and licences: the site's terms page, section Data sources and credits."
           if ! assets=$(gh release view state --json assets); then
-            gh release create state --title "Rolling state" --notes "Live polls, forecast log and live scores. Replaced twice a day by the site workflow." --latest=false
+            gh release create state --title "Rolling state" --notes "$notes" --latest=false
             assets='{"assets":[]}'
           fi
           stale=$(jq -r --argjson h "$max_h" --args '
@@ -96,6 +99,7 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ -n "$stale" ]; then
             echo "Publishing ${#files[@]} files. Over $max_h h old or missing in the release: ${stale:-none (manual run)}"
             gh release upload state "${files[@]}" --clobber
+            gh release edit state --notes "$notes"
           else
             echo "All ${#files[@]} release copies are under $max_h h old; not publishing."
           fi
