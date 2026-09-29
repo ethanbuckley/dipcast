@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
@@ -20,6 +21,21 @@ log = logging.getLogger(__name__)
 EA_TIMEOUT_S = 4.0          # the EA API is sometimes very slow; never let it stall a forecast
 _STATION_CACHE: dict[tuple[float, float], tuple[float, RiverState | None]] = {}
 _STATION_TTL_S = 1800.0
+_EA_HOST = urlsplit(config.EA_FLOOD_MONITORING).hostname
+
+
+def _ea_link(url: str) -> str | None:
+    """A link the EA API gave us, as https; None if it points off the EA's host.
+
+    The flood-monitoring API writes its own links as http://, and those answer 301 to
+    https://. httpx does not follow redirects, so the http form always failed. Rewriting
+    the scheme avoids the redirect, and checking the host means we never fetch a URL
+    from a response body on some other server.
+    """
+    u = urlsplit(url)
+    if u.scheme not in ("http", "https") or u.hostname != _EA_HOST:
+        return None
+    return urlunsplit(u._replace(scheme="https"))
 
 
 @dataclass
@@ -97,8 +113,11 @@ def _nearest_level_station(lat: float, lon: float, dist_km: int = 15) -> RiverSt
     s = best[1]
     scale = s.get("stageScale", {})
     if isinstance(scale, str):  # some stations link to the scale instead of embedding it
+        url = _ea_link(scale)
         try:
-            rs = httpx.get(scale, params={"_view": "full"}, headers=config.EA_HEADERS, timeout=EA_TIMEOUT_S)
+            if url is None:
+                raise ValueError(f"stage scale link is not on the EA host: {scale}")
+            rs = httpx.get(url, params={"_view": "full"}, headers=config.EA_HEADERS, timeout=EA_TIMEOUT_S)
             rs.raise_for_status()
             scale = rs.json().get("items", {})
             if isinstance(scale, list):
