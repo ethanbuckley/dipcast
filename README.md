@@ -31,16 +31,23 @@ part is the transport step: an overflow 2 km upstream on the same river and one
 
 ## Data
 
-| Source | What | Access |
+| Source | What | Licence (all open, no key) |
 |---|---|---|
-| Water company live feeds (9 companies, ArcGIS) | Current status of ~14,200 overflows, latest event start/end | Open, no key |
-| United Utilities EDM event history 2023-2025 | 743,735 discharge events with start/end | Open, no key |
-| EA storm overflow annual returns 2021-2025 | Spill counts and hours per overflow per year, WFD waterbody, for all 10 companies | Open, no key |
-| Open-Meteo | Hourly rainfall: ERA5-Land archive for training, model forecast for prediction | Open, no key |
-| OS Open Rivers | 193,040 directed watercourse links incl. lake traversals, BNG | Open Government Licence |
-| EA WFD Lake Water Bodies Cycle 3 | 564 lake polygons (lakes over 50 ha, 5 ha in protected areas), names and areas | Open, no key |
-| EA flood-monitoring API | Near-real-time river levels and typical ranges | Open, no key |
-| EA Water Quality Archive | E. coli results and the sampler's visual algae check at the 38 inland bathing waters | Open, no key |
+| Water company live feeds (9 companies, ArcGIS, via the National Storm Overflow Hub) | Current status of ~14,200 overflows, latest event start/end | CC BY 4.0, per company |
+| United Utilities EDM event history 2023-2025 (via Stream) | 743,735 discharge events with start/end; training only | CC BY 4.0 |
+| Stream ID lookup | Company ids to EA permit ids (`id_lookup.parquet`) | CC BY 4.0 |
+| EA storm overflow annual returns 2021-2025 | Spill counts and hours per overflow per year, WFD waterbody, for all 10 companies | OGL v3 |
+| EA bathing water quality (bwq) | Classifications (`data/raw/bathing_water_classifications.json`) and in-season samples | OGL v3 |
+| Open-Meteo | Hourly rainfall: ERA5-Land archive for training, model forecast for prediction | CC BY 4.0; the forecast for England is Met Office data, CC BY-SA 4.0 |
+| OS Open Rivers | 193,040 directed watercourse links incl. lake traversals, BNG | OGL v3 |
+| EA WFD Lake Water Bodies Cycle 3 | 564 lake polygons (lakes over 50 ha, 5 ha in protected areas), names and areas | OGL v3 |
+| EA flood-monitoring API | Near-real-time river levels and typical ranges; the API version only | OGL v3 |
+| EA Water Quality Archive (Water Quality Explorer) | E. coli results and the sampler's visual algae check at the 38 inland bathing waters | OGL v3 |
+
+The notices each provider asks for are on the site's terms page ("Data sources
+and credits"), and `data/spots.json`, `data/overflows.geojson` and
+`data/verification.json` carry them in a `credits` field (`data_credits` in
+`scripts/build_site.py`). The MIT licence covers the code, not the data.
 
 Dwr Cymru (Wales) publishes no live feed to ArcGIS; its 128 overflows appear with
 annual spill history only and no "right now" status. Every English company is live.
@@ -585,8 +592,9 @@ the forecast changed what the person did.
 out in the page (`risk()` in `index.html`): the spill forecast's level; on
 rivers with overflows upstream, the E. coli column in bands of under 10%, 25%,
 50% and over (the minimum inland standard lets about one sample in ten be over
-900); the Environment Agency's rating, where "poor" (the EA advises against
-bathing all season) makes every day at least high; and the sampler's algae
+900); the Environment Agency's rating, where "poor" (advice against bathing applies
+all season; the local authority that controls the water issues it, not the EA)
+makes every day at least high; and the sampler's algae
 check if under two weeks old. On 29 Sep 2026 the spill forecast alone had all
 nine Thames spots on "low", and all 13 poor-rated bathing waters on "low" for
 that day (7 of them for the next day too). The ratings are in
@@ -622,6 +630,37 @@ a public repository after 60 days without activity.
 The click-anywhere API (below) is the same code behind a FastAPI server. It
 is what to run when someone needs forecasts for arbitrary points or an API,
 and it costs about £8 a month on Fly.io; the static site costs nothing.
+
+## Before taking money or running ads
+
+Checked on 29 Sep 2026 against the licences and legislation; not a lawyer's
+review, which these points need before any of them happens.
+
+- **Hosting.** GitHub's terms do not allow GitHub Pages to run an online
+  business, so a paid Dipspot needs another host.
+- **Rainfall.** Open-Meteo's free API is for non-commercial use only; ads or
+  subscriptions need a paid plan. For England its default model returns the
+  Met Office's forecast, which is CC BY-SA 4.0: whether share-alike reaches the
+  forecasts built from it is a question for a lawyer. Choosing a CC BY model
+  (`models=` in the request) avoids it, but the spill and E. coli models would
+  then need re-checking against the new rainfall.
+- **Map tiles.** The OpenStreetMap Foundation's tile policy warns that
+  commercial or donation-seeking services may lose access; use a tile provider.
+- **Liability.** A business cannot exclude liability for death or personal
+  injury caused by negligence (Unfair Contract Terms Act 1977 s.2, Consumer
+  Rights Act 2015 s.65), so the terms carve those out. Before charging, get
+  public liability and professional indemnity insurance and trade through a
+  company.
+- **Data protection.** The privacy notice must name the controller and give a
+  private contact (UK GDPR Art 13; since 19 June 2026 also a way to complain to
+  the controller, DPA 2018 s.164A). The site probably owes the ICO no fee now
+  (personal and household processing is exempt); payments or ads would end that.
+- **The page-view counter.** PECR (Schedule A1, in force 5 Feb 2026) lets it run
+  without consent only with a free, simple way to object, which the site does
+  not have yet (`COUNTER_TOKEN_ENV` in `scripts/build_site.py`).
+- **Advertising rules.** A .uk domain or paid placement brings the site's own
+  claims under the CAP Code: never "safe", and hold evidence for every factual
+  claim (rules 3.7 and 3.9).
 
 ## Deploy the click-anywhere API (optional)
 

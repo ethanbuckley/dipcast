@@ -3,6 +3,10 @@ description: Ask for a river or lake spot to be added to Dipspot's forecasts
 title: "Spot request: "
 labels: [spot-request]
 body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue is public. Ask only for places the public can reach, and leave out your address and anything else personal. Adding a spot is not a statement that it is safe to swim there.
   - type: input
     id: name
     attributes:

@@ -13,8 +13,9 @@ once a year. The page links to each bathing water's EA page for advice that chan
 season (pollution incidents, algae), which this file does not hold.
 
 The classification is the statutory one (Bathing Water Regulations 2013, schedule 5): from the
-E. coli and intestinal enterococci samples of that season and up to three before it. A poor
-classification means the EA advises against bathing for the following season (regulation 13).
+E. coli and intestinal enterococci samples of that season and up to three before it. At a poor
+water the local authority that controls it must issue advice against bathing (regulation
+13(1)(b)); the EA issues such advice itself only for short-term pollution.
 Data: Environment Agency, Open Government Licence v3.
 """
 
