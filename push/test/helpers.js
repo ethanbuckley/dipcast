@@ -2,23 +2,26 @@ import { createDecipheriv, createECDH, createHmac, randomBytes } from 'node:cryp
 
 // Workers KV, as far as this Worker uses it. A small page size exercises the list cursor.
 export class FakeKV {
-  constructor(pageSize = 2) { this.map = new Map(); this.pageSize = pageSize; this.writes = 0; }
+  constructor(pageSize = 2) { this.map = new Map(); this.meta = new Map(); this.pageSize = pageSize; this.writes = 0; this.gets = 0; }
   async get(key, type) {
+    this.gets++;
     const value = this.map.get(key);
     if (value === undefined) return null;
     return (type?.type ?? type) === 'json' ? JSON.parse(value) : value;
   }
-  async put(key, value) {
+  async put(key, value, { metadata } = {}) {
     if (typeof value !== 'string') throw new TypeError('FakeKV stores strings only');
+    if (metadata !== undefined && JSON.stringify(metadata).length > 1024) throw new Error('metadata over 1024 bytes');
     this.writes++;
     this.map.set(key, value);
+    if (metadata === undefined) this.meta.delete(key); else this.meta.set(key, metadata);
   }
-  async delete(key) { this.writes++; this.map.delete(key); }
+  async delete(key) { this.writes++; this.map.delete(key); this.meta.delete(key); }
   async list({ prefix = '', cursor } = {}) {
     const names = [...this.map.keys()].filter((k) => k.startsWith(prefix)).sort();
     const start = cursor ? Number(cursor) : 0;
     const end = Math.min(start + this.pageSize, names.length);
-    const keys = names.slice(start, end).map((name) => ({ name }));
+    const keys = names.slice(start, end).map((name) => (this.meta.has(name) ? { name, metadata: this.meta.get(name) } : { name }));
     return end < names.length ? { keys, list_complete: false, cursor: String(end) } : { keys, list_complete: true };
   }
 }

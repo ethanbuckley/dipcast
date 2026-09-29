@@ -640,10 +640,10 @@ starts with a small map of where it is; a tap opens the full map there.
 keeps, for each browser that turns alerts on from the Saved page, its push
 address and the ids of its saved spots, and nothing else. Each build writes
 `data/alerts.json`, every spot's level and headline by `levels.js`
-(`scripts/alerts.js`, which needs Node; the runners have it). Every 30 minutes
-the Worker compares it with the previous one and sends a notification for any
+(`scripts/alerts.js`, which needs Node; the runners have it). Every 2 minutes
+the Worker compares it with the previous one and queues a notification for any
 saved spot that has just turned high or very high, at most once a spot in 20
-hours. The page shows the switch only when the repository variables
+hours, and sends them 15 a run (about 450 an hour on Cloudflare's free plan). The page shows the switch only when the repository variables
 `DIPCAST_PUSH_URL` and `DIPCAST_VAPID_PUBLIC_KEY` are set, and the privacy
 notice gains its alerts section only then. On an iPhone, alerts work only in
 the Home Screen app.

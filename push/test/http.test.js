@@ -32,6 +32,17 @@ test('subscribe stores {subscription, spots, updated} under sub:<sha-256 of endp
   assert.deepEqual([...env.PUSH.map.keys()], [key]);
 });
 
+test('the spots go in the key\'s metadata too, unless there are too many to fit', async () => {
+  const env = makeEnv();
+  await call(env, '/subscribe', { body: { subscription: sub, spots: ['bw-ukj1102-11941', 'b'] } });
+  const key = await subKey(sub.endpoint);
+  assert.deepEqual(env.PUSH.meta.get(key), { s: ['bw-ukj1102-11941', 'b'] });
+  const many = Array.from({ length: 100 }, (_, i) => `a-long-spot-identifier-${i}`);   // over 1024 bytes
+  assert.equal((await call(env, '/subscribe', { body: { subscription: sub, spots: many } })).status, 204);
+  assert.equal(env.PUSH.meta.has(key), false);   // the cron reads the record instead
+  assert.deepEqual((await env.PUSH.get(key, 'json')).spots, many);
+});
+
 test('subscribe with no spots deletes; unsubscribe deletes', async () => {
   const env = makeEnv();
   await call(env, '/subscribe', { body: { subscription: sub, spots: ['a'] } });

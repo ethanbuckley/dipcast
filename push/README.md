@@ -1,6 +1,6 @@
 # Dipspot push alerts
 
-This is a Cloudflare Worker that sends Web Push notifications for Dipspot. A visitor turns on alerts on the Saved page, and their browser registers with the Worker along with the ids of their saved spots. Every 30 minutes the Worker reads the site's `data/alerts.json`. When a saved spot has just become high or very high, it sends that visitor one notification, and at most one for each spot in 20 hours: the site is rebuilt several times a day, and a spot near the line can cross it more than once. It has no npm dependencies. The encryption (RFC 8291) and sender signature (RFC 8292) use the Web Crypto API built into Workers.
+This is a Cloudflare Worker that sends Web Push notifications for Dipspot. A visitor turns on alerts on the Saved page, and their browser registers with the Worker along with the ids of their saved spots. Every 2 minutes the Worker either sends the next batch of queued alerts or reads the site's `data/alerts.json`. When a saved spot has just become high or very high, it queues one notification for each visitor who saved it, and at most one for each spot in 20 hours: the site is rebuilt several times a day, and a spot near the line can cross it more than once. It has no npm dependencies. The encryption (RFC 8291) and sender signature (RFC 8292) use the Web Crypto API built into Workers.
 
 ## What it stores
 
@@ -20,13 +20,13 @@ The endpoint and keys are enough to send that browser a notification, so treat t
 - KV (Cloudflare's KV limits page, read 29 Sep 2026): 100,000 reads and 1,000 writes a day, and 1,000 operations in one run. Each subscribe or change of saved spots is one write, so about 1,000 subscribes or changes a day. Each cron run that finds a newly high spot reads every subscription once, so one run can read at most about 1,000; the CPU limit below bites long before that.
 - Cron triggers: free.
 
-## How many alerts one run can send
+## How many alerts go out, and how fast
 
-Cloudflare's limits page (read 29 Sep 2026) gives the free plan 50 outgoing requests and 10 ms of CPU time per run, cron runs included, and 6 open connections at a time. Each notification is one outgoing request, and fetching `alerts.json` is another, so requests allow 49 notifications a run. CPU is the tighter limit: encrypting one notification took 0.28 ms of CPU in Node on a Mac, and signing once per push service 0.19 ms, so 10 ms fits roughly 25 to 30 notifications, fewer if Cloudflare's machines are slower. Past the limit the run is stopped, and the people not yet reached miss that alert.
+Cloudflare's limits page (read 29 Sep 2026) gives the free plan 50 outgoing requests and 10 ms of CPU time per run, cron runs included, and 6 open connections at a time. Encrypting one notification took 0.28 ms of CPU in Node on a Mac, and signing once per push service 0.19 ms. So a run sends at most 15 (`SENDS_PER_RUN`) and keeps the rest in a queue for the next runs, 2 minutes apart: about 450 an hour. While a queue is being sent, `alerts.json` is not read.
 
-That is enough while few people use alerts. Past that, either move to the Workers Paid plan (about $5 a month), which raises both limits, or send in batches across runs, which this Worker does not do yet. `npx wrangler tail` shows when a run is cut short.
+On the Workers Paid plan (about $5 a month) the limits are higher: set `SENDS_PER_RUN` in `wrangler.toml` to send more per run. `npx wrangler tail` shows each run's count, and a run cut short by a limit.
 
-The compatibility date needed for `fetch(..., { cache: 'no-store' })` was not checked; `wrangler.toml` sets `2026-09-01`. If `wrangler deploy` or the first run complains about `cache`, remove that option from `runCron`.
+Finding who to alert needs no reads of the records: each subscription's spots are also kept in its key's metadata (up to 1,024 bytes, about 40 spot ids), so a run lists keys and reads only the records it sends to. KV can take up to a minute to show a write in every location, so a batch can occasionally go out twice; the second copy replaces the first on the device without a sound, because both carry the same tag.
 
 ## Setup
 
@@ -46,7 +46,7 @@ Run every command from the `push/` folder: `cd push`.
 
 ## How you will know it worked
 
-- Run `npx wrangler tail` and leave it open. Within 30 minutes you see a scheduled run. The first one logs `cron: first run, saved ranks for N spots, sent nothing`. Later runs log `cron: alerts.json unchanged (...)` or a line saying how many spots rose and how many alerts were sent, removed or failed.
+- Run `npx wrangler tail` and leave it open. Within 2 minutes you see a scheduled run. The first one logs `cron: first run, saved ranks for N spots, sent nothing`. Later runs log `cron: alerts.json unchanged (...)` or a line saying how many spots rose and how many alerts were sent, removed or failed.
 - After the next site build, the Saved page shows an alerts button.
 
 A run that fails with `VAPID_SUBJECT must be a mailto: or https: URL` or `public key must be a 65-byte uncompressed P-256 point` means step 5 was not finished.
