@@ -44,7 +44,7 @@ LOW_CONFIDENCE_FACTOR = 0.7   # outfalls snapped by proximity alone (750-1500 m,
 def _lakes():
     try:
         return load_lakes()
-    except Exception as e:  # polygons are an enhancement; the centreline heuristic still works
+    except Exception as e:  # noqa: BLE001 - polygons are an enhancement; the centreline heuristic still works
         log.warning("lake polygons unavailable: %s", e)
         return None
 

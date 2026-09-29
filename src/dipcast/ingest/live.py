@@ -37,7 +37,7 @@ def fetch_live(companies: dict[str, str] | None = None) -> pd.DataFrame:
     for company, url in feeds.items():
         try:
             rows = fetch_all(url, geometry=True)
-        except Exception as e:  # one dead feed must not kill the poll
+        except Exception as e:  # noqa: BLE001 - one dead feed must not kill the poll
             log.error("live feed failed for %s: %s", company, e)
             continue
         df = pd.DataFrame(rows).rename(columns=RENAME)

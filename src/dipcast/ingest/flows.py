@@ -81,7 +81,7 @@ def nearest_level_station(lat: float, lon: float, dist_km: int = 15) -> RiverSta
         return hit[1]
     try:
         st = _nearest_level_station(lat, lon, dist_km)
-    except Exception as e:  # enrichment only; a forecast must never fail on it
+    except Exception as e:  # noqa: BLE001 - enrichment only; a forecast must never fail on it
         log.warning("river state lookup failed: %s", e)
         st = None
     _STATION_CACHE[key] = (time.time(), st)
