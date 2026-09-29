@@ -561,9 +561,11 @@ Each spot has its own page, `spot/<id>/`, written by `build_site.write_pages`:
 the same map page with the spot's name, a one-line description and absolute
 share-preview tags in its head (today's level is left out, because messaging
 apps keep a preview for days), plus `sitemap.xml`. Links shared from the site
-use these addresses, and old `?spot=` links are rewritten to them. Every page
-sets `<base>` to the site root, taken from `DIPCAST_SITE_URL` or, failing that,
-the repository's GitHub Pages address. `icons/og.png` is the preview image
+use these addresses, and old `?spot=` links are rewritten to them. A spot's
+page sets a relative `<base href="../../">`, so the pages work at any address.
+Share links, previews and the sitemap need the absolute one: the repository
+variable `DIPCAST_SITE_URL` (set it when adding a custom domain) or, unset, the
+repository's GitHub Pages address. `icons/og.png` is the preview image
 (`uv run --with pillow python scripts/make_share_image.py` redraws it after a
 name change). `sw.js` keeps the page and the latest forecast on the device, so
 the home-screen app opens without signal and says how old the forecast is. A

@@ -43,11 +43,15 @@ async function networkFirst(req) {
   try {
     return await Promise.race([net, new Promise((_, no) => setTimeout(() => no(new Error('slow')), TIMEOUT_MS))]);
   } catch (err) {
-    // A spot's page never opened before falls back to the home page, which reads the spot from
-    // the address (every built page sets <base> to the site root, so its links still work).
-    const hit = await cache.match(req, { ignoreSearch: req.mode === 'navigate' })
-      || (req.mode === 'navigate' ? await cache.match('./') : undefined);
-    return hit || net;
+    const hit = await cache.match(req, { ignoreSearch: req.mode === 'navigate' });
+    if (hit) return hit;
+    // A spot's page never opened before: the home page stands in, and reads the spot from the
+    // address. Spot pages sit two levels down, so it gets their <base> to keep its links working.
+    const home = req.mode === 'navigate' ? await cache.match('./') : undefined;
+    if (!home) return net;
+    if (!/\/spot\/[^/]+\/$/.test(new URL(req.url).pathname)) return home;
+    const html = (await home.text()).replace('<head>', '<head>\n<base href="../../">');
+    return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 }
 

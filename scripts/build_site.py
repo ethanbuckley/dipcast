@@ -17,7 +17,6 @@ import sys
 import time
 from html import escape
 from pathlib import Path
-from urllib.parse import urlparse
 
 import pandas as pd
 
@@ -180,13 +179,13 @@ def site_url() -> str:
     return url.rstrip("/") + "/"
 
 
-def page_meta(title: str, description: str, url: str, root: str) -> str:
+def page_meta(title: str, description: str, url: str, root: str, base: str | None = None) -> str:
     """The <head> block index.html marks with page-meta. Messaging apps and search engines need
-    absolute addresses for the page and its preview image. The <base> at the site root lets a
-    page in spot/<id>/ load the same files, and lets the offline copy of the home page stand in
-    at any address."""
+    absolute addresses for the page and its preview image. A spot's page, in spot/<id>/, gets a
+    relative <base> two levels up so it loads the same files; relative, so the pages work at any
+    address (a custom domain serves the site at / rather than /dipcast/)."""
     return "\n".join([
-        f'<base href="{escape(urlparse(root).path or "/")}">',
+        *([f'<base href="{escape(base)}">'] if base else []),
         f"<title>{escape(title)}</title>",
         f'<meta name="description" content="{escape(description)}">',
         f'<link rel="canonical" href="{escape(url)}">',
@@ -222,7 +221,8 @@ def spot_page(template: str, spot: dict, root: str) -> str:
     <head>, and its name in the body for crawlers and for the moment before the script runs."""
     url = f"{root}spot/{spot['id']}/"
     blurb = spot_blurb(spot)
-    page = PAGE_META.sub(lambda m: page_meta(f"{spot['name']}: sewage-spill forecast · {BRAND}", blurb, url, root), template, count=1)
+    page = PAGE_META.sub(lambda m: page_meta(f"{spot['name']}: sewage-spill forecast · {BRAND}", blurb, url, root,
+                                             base="../../"), template, count=1)
     return page.replace(LOADING, f'<div id="result"><h2 class="spot-name">{escape(spot["name"])}</h2>'
                                  f'<p class="muted">{escape(blurb)} Loading the forecast…</p></div>', 1)
 

@@ -63,6 +63,7 @@ jobs:
       - name: Build forecasts and site
         env:
           DIPCAST_CF_BEACON_TOKEN: ${{ vars.DIPCAST_CF_BEACON_TOKEN }}   # page-view counter; unset = off
+          DIPCAST_SITE_URL: ${{ vars.DIPCAST_SITE_URL }}   # custom domain for share links; unset = the Pages address
         run: uv run python scripts/build_site.py
 
       - name: Save mutable state

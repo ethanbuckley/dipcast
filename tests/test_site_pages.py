@@ -1,6 +1,6 @@
 """The static site's pages: every spot gets a page of its own whose share preview carries its
 name (never today's level, which a cached preview would show for days), every page carries
-absolute preview links and a <base> at the site root, and the live scorer reports when the
+absolute preview links, a spot's page has a relative <base>, and the live scorer reports when the
 observation records its coverage rule needs begin."""
 
 import sys
@@ -32,7 +32,7 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     assert not (tmp_path / "spot" / "Bad Id").exists()   # keeps ?spot= instead
     page = (tmp_path / "spot" / "wharfe-ilkley" / "index.html").read_text()
     head = page.split("</head>")[0]
-    assert '<base href="/swim/">' in head
+    assert '<base href="../../">' in head   # relative: the site works at any address
     assert '<link rel="canonical" href="https://example.org/swim/spot/wharfe-ilkley/">' in head
     assert '<meta property="og:image" content="https://example.org/swim/icons/og.png">' in head
     assert "<title>Wharfe at &quot;Cromwheel&quot; &amp; Ilkley: sewage-spill forecast · dipcast</title>" in head
@@ -42,7 +42,8 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     assert '<h2 class="spot-name">Wharfe at &quot;Cromwheel&quot; &amp; Ilkley</h2>' in page   # before the script runs
     assert "no monitored storm overflow can reach this lake" in (tmp_path / "spot" / "tarn" / "index.html").read_text()
     home = (tmp_path / "index.html").read_text()
-    assert '<link rel="canonical" href="https://example.org/swim/">' in home and '<base href="/swim/">' in home
+    assert '<link rel="canonical" href="https://example.org/swim/">' in home
+    assert "<base" not in home.split("</head>")[0]   # the home page resolves links from its own address
     assert "Loading forecasts…" in home
     for f in ["sw.js", "manifest.webmanifest", "icons/og.png", "verification.html", "privacy.html", "page.css", ".nojekyll"]:
         assert (tmp_path / f).exists(), f

@@ -203,10 +203,10 @@
 const BRAND = 'dipcast';
 const REPO = 'https://github.com/ethanbuckley/dipcast';
 const FEEDBACK = `${REPO}/issues/new?template=feedback.yml`;
-// The site root. Built pages set <base> to it, so relative links work from a spot's own page
-// (spot/<id>/) too; without one, the root is what is left of the address above spot/<id>/.
-const ROOT = document.querySelector('base') ? new URL('./', document.baseURI)
-  : new URL(location.pathname.replace(/spot\/[^/]+\/?$/, ''), location.origin);
+// The site root. A spot's own page (spot/<id>/) sets <base href="../../">, so relative links work
+// there too; the home page has no <base>. Relative both ways, so the site works at any address.
+const ROOT = new URL('./', document.querySelector('base') ? document.baseURI
+  : new URL(location.pathname.replace(/spot\/[^/]+\/?$/, ''), location.origin));
 // Spot ids that get their own page; scripts/build_site.py uses the same rule. Others keep ?spot=.
 const PAGE_ID = /^[a-z0-9-]+$/;
 const spotPath = id => PAGE_ID.test(id) ? `${ROOT.pathname}spot/${id}/` : `${ROOT.pathname}?spot=${encodeURIComponent(id)}`;
