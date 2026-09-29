@@ -1,7 +1,7 @@
 """Draw the link-preview image (src/dipcast/site/icons/og.png, 1200 x 630) that messaging apps
 and social sites show for a shared link. Rerun after a change of name or tagline:
 
-    uv run --with pillow python scripts/make_share_image.py --name dipcast
+    uv run --with pillow python scripts/make_share_image.py --name Dipspot
 
 Fonts default to Arial on macOS; pass --font and --bold elsewhere.
 """
@@ -33,9 +33,9 @@ def wrap(draw: ImageDraw.ImageDraw, text: str, font: ImageFont.FreeTypeFont, wid
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--name", default="dipcast")
+    ap.add_argument("--name", default="Dipspot")
     ap.add_argument("--tagline", default="Will sewage from upstream storm overflows reach your swim spot?")
-    ap.add_argument("--line", default="Five-day forecasts for river and lake spots in England")
+    ap.add_argument("--line", default="Five-day forecasts for rivers and lakes in England")
     ap.add_argument("--font", default="/System/Library/Fonts/Supplemental/Arial.ttf")
     ap.add_argument("--bold", default="/System/Library/Fonts/Supplemental/Arial Bold.ttf")
     a = ap.parse_args()

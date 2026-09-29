@@ -5,11 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <!-- page-meta: scripts/build_site.py replaces this block on every page it writes (absolute
      links for share previews; a spot's own page gets its name, a description and a <base>). -->
-<title>dipcast · sewage-spill forecasts for swim spots</title>
+<title>Dipspot · sewage-spill forecasts for swim spots</title>
 <meta name="description" content="Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow data, rainfall forecasts and the river network.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="dipcast">
-<meta property="og:title" content="dipcast">
+<meta property="og:site_name" content="Dipspot">
+<meta property="og:title" content="Dipspot">
 <meta property="og:description" content="Will sewage from upstream storm overflows reach this swim spot? Forecasts for river and lake swim spots in England.">
 <meta property="og:image" content="icons/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -22,7 +22,7 @@
 <meta name="theme-color" content="#ffffff">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="dipcast">
+<meta name="apple-mobile-web-app-title" content="Dipspot">
 <!-- Pinned by hash, so a changed file on the CDN is refused rather than run. -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
@@ -158,7 +158,7 @@
 </head>
 <body>
 <header class="top">
-  <a class="brand" href="./"><img src="icons/icon.svg" alt="" width="28" height="28">dipcast</a>
+  <a class="brand" href="./"><img src="icons/icon.svg" alt="" width="28" height="28">Dipspot</a>
   <span class="tagline">Will sewage from upstream storm overflows reach this swim spot?</span>
   <nav aria-label="Site"><a href="verification.html">Accuracy</a><a href="#about">About</a><a href="https://github.com/ethanbuckley/dipcast/issues/new?template=feedback.yml" id="nav-feedback">Feedback</a></nav>
 </header>
@@ -168,7 +168,7 @@
     <div id="result"><p class="muted">Loading forecasts…</p></div>
     <section class="about" id="about">
       <h2>About these forecasts</h2>
-      <p>For each spot, dipcast traces the river upstream, finds every monitored storm overflow whose water reaches it, and combines what those overflows are doing now with how likely each is to spill over the next five days, allowing for travel time, bacterial die-off and dilution. It is a forecast, not a water test: "low" is not a guarantee of clean water, and inclusion of a spot is not a statement that it is safe to swim there. <a href="verification.html">How accurate is it?</a></p>
+      <p>For each spot, Dipspot traces the river upstream, finds every monitored storm overflow whose water reaches it, and combines what those overflows are doing now with how likely each is to spill over the next five days, allowing for travel time, bacterial die-off and dilution. It is a forecast, not a water test: "low" is not a guarantee of clean water, and inclusion of a spot is not a statement that it is safe to swim there. <a href="verification.html">How accurate is it?</a></p>
       <details class="more" id="levels"><summary>What the levels mean</summary>
         <p class="small muted">Each level is a band of the day's exposure index (0–100): the modelled chance that a spill from at least one upstream overflow reaches the spot.</p>
         <dl class="levels">
@@ -200,7 +200,7 @@
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
-const BRAND = 'dipcast';
+const BRAND = 'Dipspot';
 const REPO = 'https://github.com/ethanbuckley/dipcast';
 const FEEDBACK = `${REPO}/issues/new?template=feedback.yml`;
 // The site root. Built pages set a relative <base> at it ("./" on the home page, "../../" in
