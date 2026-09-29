@@ -52,8 +52,8 @@ REWRITES = [('href="/verification"', 'href="verification.html"'), ('href="/terms
 # variable is set; the token is public (it sits in the page), so it is a variable,
 # not a secret.
 COUNTER_TOKEN_ENV = "DIPCAST_CF_BEACON_TOKEN"
-NO_COUNTER = ("Last updated 12 September 2026.", "There is no analytics script and no third-party tracking.")
-WITH_COUNTER = ("Last updated 28 September 2026 (page-view counter).",
+NO_COUNTER = ("Last updated 29 September 2026.", "There is no analytics script and no third-party tracking.")
+WITH_COUNTER = ("Last updated 29 September 2026 (page-view counter).",
                 ("Page views are counted with Cloudflare Web Analytics. Cloudflare states that it sets no cookies, "
                  "uses no local storage and does not fingerprint visitors. It sees your IP address when the counter "
                  "loads, as any web server would, and its "
