@@ -2,14 +2,17 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- viewport-fit=cover: the Home Screen app draws its teal header under the status bar (the safe
+     area insets pad it). Every control is 16 px or more, or iOS zooms the page on focus and leaves
+     it wider than the screen. -->
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- page-meta: scripts/build_site.py replaces this block on every page it writes (absolute
      links for share previews; a spot's own page gets its name, a description and a <base>). -->
-<title>dipcast · sewage-spill forecasts for swim spots</title>
+<title>Dipspot · sewage-spill forecasts for swim spots</title>
 <meta name="description" content="Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow data, rainfall forecasts and the river network.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="dipcast">
-<meta property="og:title" content="dipcast">
+<meta property="og:site_name" content="Dipspot">
+<meta property="og:title" content="Dipspot">
 <meta property="og:description" content="Will sewage from upstream storm overflows reach this swim spot? Forecasts for river and lake swim spots in England.">
 <meta property="og:image" content="icons/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -19,156 +22,217 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="theme-color" content="#ffffff">
+<meta name="theme-color" content="#0f5a61">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="dipcast">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Dipspot">
 <!-- Pinned by hash, so a changed file on the CDN is refused rather than run. -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
-  /* Brand teal from the icon. Map markers use the bright risk colours; badges use darker
-     shades so their text passes WCAG AA (4.5:1): the bright ones measured 2.3-3.4:1. */
-  :root { --ink:#16202a; --muted:#5b6470; --line:#e3e6ea; --bg:#fff; --surface:#f5f7f8;
+  /* Brand teal from the icon. Map markers use the bright risk colours; badges and text use
+     darker shades so they pass WCAG AA (4.5:1) on white and on the level's tint. */
+  :root { --ink:#14212b; --muted:#56626e; --faint:#8a95a0; --line:#e3e9eb; --bg:#f2f5f5; --card:#fff;
           --brand:#0f5a61; --brand-2:#5cc2b5;
-          --low:#2e9e5b; --moderate:#d8a400; --high:#e06a1b; --veryhigh:#c81e1e; --unknown:#8a939e;
-          --b-low:#1d7a45; --b-moderate:#f4c542; --b-high:#b8480f; --b-veryhigh:#b01c1c; --b-na:#5f6873; }
+          --low:#2e9e5b; --moderate:#d8a400; --high:#e06a1b; --veryhigh:#c81e1e; --unknown:#9aa3ad;
+          --b-low:#1d7a45; --b-moderate:#f4c542; --b-high:#b8480f; --b-veryhigh:#b01c1c; --b-na:#5f6873;
+          --t-low:#e3f3e9; --t-moderate:#fbf1cf; --t-high:#fce6d6; --t-veryhigh:#f9dede; --t-na:#eceff1;
+          --k-low:#17663a; --k-moderate:#6b5200; --k-high:#9a3d0c; --k-veryhigh:#961717; --k-na:#4c545c;
+          --radius:16px; --shadow:0 1px 2px rgba(15,50,58,.07), 0 6px 20px rgba(15,50,58,.06);
+          --header-h:56px; }
   * { box-sizing:border-box; }
-  html,body { margin:0; height:100%; }
-  body { font:15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color:var(--ink); background:var(--bg);
-         display:flex; flex-direction:column; }
+  html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+  html, body { margin:0; }
+  body { font:16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color:var(--ink); background:var(--bg); }
   a { color:var(--brand); }
-  a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible { outline:3px solid var(--brand-2); outline-offset:2px; border-radius:4px; }
+  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline:3px solid var(--brand-2); outline-offset:2px; border-radius:6px; }
+  button { font:inherit; }
   .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+  .muted { color:var(--muted); } .small { font-size:13.5px; }
 
-  .top { flex:none; display:flex; align-items:center; gap:14px; padding:9px 18px; border-bottom:1px solid var(--line); background:var(--bg); }
-  .brand { display:flex; align-items:center; gap:9px; color:var(--ink); text-decoration:none; font-weight:700; font-size:18px; letter-spacing:-.015em; }
-  .brand img { display:block; border-radius:7px; }
-  .tagline { color:var(--muted); font-size:13.5px; }
-  .top nav { margin-left:auto; display:flex; gap:18px; font-size:14px; }
-  .top nav a { text-decoration:none; font-weight:550; }
-  .top nav a:hover { text-decoration:underline; }
+  /* The header: the brand, and on a phone the way to the map. */
+  .top { position:sticky; top:0; z-index:1100; display:flex; align-items:center; gap:10px; background:var(--brand); color:#fff;
+         padding:calc(9px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 9px calc(16px + env(safe-area-inset-left)); }
+  .brand { display:flex; align-items:center; gap:10px; color:#fff; text-decoration:none; font-weight:750; font-size:20px; letter-spacing:-.01em; }
+  .brand img { display:block; width:30px; height:30px; border-radius:8px; box-shadow:0 0 0 1px rgba(255,255,255,.3); }
+  .top nav { margin-left:auto; display:flex; align-items:center; gap:4px; }
+  .top nav a, .hbtn { color:#fff; text-decoration:none; font-size:16px; font-weight:600; line-height:1.2; padding:8px 12px; border-radius:999px; border:0; background:transparent; cursor:pointer; }
+  .top nav a:hover, .hbtn:hover { background:rgba(255,255,255,.14); }
+  .hbtn { background:rgba(255,255,255,.16); }
+  .hbtn[aria-pressed=true] { background:#fff; color:var(--brand); }
 
-  #app { flex:1; min-height:0; display:grid; grid-template-columns:1fr 420px; }
-  #map { height:100%; min-height:0; background:#e8eef0; }
+  #app { position:relative; }
+  #map-wrap { position:relative; background:#e8eef0; }
+  #map { position:absolute; inset:0; background:#e8eef0; }
   .leaflet-tile-pane { filter:saturate(.35) brightness(1.03); }   /* a quieter base map, so the risk colours carry */
-  #panel { border-left:1px solid var(--line); overflow:auto; padding:16px 20px 28px; }
   /* Touch screens: one finger scrolls the page and two move the map, so the map cannot trap the scroll. */
   .map-hint { position:absolute; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:0 24px; text-align:center;
-              background:rgba(22,32,42,.5); color:#fff; font-weight:650; font-size:16px; opacity:0; transition:opacity .25s; pointer-events:none; }
+              background:rgba(20,33,43,.55); color:#fff; font-weight:650; font-size:16px; opacity:0; transition:opacity .25s; pointer-events:none; }
   .map-hint.show { opacity:1; }
-
-  .map-legend { background:rgba(255,255,255,.95); border-radius:8px; padding:8px 11px; font-size:12px; line-height:1.65; box-shadow:0 1px 5px rgba(0,0,0,.2); color:var(--ink); }
+  .map-legend { background:rgba(255,255,255,.95); border-radius:10px; padding:8px 11px; font-size:12.5px; line-height:1.65; box-shadow:0 1px 5px rgba(0,0,0,.2); color:var(--ink); }
   .map-legend .ttl { font-weight:650; }
   .map-legend .extra { color:var(--muted); margin-top:4px; max-width:210px; line-height:1.45; }
   .dot { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:6px; vertical-align:-1px; box-shadow:0 0 0 1.5px #fff, 0 0 0 2.5px rgba(0,0,0,.18); }
-  .dot.sm { width:8px; height:8px; margin:0 4px 0 6px; box-shadow:none; }
+  .dot.sm { width:9px; height:9px; margin:0 4px 0 8px; box-shadow:none; }
 
-  .name-row { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
-  h2.spot-name { font-size:20px; line-height:1.25; margin:8px 0 6px; letter-spacing:-.01em; }
-  .save { flex:none; margin-top:7px; font:inherit; font-size:13px; font-weight:600; padding:4px 12px; border-radius:999px; border:1px solid #cfd4da; background:var(--bg); color:var(--ink); cursor:pointer; }
-  .save[aria-pressed=true] { background:#fff4d6; border-color:#d8a400; color:#5e4a00; }
+  #panel { padding:16px 16px 32px; }
+  h1, h2, h3 { letter-spacing:-.01em; }
+
+  /* The list */
+  .intro h1 { font-size:26px; line-height:1.15; letter-spacing:-.02em; margin:4px 0 6px; }
+  .lede { color:var(--muted); margin:0; font-size:15.5px; }
+  .search { position:relative; margin:16px 0 10px; }
+  .search svg { position:absolute; left:14px; top:50%; width:20px; height:20px; transform:translateY(-50%); color:var(--faint); pointer-events:none; }
+  .search input { width:100%; font:inherit; font-size:17px; color:var(--ink); padding:13px 14px 13px 44px; border:1px solid var(--line); border-radius:14px; background:var(--card); box-shadow:var(--shadow); -webkit-appearance:none; appearance:none; }
+  .search input::placeholder { color:var(--faint); }
+  .chips-row { display:flex; gap:8px; overflow-x:auto; padding:2px 0 4px; scrollbar-width:none; }
+  .chips-row::-webkit-scrollbar { display:none; }
+  .chip-btn { flex:none; font-size:16px; font-weight:600; padding:7px 12px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+  .chip-btn[aria-pressed=true] { background:var(--brand); border-color:var(--brand); color:#fff; }
+  .group { margin:22px 0 0; }
+  .group-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 12px; margin:0 0 8px; }
+  .group-head { font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:750; margin:0; }
+  .group > .group-head { margin:0 0 8px; }
+  .sortseg { display:inline-flex; gap:2px; padding:3px; border-radius:11px; background:#e3eaea; }
+  .sortseg button { font-size:16px; font-weight:600; padding:6px 11px; border:0; border-radius:8px; background:transparent; color:var(--muted); cursor:pointer; }
+  .sortseg button[aria-pressed=true] { background:var(--card); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.14); }
+  .overview { font-size:14px; color:var(--muted); margin:0 0 10px; }
+  ul.spots { list-style:none; margin:0; padding:0; background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+  ul.spots li + li { border-top:1px solid var(--line); }
+  a.row { display:flex; align-items:center; gap:12px; min-height:64px; padding:12px 14px 12px 16px; color:inherit; text-decoration:none; }
+  a.row:hover { background:#f7f9f9; } a.row:active { background:#eef3f3; }
+  .row-main { flex:1; min-width:0; display:flex; flex-direction:column; }
+  .nm { font-weight:650; font-size:16px; line-height:1.3; overflow-wrap:anywhere; }
+  .hl { font-size:14px; font-weight:650; line-height:1.35; margin-top:1px; }
+  .hl.low { color:var(--k-low); } .hl.moderate { color:var(--k-moderate); } .hl.high { color:var(--k-high); } .hl.veryhigh { color:var(--k-veryhigh); } .hl.na { color:var(--muted); }
+  .k { font-size:13px; color:var(--muted); line-height:1.35; }
+  .week { flex:none; display:flex; gap:4px; }
+  .wk { display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .wk i { display:block; width:11px; height:24px; border-radius:4px; background:var(--unknown); }
+  .wk i.low { background:var(--low); } .wk i.moderate { background:var(--moderate); } .wk i.high { background:var(--high); } .wk i.veryhigh { background:var(--veryhigh); }
+  .wk b { font-size:10.5px; font-weight:600; line-height:1; color:var(--faint); }
+  .wk.first b { color:var(--ink); }
+  .empty { padding:16px; color:var(--muted); }
+  .count { font-size:13.5px; color:var(--muted); margin:8px 2px 0; }
+
+  /* One spot */
+  .back { display:inline-flex; align-items:center; gap:6px; font-size:16px; font-weight:600; text-decoration:none; padding:6px 0; }
+  .title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin:6px 0 6px; }
+  h1.spot-name { font-size:25px; line-height:1.2; letter-spacing:-.02em; margin:0; overflow-wrap:anywhere; }
+  .save { flex:none; margin-top:2px; font-size:16px; font-weight:650; padding:7px 14px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; box-shadow:var(--shadow); }
+  .save[aria-pressed=true] { background:#fff4d6; border-color:#e7c35a; color:#5e4a00; }
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 4px; }
-  .chip { font-size:12px; color:var(--muted); background:var(--surface); border:1px solid var(--line); border-radius:999px; padding:1px 9px; }
-  .back { font-size:14px; text-decoration:none; font-weight:550; }
-  .card { border:1px solid var(--line); border-radius:10px; padding:14px 16px; margin:12px 0; }
-  .card h3 { font-size:15px; margin:0; }
-  .card .sub { color:var(--muted); font-size:12.5px; margin:1px 0 8px; }
-  .hero { background:var(--surface); border-left:5px solid var(--unknown); }
-  .hero.low { border-left-color:var(--low); } .hero.moderate { border-left-color:var(--moderate); }
-  .hero.high { border-left-color:var(--high); } .hero.veryhigh { border-left-color:var(--veryhigh); }
-  .hero-head { display:flex; justify-content:space-between; align-items:center; gap:8px; }
-  .eyebrow { font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:650; }
-  .summary { font-size:16.5px; line-height:1.45; margin:6px 0 12px; }
-  .ecoli { font-size:13.5px; margin:10px 0 0; padding-top:9px; border-top:1px solid var(--line); }
-  .notice { border:1px solid var(--high); background:#fff7ed; border-radius:10px; padding:10px 14px; margin:0 0 12px; font-size:14px; }
-  .notice.quiet { border-color:#cfd4da; background:var(--surface); }
-
-  .badge { display:inline-block; padding:2px 9px; border-radius:999px; color:#fff; font-size:12px; font-weight:650; white-space:nowrap; }
+  .chip { font-size:13px; color:var(--muted); background:var(--card); border:1px solid var(--line); border-radius:999px; padding:2px 10px; }
+  .hero { border-radius:var(--radius); padding:18px 16px 16px; margin:14px 0 12px; background:var(--t-na); box-shadow:var(--shadow); }
+  .hero.low { background:var(--t-low); } .hero.moderate { background:var(--t-moderate); } .hero.high { background:var(--t-high); } .hero.veryhigh { background:var(--t-veryhigh); }
+  .kicker { font-size:12px; font-weight:750; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
+  .headline { font-size:28px; line-height:1.15; font-weight:800; letter-spacing:-.02em; margin:4px 0 8px; color:var(--k-na); }
+  .hero.low .headline { color:var(--k-low); } .hero.moderate .headline { color:var(--k-moderate); } .hero.high .headline { color:var(--k-high); } .hero.veryhigh .headline { color:var(--k-veryhigh); }
+  .summary { font-size:16.5px; line-height:1.45; margin:0 0 14px; }
+  .days { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:5px; margin:0 0 6px; }
+  .day { border-radius:10px; border-top:5px solid var(--unknown); background:var(--card); color:var(--k-na); padding:6px 2px 7px; text-align:center; }
+  .day .d, .day .r { font-size:12px; color:var(--muted); } .day .l { font-size:13px; font-weight:750; line-height:1.15; margin:2px 0; }
+  .day.low { border-color:var(--low); color:var(--k-low); } .day.moderate { border-color:var(--moderate); color:var(--k-moderate); }
+  .day.high { border-color:var(--high); color:var(--k-high); } .day.veryhigh { border-color:var(--veryhigh); color:var(--k-veryhigh); }
+  .strip-note { font-size:13px; color:var(--muted); margin:0; }
+  .ecoli { font-size:14.5px; margin:12px 0 0; padding-top:11px; border-top:1px solid rgba(0,0,0,.08); }
+  .issued { font-size:13px; color:var(--muted); margin:10px 0 0; }
+  .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; margin:12px 0; }
+  .card-h { font-size:17px; font-weight:750; margin:0 0 2px; }
+  .sub { color:var(--muted); font-size:13.5px; margin:0 0 10px; }
+  .now-row { display:flex; align-items:center; gap:14px; }
+  .now-row .big { font-size:40px; line-height:1; font-weight:800; color:var(--ink); min-width:34px; text-align:center; }
+  .now-row .big.hot { color:var(--b-veryhigh); }
+  #spot-map { position:relative; height:260px; border-radius:12px; overflow:hidden; margin:8px 0 8px; }
+  ul.ovs { list-style:none; margin:4px 0 0; padding:0; }
+  ul.ovs li { display:flex; gap:10px; padding:10px 0; border-top:1px solid var(--line); }
+  ul.ovs li:first-child { border-top:0; }
+  #contrib:not(.all) li.extra { display:none; }
+  .sdot { flex:none; width:12px; height:12px; border-radius:50%; margin-top:5px; background:var(--unknown); }
+  .sdot.s1 { background:var(--veryhigh); } .sdot.s0 { background:#5b6470; }
+  .ov-name { font-weight:650; font-size:15px; overflow-wrap:anywhere; }
+  .ov-meta { font-size:13px; color:var(--muted); }
+  .ov-stats { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:13.5px; margin-top:2px; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; font-size:16px; font-weight:650; padding:10px 16px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+  .btn.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
+  .btn.quiet { margin-top:6px; padding:8px 14px; font-size:16px; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 6px; }
+  details.fold > summary { cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; }
+  details.fold > summary::-webkit-details-marker { display:none; }
+  details.fold > summary::after { content:"+"; font-size:22px; line-height:1; color:var(--muted); }
+  details.fold[open] > summary::after { content:"–"; }
+  details.fold[open] > summary { margin-bottom:10px; }
+  details.more > summary { cursor:pointer; color:var(--brand); font-size:15px; margin-top:8px; font-weight:600; }
+  details.more[open] > summary { margin-bottom:6px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:7px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
+  tr:last-child td { border-bottom:0; }
+  th { color:var(--muted); font-weight:600; font-size:13px; }
+  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
+  .badge { display:inline-block; padding:2px 9px; border-radius:999px; color:#fff; font-size:12.5px; font-weight:650; white-space:nowrap; }
   .b-low{background:var(--b-low)} .b-moderate{background:var(--b-moderate);color:#3d2e00} .b-high{background:var(--b-high)}
   .b-veryhigh{background:var(--b-veryhigh)} .b-na{background:var(--b-na)}
-  .risk { display:flex; align-items:baseline; gap:10px; }
-  .risk .val { font:650 28px/1 ui-monospace, SFMono-Regular, Menlo, monospace; }
-  table { width:100%; border-collapse:collapse; font-size:13.5px; }
-  th,td { text-align:left; padding:6px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
-  tr:last-child td { border-bottom:0; }
-  th { color:var(--muted); font-weight:600; font-size:12.5px; }
-  td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
-  table:not(.all) tr.extra { display:none; }
-  .muted { color:var(--muted); } .small { font-size:12.5px; }
-  details.more > summary { cursor:pointer; color:var(--brand); font-size:13px; margin-top:8px; font-weight:550; }
-  details.more[open] > summary { margin-bottom:6px; }
-  .status-1{color:var(--veryhigh);font-weight:600} .status-0{color:var(--muted)} .status--1,.status--2{color:var(--unknown)}
-  .later { font-weight:600; } .later.moderate { color:#7a6000; } .later.high { color:#b04a0e; } .later.veryhigh { color:#a31a1a; }
-  dl.tech { display:grid; grid-template-columns:max-content 1fr; gap:3px 12px; margin:6px 0 0; font-size:12.5px; }
+  dl.tech { display:grid; grid-template-columns:max-content 1fr; gap:3px 12px; margin:6px 0 0; font-size:13px; }
   dl.tech dt { color:var(--muted); } dl.tech dd { margin:0; overflow-wrap:anywhere; }
+  .notice { border:1px solid var(--high); background:#fff7ed; border-radius:12px; padding:10px 14px; margin:12px 0; font-size:14.5px; }
+  .notice.quiet { border-color:var(--line); background:var(--card); }
 
-  .days { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:4px; margin:0 0 4px; }
-  .day { border-radius:6px; border-top:4px solid var(--unknown); background:#e9ecef; color:#3d434a; padding:5px 3px 6px; text-align:center; }
-  .day .d, .day .r { font-size:11px; } .day .l { font-size:12px; font-weight:700; line-height:1.15; margin:1px 0; }
-  .day.low { border-color:var(--low); background:#e2f2e8; color:#1e5a36; }
-  .day.moderate { border-color:var(--moderate); background:#faf0cc; color:#5e4a00; }
-  .day.high { border-color:var(--high); background:#fce4d4; color:#7f3508; }
-  .day.veryhigh { border-color:var(--veryhigh); background:#f8d8d8; color:#8a1616; }
-
-  .actions { display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:14px 0 6px; }
-  .intro { display:none; font-size:15px; margin:0 0 8px; }
-  .overview { font-size:15px; margin:0 0 10px; }
-  input[type=search] { width:100%; padding:9px 11px; border:1px solid #cfd4da; border-radius:8px; font:inherit; margin:0 0 8px; }
-  .controls { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; margin:0 0 10px; }
-  .seg { display:flex; flex-wrap:wrap; gap:6px; }
-  .seg button, .btn, select { font:inherit; font-size:13px; padding:4px 11px; border-radius:999px; border:1px solid #cfd4da; background:var(--bg); color:var(--ink); cursor:pointer; }
-  .seg button[aria-pressed=true] { background:var(--brand); border-color:var(--brand); color:#fff; }
-  select { border-radius:8px; padding:4px 8px; }
-  .btn { border-radius:8px; padding:6px 12px; text-decoration:none; display:inline-block; }
-  .group-head { font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); font-weight:650; margin:0 0 6px; }
-  .saved { margin:0 0 16px; }
-  ul.spots { list-style:none; padding:0; margin:0; border:1px solid var(--line); border-radius:10px; overflow:hidden; }
-  ul.spots li + li { border-top:1px solid var(--line); }
-  ul.spots a { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:9px 12px; color:inherit; text-decoration:none; }
-  ul.spots a:hover { background:var(--surface); }
-  ul.spots .nm { font-weight:550; }
-  ul.spots .k { display:block; color:var(--muted); font-size:12.5px; font-weight:400; }
-  .empty { padding:14px 12px; color:var(--muted); }
-
-  .about { margin-top:26px; padding-top:16px; border-top:1px solid var(--line); font-size:14px; }
-  .about h2 { font-size:16px; margin:0 0 6px; }
-  .about dl { margin:6px 0 0; } .about dt { font-weight:650; margin-top:8px; } .about dd { margin:2px 0 0; color:var(--muted); font-size:13px; }
+  .about { margin-top:28px; font-size:15px; }
+  .about h2 { font-size:17px; margin:0 0 6px; }
+  .about dl { margin:6px 0 0; } .about dt { font-weight:650; margin-top:10px; } .about dd { margin:2px 0 0; color:var(--muted); font-size:14px; }
   .about dl.levels dt { display:flex; align-items:center; gap:8px; }
-  footer.fine { margin-top:18px; padding-top:12px; border-top:1px solid var(--line); font-size:12px; color:var(--muted); }
+  footer.fine { margin-top:20px; padding-top:14px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted); }
   footer.fine p { margin:0 0 8px; }
 
-  /* Phones: one page that scrolls, a shorter map, the list on the first screen. */
+  /* Desktop: the map fills the left, the list or the spot scrolls on the right. */
+  @media (min-width: 801px) {
+    html, body { height:100%; }
+    body { display:flex; flex-direction:column; }
+    .top { position:static; padding:10px 18px; }
+    #app { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0, 1fr) 460px; }
+    #map-wrap { min-height:0; }
+    #panel { overflow:auto; padding:20px 22px 32px; border-left:1px solid var(--line); }
+    .intro h1 { font-size:24px; }
+    .phone-only { display:none !important; }
+  }
+  /* Phones: the list first, the map one tap away; a spot's page carries its own small map. */
   @media (max-width: 800px) {
-    html, body { height:auto; } body { display:block; }
-    .top { padding:8px 14px; } .tagline { display:none; } .top nav { gap:14px; }
-    #app { display:block; }
-    #map { height:40vh; min-height:220px; max-height:380px; }
-    #panel { border-left:0; border-top:1px solid var(--line); overflow:visible; padding:14px 16px 32px; }
+    .desk-only { display:none !important; }
+    #map-wrap { display:none; }
+    body.map-mode #map-wrap { display:block; position:fixed; left:0; right:0; bottom:0; top:var(--header-h); z-index:1000; }
+    body.map-mode #panel { display:none; }
+    body.view-spot #mapbtn { display:none; }
+    #panel { padding:14px calc(16px + env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); }
+    #spot-map .map-legend { display:none; }
     .map-legend { padding:5px 8px; line-height:1.5; } .map-legend .ttl, .map-legend .extra { display:none; }
     .map-legend .row { display:inline-block; margin-right:6px; }
-    .intro { display:block; }
   }
-  /* The smallest phones (320-360 px): the header and the day strip must not overflow. */
+  /* The smallest phones (320-360 px): nothing may be wider than the screen. */
   @media (max-width: 360px) {
-    .top { gap:10px; padding:8px 12px; } .top nav { gap:12px; font-size:13px; } .brand { font-size:17px; gap:7px; }
-    .day { padding:5px 1px 6px; } .day .l { font-size:10.5px; letter-spacing:-.03em; }
-    #panel { padding-left:12px; padding-right:12px; } .card { padding:12px; } table { font-size:12.5px; } th, td { padding:5px 2px; }
+    .brand { font-size:18px; } .top nav a, .hbtn { padding:7px 10px; }
+    .days { gap:3px; } .day .l { font-size:11px; letter-spacing:-.02em; } .day .d, .day .r { font-size:11px; }
+    .headline { font-size:24px; } .wk i { width:9px; } .week { gap:3px; }
+    table { font-size:12.5px; } th, td { padding:5px 2px; }
   }
 </style>
 </head>
-<body>
-<header class="top">
-  <a class="brand" href="./"><img src="icons/icon.svg" alt="" width="28" height="28">dipcast</a>
-  <span class="tagline">Will sewage from upstream storm overflows reach this swim spot?</span>
-  <nav aria-label="Site"><a href="verification.html">Accuracy</a><a href="#about">About</a><a href="https://github.com/ethanbuckley/dipcast/issues/new?template=feedback.yml" id="nav-feedback">Feedback</a></nav>
+<body class="view-list">
+<header class="top" id="top">
+  <a class="brand" href="./"><img src="icons/icon.svg" alt="" width="30" height="30">Dipspot</a>
+  <nav aria-label="Site">
+    <button type="button" class="hbtn phone-only" id="mapbtn" aria-pressed="false">Map</button>
+    <a href="verification.html" class="desk-only">Accuracy</a>
+    <a href="#about">About</a>
+    <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=feedback.yml" class="desk-only">Feedback</a>
+  </nav>
 </header>
 <div id="app">
-  <div id="map" role="region" aria-label="Map of swim spots"></div>
+  <div id="map-wrap"><div id="map" role="region" aria-label="Map of swim spots"></div></div>
   <main id="panel">
     <div id="result"><p class="muted">Loading forecasts…</p></div>
     <section class="about" id="about">
       <h2>About these forecasts</h2>
-      <p>For each spot, dipcast traces the river upstream, finds every monitored storm overflow whose water reaches it, and combines what those overflows are doing now with how likely each is to spill over the next five days, allowing for travel time, bacterial die-off and dilution. It is a forecast, not a water test: "low" is not a guarantee of clean water, and inclusion of a spot is not a statement that it is safe to swim there. <a href="verification.html">How accurate is it?</a></p>
+      <p>For each spot, Dipspot traces the river upstream, finds every monitored storm overflow whose water reaches it, and combines what those overflows are doing now with how likely each is to spill over the next five days, allowing for travel time, bacterial die-off and dilution. It is a forecast, not a water test: "low" is not a guarantee of clean water, and inclusion of a spot is not a statement that it is safe to swim there. <a href="verification.html">How accurate is it?</a></p>
       <details class="more" id="levels"><summary>What the levels mean</summary>
         <p class="small muted">Each level is a band of the day's exposure index (0–100): the modelled chance that a spill from at least one upstream overflow reaches the spot.</p>
         <dl class="levels">
@@ -193,14 +257,14 @@
       </details>
     </section>
     <footer class="fine">
+      <p><a href="verification.html">How accurate is it?</a> · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=feedback.yml">Feedback</a> · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">Request a spot</a> · <a href="terms.html">Terms of use</a> · <a href="privacy.html">Privacy</a> · <a href="https://github.com/ethanbuckley/dipcast">Source code</a> (MIT)</p>
       <p>Data: water company live feeds via the National Storm Overflow Hub (CC BY 4.0) · Environment Agency annual returns, bathing waters and lake water bodies (OGL v3; contains Environment Agency information © Environment Agency and database right) · Contains OS data © Crown copyright and database right 2026 · Weather data by <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0) · Map © OpenStreetMap contributors.</p>
-      <p><a href="terms.html">Terms of use</a> · <a href="privacy.html">Privacy</a> · <a href="https://github.com/ethanbuckley/dipcast">Source code</a> (MIT) · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">Request a spot</a> · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=feedback.yml">Feedback</a></p>
     </footer>
   </main>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script>
-const BRAND = 'dipcast';
+const BRAND = 'Dipspot';
 const REPO = 'https://github.com/ethanbuckley/dipcast';
 const FEEDBACK = `${REPO}/issues/new?template=feedback.yml`;
 // The site root. Built pages set a relative <base> at it ("./" on the home page, "../../" in
@@ -214,20 +278,48 @@ const spotPath = id => PAGE_ID.test(id) ? `${ROOT.pathname}spot/${id}/` : `${ROO
 const spotFromURL = () => { const m = location.pathname.match(/\/spot\/([A-Za-z0-9_-]+)\/?$/);
   return m ? m[1] : new URLSearchParams(location.search).get('spot'); };
 
-// Touch screens: one finger scrolls the page, two move the map (Leaflet's pinch pans as well as zooms).
-// With one-finger dragging on, a phone's map took the scroll for the top 40% of the screen.
+// ------------------------------------------------------------------------------ the one map
+// On a desktop the map fills the left column. On a phone the list comes first: the map opens full
+// screen from the header's Map button, and a spot's page shows it in a card. The same Leaflet map
+// moves between those places (placeMap), and is parked in its column before the panel is redrawn,
+// or innerHTML would destroy it.
+const PHONE = matchMedia('(max-width: 800px)');
+const mapEl = document.getElementById('map'), mapWrap = document.getElementById('map-wrap');
+// Touch screens: one finger scrolls the page and two move the map (Leaflet's pinch pans as well as
+// zooms). With one-finger dragging on, a phone's map took the scroll. Full screen, there is no page
+// to scroll, so one finger moves the map there.
 const TOUCH = matchMedia('(pointer: coarse)').matches;
 const map = L.map('map', { zoomControl: true, dragging: !TOUCH }).setView([53.6, -2.0], 6);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19,
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' }).addTo(map);
 if (TOUCH) {
-  const el = document.getElementById('map'), hint = document.createElement('div'); let t = null;
+  const hint = document.createElement('div'); let t = null;
   hint.className = 'map-hint'; hint.setAttribute('aria-hidden', 'true'); hint.textContent = 'Use two fingers to move the map';
-  el.appendChild(hint);
-  el.addEventListener('touchmove', e => { if (e.touches.length !== 1) { hint.classList.remove('show'); return; }
+  mapEl.appendChild(hint);
+  mapEl.addEventListener('touchmove', e => { if (e.touches.length !== 1 || map.dragging.enabled()) { hint.classList.remove('show'); return; }
     hint.classList.add('show'); clearTimeout(t); t = setTimeout(() => hint.classList.remove('show'), 1400); }, { passive: true });
 }
 const spotLayer = L.layerGroup().addTo(map), contribLayer = L.layerGroup().addTo(map), ovLayer = L.layerGroup().addTo(map), selLayer = L.layerGroup().addTo(map);
+const mapMode = () => document.body.classList.contains('map-mode');
+function parkMap() { if (mapEl.parentElement !== mapWrap) mapWrap.appendChild(mapEl); }
+function placeMap() {
+  const slot = PHONE.matches && current && !mapMode() ? document.getElementById('spot-map') : null;
+  const home = slot || mapWrap;
+  if (mapEl.parentElement !== home) home.appendChild(mapEl);
+  if (TOUCH) { if (PHONE.matches && mapMode()) map.dragging.enable(); else map.dragging.disable(); }
+  map.invalidateSize();
+}
+const setHeaderHeight = () => document.documentElement.style.setProperty('--header-h', document.getElementById('top').getBoundingClientRect().height + 'px');
+function setMapMode(on) {
+  document.body.classList.toggle('map-mode', on);
+  const b = document.getElementById('mapbtn'); b.setAttribute('aria-pressed', String(on)); b.textContent = on ? 'List' : 'Map';
+  setHeaderHeight(); placeMap();
+  if (on && DATA) fitAll(); else if (!on) loadOverflows().catch(() => ovLayer.clearLayers());
+}
+document.getElementById('mapbtn').addEventListener('click', () => setMapMode(!mapMode()));
+const fitAll = () => map.fitBounds(L.latLngBounds(DATA.spots.map(s => [s.lat, s.lon])), { padding: [18, 18] });
+window.addEventListener('resize', setHeaderHeight);
+
 let DATA = null, OVERFLOWS = null, serverToday = null, current = null, listShown = false;
 const VIEW = { q: '', filter: 'all', sort: 'risk', here: null, geoMsg: '' };
 // Names and descriptions come from spots.csv and the water companies' feeds: escape them.
@@ -251,12 +343,33 @@ const today = () => serverToday ?? localISO(new Date());
 const dayWord = iso => iso === today() ? 'today' : iso === addDays(today(), 1) ? 'tomorrow'
   : 'on ' + new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'long'});
 const shortDay = iso => iso === today() ? 'Today' : new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short'});
+const initial = iso => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'narrow'});
 // The worse of right now, today and tomorrow. A spot the model cannot reach, or with no monitored
 // overflow upstream, gets no risk level: "low" there would read as clean water.
 const worst = s => { const labels = [s.now.label, ...(s.days.slice(0,2).map(d => d.label))];
   return labels.sort((a,b) => (ORDER[b]||0)-(ORDER[a]||0))[0]; };
 const level = s => s.error ? (String(s.error).startsWith('forecast failed') ? NO_FORECAST : NOT_COVERED)
   : !(s.upstream_summary || {}).overflows ? NO_OVERFLOWS : worst(s);
+// A later day (2 to 4 days ahead) worse than now, today and tomorrow.
+const laterDay = s => { const w = ORDER[worst(s)] ?? 0;
+  const x = s.days.slice(2, 5).filter(hasData).reduce((a, b) => !a || ORDER[b.label] > ORDER[a.label] ? b : a, null);
+  return x && ORDER[x.label] > w ? x : null; };
+// The gist in a few words, for the list and the top of a spot's page: the worst of now, today and
+// tomorrow and when, or, if those are all low, the first worse day after them.
+function headline(s) {
+  const l = level(s);
+  if (l === NO_FORECAST) return 'No forecast in this update';
+  if (l === NOT_COVERED) return 'Not covered by the forecast';
+  if (l === NO_OVERFLOWS) return 'No monitored overflows upstream';
+  const when = [[s.now.label, 'right now'], [(s.days[0] || {}).label, 'today'], [(s.days[1] || {}).label, 'tomorrow']].filter(([x]) => ORDER[x] !== undefined);
+  const top = when.reduce((a, b) => ORDER[b[0]] > ORDER[a[0]] ? b : a, when[0] || ['low', 'today']);
+  if (ORDER[top[0]]) return `${cap(top[0])} ${top[1]}`;
+  const x = laterDay(s);
+  if (x) return `Low now · ${cap(x.label)} on ${shortDay(x.date)}`;
+  return s.days.slice(0, 5).every(hasData) ? 'Low for the next five days' : 'Low on every day with a forecast';
+}
+// The colour that goes with the headline: grey where there is no level, else the worst of now, today and tomorrow.
+const headTone = s => ORDER[level(s)] === undefined ? 'na' : tone(worst(s));
 const km = (a, b) => { const r = Math.PI / 180, dLat = (b[0]-a[0])*r, dLon = (b[1]-a[1])*r;
   const h = Math.sin(dLat/2)**2 + Math.cos(a[0]*r) * Math.cos(b[0]*r) * Math.sin(dLon/2)**2; return 12742 * Math.asin(Math.sqrt(h)); };
 
@@ -289,7 +402,8 @@ function summary(d) {
     return k >= total ? (total === 1 ? ': the overflow upstream is expected to spill' : `: all ${total} overflows upstream are expected to spill`)
       : k >= 1 ? `: about ${k} of the ${total} overflows upstream ${k === 1 ? 'is' : 'are'} expected to spill`
       : ': a spill from a nearby overflow upstream is possible'; };
-  if (!ORDER[peak.label]) out.push(known.length === days.length ? 'Low today and for the next four days.' : 'Low on every day with a forecast.');
+  // All low: the headline already says so, so say what it rests on rather than repeat it.
+  if (!ORDER[peak.label]) out.push(`A spill from the ${total === 1 ? 'overflow' : `${total} overflows`} upstream is unlikely to reach here${known.length === days.length ? '' : ' on any day with a forecast'}.`);
   else if (peak === days[0]) out.push(`${cap(peak.label)} today${why(peak)}.`);
   else {
     out.push(hasData(days[0]) ? `${cap(days[0].label)} today.` : 'No forecast for today.');
@@ -321,21 +435,27 @@ const algae = a => { if (!a) return '';
   const season = a.season === thisYear ? 'this season' : `in the ${a.season} season`;
   const tally = a.n_seen ? `Algae seen at ${a.n_seen} of ${a.n_checks} checks ${season}${a.n_objectionable ? `, ${a.n_objectionable} of them enough to be objectionable` : ''}.`
     : `No algae seen at any of ${a.n_checks} check${a.n_checks === 1 ? '' : 's'} ${season}.`;
-  return `<section class="card"><h3>Algae</h3><p class="sub">Environment Agency sampler's visual check</p>`
+  return `<section class="card"><h2 class="card-h">Algae</h2><p class="sub">Environment Agency sampler's visual check</p>`
     + `<div>${when}: <b${a.level >= 3 ? ' style="color:var(--b-high)"' : ''}>${esc(a.phrase)}</b>.</div>`
     + `<div class="small muted" style="margin-top:4px">${tally}${age > 14 ? ' No check since: the EA checks bathing waters from May to September, and results take about a week to be published.' : ''} A look at the water, not a lab test: it does not tell blue-green algae, which can be toxic, from harmless kinds.</div></section>`; };
 const strip = d => { const none = !d.upstream_summary.overflows;   // then there is no exposure to colour, only rain
   return `<div class="days">` + d.days.slice(0, 5).map(x => `<div class="day ${hasData(x) && !none ? tone(x.label) : ''}"><div class="d">${shortDay(x.date)}</div><div class="l">${none ? '–' : hasData(x) ? cap(x.label) : 'No data'}</div><div class="r">${x.rain_48h_mm === null || x.rain_48h_mm === undefined ? '–' : Math.round(x.rain_48h_mm) + ' mm'}</div></div>`).join('')
-    + `</div><div class="small muted">${none ? 'No overflow exposure to show; rain here in the previous 48 h.' : 'Exposure by day, with rain here in the previous 48 h.'}</div>`; };
-// A later day worse than the badge, which covers only now, today and tomorrow.
-const later = s => { if (ORDER[level(s)] === undefined) return null; const w = ORDER[worst(s)] ?? 0;
-  const x = s.days.slice(2, 5).filter(hasData).reduce((a, b) => !a || ORDER[b.label] > ORDER[a.label] ? b : a, null);
-  return x && ORDER[x.label] > w ? `<span class="later ${tone(x.label)}">${cap(x.label)} on ${shortDay(x.date)}</span>` : null; };
-const scrollTop = () => { if (matchMedia('(max-width: 800px)').matches) window.scrollTo(0, 0); else document.getElementById('panel').scrollTop = 0; };
+    + `</div><p class="strip-note">${none ? 'No overflow exposure to show; rain here in the previous 48 h.' : 'Exposure by day, with rain here in the previous 48 h.'}</p>`; };
+// The week at a glance in a list row: one bar per day, coloured by level.
+const week = s => { if (ORDER[level(s)] === undefined || !s.days.length) return '';
+  return `<span class="week" aria-hidden="true">${s.days.slice(0, 5).map((x, i) => `<span class="wk${i ? '' : ' first'}"><i class="${hasData(x) ? tone(x.label) : ''}"></i><b>${initial(x.date)}</b></span>`).join('')}</span>`; };
+const scrollTop = () => { if (PHONE.matches) window.scrollTo(0, 0); else document.getElementById('panel').scrollTop = 0; };
 
+let ovCall = 0;
 async function loadOverflows() {
-  if (map.getZoom() < 9) { ovLayer.clearLayers(); return; }
+  // Every overflow in view, when zoomed in. Not in a phone's small spot map, where the ones that
+  // matter are already drawn and the 6 MB layer would cost the data.
+  const call = ++ovCall;
+  if (map.getZoom() < 9 || (PHONE.matches && !mapMode())) { ovLayer.clearLayers(); return; }
   if (!OVERFLOWS) OVERFLOWS = await (await fetch('data/overflows.geojson')).json();
+  // A later move superseded this one while the file loaded (zoomed out, say): drawing now would
+  // put every overflow in the new, wider view on the map, 14,000 of them for England.
+  if (call !== ovCall) return;
   const b = map.getBounds(); ovLayer.clearLayers();
   const feats = OVERFLOWS.features.filter(f => b.contains([f.geometry.coordinates[1], f.geometry.coordinates[0]]));
   L.geoJSON({type:'FeatureCollection', features: feats}, { pointToLayer: (f, ll) => { const p = f.properties;
@@ -371,20 +491,25 @@ function freshness() {
   else if (b.today_rain_unavailable) h += `<p class="small muted">${b.today_rain_unavailable} spots have no rainfall data for today in this build.</p>`;
   return h;
 }
+// Redraw the panel. The map is parked in its column first, or replacing the HTML would destroy it.
+function setPanel(h) { parkMap(); document.getElementById('result').innerHTML = h; }
 
 // ------------------------------------------------------------------------------ the list
 const FILTERS = { all: 'All', river: 'Rivers', lake: 'Lakes', designated: 'Bathing waters' };
+const SORTS = { risk: 'Risk', name: 'A–Z', near: 'Near me' };
+const SEARCH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>';
 function overview() {
   const rated = DATA.spots.filter(s => ORDER[level(s)] !== undefined);
   const up = rated.filter(s => ORDER[level(s)] >= 1), high = up.filter(s => ORDER[level(s)] >= 2);
-  if (!up.length) return `All ${rated.length} spots with overflows upstream are <b>low</b> for today and tomorrow.`;
-  return `<b>${up.length}</b> of ${rated.length} spots with overflows upstream ${up.length === 1 ? 'is' : 'are'} moderate or higher today or tomorrow${high.length ? `, ${high.length} high or very high` : ''}.`;
+  if (!up.length) return `All ${rated.length} spots with overflows upstream are low for today and tomorrow.`;
+  return `${up.length} of ${rated.length} spots with overflows upstream ${up.length === 1 ? 'is' : 'are'} moderate or higher today or tomorrow${high.length ? `, ${high.length} high or very high` : ''}.`;
 }
 const dist = s => VIEW.here ? km(VIEW.here, [s.lat, s.lon]) : null;
 function spotItem(s) {
-  const l = level(s), d = dist(s);
-  const meta = [cap(s.kind), s.source === 'designated' ? 'bathing water' : null, d !== null ? `${d < 10 ? d.toFixed(1) : Math.round(d)} km away` : null, later(s)].filter(Boolean).join(' · ');
-  return `<li><a href="${esc(spotPath(s.id))}" data-id="${esc(s.id)}"><span><span class="nm">${esc(s.name)}</span><span class="k">${meta}</span></span><span class="badge ${cls(l)}">${cap(l)}</span></a></li>`;
+  const d = dist(s);
+  const meta = [cap(s.kind), s.source === 'designated' ? 'bathing water' : null, d !== null ? `${d < 10 ? d.toFixed(1) : Math.round(d)} km away` : null].filter(Boolean).join(' · ');
+  return `<li><a class="row" href="${esc(spotPath(s.id))}" data-id="${esc(s.id)}"><span class="row-main"><span class="nm">${esc(s.name)}</span>`
+    + `<span class="hl ${headTone(s)}">${headline(s)}</span><span class="k">${meta}</span></span>${week(s)}</a></li>`;
 }
 function bindItems(ul) {
   ul.querySelectorAll('a[data-id]').forEach(a => a.addEventListener('click', e => {
@@ -393,40 +518,41 @@ function bindItems(ul) {
 }
 function renderList() {
   contribLayer.clearLayers(); selLayer.clearLayers(); current = null; listShown = true;
+  document.body.classList.replace('view-spot', 'view-list');
   document.title = `${BRAND} · sewage-spill forecasts for swim spots`;
-  const canLocate = 'geolocation' in navigator;
-  let h = freshness();
-  h += `<p class="intro">Will sewage from storm overflows upstream reach your swim spot? Five-day forecasts for ${DATA.spots.length} river and lake spots in England.</p>`;
-  h += `<p class="overview">${overview()}</p>`;
   const saved = DATA.spots.filter(s => SAVED.has(s.id));
-  if (saved.length) h += `<section class="saved" aria-labelledby="saved-h"><h2 class="group-head" id="saved-h">Your spots</h2><ul class="spots" id="saved-list">${saved.map(spotItem).join('')}</ul></section>`;
-  h += `<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake…" autocomplete="off" value="${esc(VIEW.q)}">`;
-  h += `<div class="controls"><div class="seg" role="group" aria-label="Show">`
-    + Object.entries(FILTERS).map(([k, t]) => `<button type="button" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')
-    + `</div><label class="small muted">Sort <select id="sort"><option value="risk">Highest risk first</option><option value="name">Name</option>${canLocate ? '<option value="near">Nearest to me</option>' : ''}</select></label></div>`;
-  h += `<p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p>`;
-  h += `<ul class="spots" id="spots"></ul>`;
-  h += `<p class="small muted" style="margin-top:8px" id="count"></p>`;
-  h += `<p class="small muted">Updated ${issued()} (${ago(ageMin())} ago), several times a day. The badge is the worse of right now, today and tomorrow; a worse day after that is named under the spot. <a href="#levels">What the levels mean</a>. ${saved.length ? '' : 'Open a spot and press Save to keep it at the top of this list. '}Missing your spot? <a href="${REPO}/issues/new?template=spot-request.yml">Request it</a>.</p>`;
-  document.getElementById('result').innerHTML = h;
+  const sorts = Object.entries(SORTS).filter(([k]) => k !== 'near' || 'geolocation' in navigator);
+  let h = `<section class="intro"><h1>Sewage forecasts for your swim spot</h1><p class="lede">Will storm overflows upstream reach the water? Five days ahead, for ${DATA.spots.length} river and lake spots in England.</p>`
+    + `<div class="search">${SEARCH_ICON}<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(VIEW.q)}"></div>`
+    + `<div class="chips-row" role="group" aria-label="Show">${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div></section>`;
+  h += freshness();
+  if (saved.length) h += `<section class="group" aria-labelledby="saved-h"><h2 class="group-head" id="saved-h">Your spots</h2><ul class="spots" id="saved-list">${saved.map(spotItem).join('')}</ul></section>`;
+  h += `<section class="group" aria-labelledby="all-h"><div class="group-bar"><h2 class="group-head" id="all-h">All spots</h2>`
+    + `<div class="sortseg" role="group" aria-label="Sort">${sorts.map(([k, t]) => `<button type="button" data-sort="${k}" aria-pressed="${VIEW.sort === k}">${t}</button>`).join('')}</div></div>`
+    + `<p class="overview">${overview()}</p><p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p><ul class="spots" id="spots"></ul><p class="count" id="count"></p></section>`;
+  h += `<p class="small muted" style="margin-top:14px">Updated ${issued()} (${ago(ageMin())} ago), several times a day. The coloured bars are the next five days. <a href="#levels">What the levels mean</a>. ${saved.length ? '' : 'Open a spot and press Save to keep it at the top. '}Missing your spot? <a href="${REPO}/issues/new?template=spot-request.yml">Request it</a>.</p>`;
+  setPanel(h);
   if (saved.length) bindItems(document.getElementById('saved-list'));
-  const sort = document.getElementById('sort'); sort.value = VIEW.sort;
   // Only the list redraws as you type; redrawing the box itself dropped the focus after one letter.
   document.getElementById('q').addEventListener('input', e => { VIEW.q = e.target.value; drawSpots(); });
+  // The keyboard's Search key: there is no form to submit, so close the keyboard to show the results.
+  document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
   document.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => {
     VIEW.filter = b.dataset.filter;
     document.querySelectorAll('[data-filter]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     drawSpots(); }));
-  sort.addEventListener('change', () => { if (sort.value === 'near' && !VIEW.here) locate(); else { VIEW.sort = sort.value; drawSpots(); } });
-  drawSpots();
+  document.querySelectorAll('[data-sort]').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.sort === 'near' && !VIEW.here) { locate(); return; }
+    setSort(b.dataset.sort); drawSpots(); }));
+  drawSpots(); placeMap();
 }
+const setSort = k => { VIEW.sort = k; document.querySelectorAll('[data-sort]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.sort === k))); };
 // The position stays in this page: it only orders the list, and is not sent anywhere.
 function locate() {
   const msg = t => { VIEW.geoMsg = t; const g = document.getElementById('geo'); if (g) g.textContent = t; };
   msg('Finding your location…');
-  navigator.geolocation.getCurrentPosition(p => { VIEW.here = [p.coords.latitude, p.coords.longitude]; VIEW.sort = 'near'; msg(''); drawSpots(); },
-    e => { VIEW.sort = 'risk'; const s = document.getElementById('sort'); if (s) s.value = 'risk';
-      msg(e.code === 1 ? 'Location permission was declined, so the list is sorted by risk.' : 'Your location is not available right now, so the list is sorted by risk.'); drawSpots(); },
+  navigator.geolocation.getCurrentPosition(p => { VIEW.here = [p.coords.latitude, p.coords.longitude]; setSort('near'); msg(''); drawSpots(); },
+    e => { setSort('risk'); msg(e.code === 1 ? 'Location permission was declined, so the list is sorted by risk.' : 'Your location is not available right now, so the list is sorted by risk.'); drawSpots(); },
     { maximumAge: 10 * 60 * 1000, timeout: 10000 });
 }
 function drawSpots() {
@@ -448,10 +574,15 @@ function select(id, fly=false, push=true) {
   const s = DATA.spots.find(x => x.id === id); if (!s) return; current = s;
   if (push) history.pushState({ spot: id, fromList: listShown }, '', spotPath(id));
   listShown = false;
-  if (fly) map.setView([s.lat, s.lon], Math.max(map.getZoom(), 12));
+  if (mapMode()) setMapMode(false);
+  render(s);
   selLayer.clearLayers();
   L.circleMarker([s.lat, s.lon], { radius: 14, color: '#0f5a61', weight: 3, fill: false, interactive: false }).addTo(selLayer);
-  render(s); scrollTop();
+  // A phone's small map shows the spot with the overflows that matter most; a desktop's zooms in.
+  const pts = [[s.lat, s.lon], ...(s.contributors || []).slice(0, 5).map(c => [c.lat, c.lon])];
+  if (PHONE.matches) map.fitBounds(L.latLngBounds(pts), { padding: [24, 24], maxZoom: 13 });
+  else if (fly) map.setView([s.lat, s.lon], Math.max(map.getZoom(), 12));
+  scrollTop();
 }
 window.addEventListener('popstate', () => { if (!DATA) return;
   const id = spotFromURL();
@@ -473,7 +604,7 @@ function bindSave(d) {
   });
 }
 function actions(d) {
-  return `<div class="actions"><button type="button" class="btn" id="share">Copy link to this spot</button>`
+  return `<div class="actions"><button type="button" class="btn primary" id="share">Copy link to this spot</button>`
     + `<a class="btn" href="${esc(FEEDBACK)}&amp;spot=${encodeURIComponent(d.name)}">Tell us how you used this</a></div>`
     + `<p class="small muted" id="share-msg" aria-live="polite" style="margin:0 0 6px"></p>`
     + `<p class="small muted" style="margin:0 0 6px">Did the forecast change where or when you swam? That is what decides whether this site is worth building on. Feedback goes to a public GitHub issue and needs a GitHub account.</p>`;
@@ -502,37 +633,10 @@ function tech(d) {
     ['Version', a.version]].filter(r => r[1] !== null && r[1] !== undefined && r[1] !== '');
   return rows.length ? `<details class="more small"><summary>Technical details</summary><dl class="tech">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl></details>` : '';
 }
-
-function render(d) {
-  serverToday = DATA.generated_at.slice(0, 10);
-  contribLayer.clearLayers();
-  document.title = `${d.name}: sewage-spill forecast · ${BRAND}`;   // as on the spot's own page
-  const lv = level(d), loc = d.location || {};
-  const tags = [cap(d.kind), d.source === 'designated' ? 'Environment Agency designated bathing water' : null,
-    loc.watercourse ? esc(loc.watercourse) : null, loc.lake_area_km2 ? `${loc.lake_area_km2} km²` : null,
-    loc.adopted_main_channel ? 'side channel, traced as main river' : null,
-    d.notes && d.notes !== 'Environment Agency designated bathing water' ? esc(d.notes) : null].filter(Boolean);
-  let h = `<a href="${esc(ROOT.pathname)}" class="back" id="back">← All spots</a>`;
-  h += `<div class="name-row"><h2 class="spot-name">${esc(d.name)}</h2>${saveButton(d)}</div><div class="chips">${tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>`;
-  if (d.error) {
-    h += `<section class="card hero"><div class="hero-head"><span class="eyebrow">Forecast</span><span class="badge b-na">${cap(lv)}</span></div><p class="summary">${esc(d.error)}</p></section>`;
-    h += algae(d.algae) + actions(d);
-    document.getElementById('result').innerHTML = h; bindBack(); bindSave(d); bindShare(d); return;
-  }
-  h += freshness();
-  h += `<section class="card hero ${tone(lv)}"><div class="hero-head"><span class="eyebrow">Today and tomorrow</span><span class="badge ${cls(lv)}">${cap(lv)}</span></div>`
-    + `<p class="summary">${summary(d)}</p>${strip(d)}${ecoliLine(d)}`
-    // Always say how old it is: the stored copy (sw.js) can answer when the network is slow.
-    + `<p class="small muted" style="margin:8px 0 0">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p></section>`;
-  h += algae(d.algae);
-  const now = d.now, isLake = loc.mode === 'lake', scope = d.ecoli_scope || {}, total = d.upstream_summary.overflows;
-  if (total) {
-    h += `<section class="card"><h3>Right now</h3><p class="sub">Live status from the water companies' feeds · ${now.monitored_upstream} of ${total} upstream overflows report live</p>`;
-    h += `<div class="risk"><span class="val" style="color:${now.discharging_upstream ? 'var(--b-veryhigh)' : 'inherit'}">${now.discharging_upstream}</span><span>upstream overflow${now.discharging_upstream===1?'':'s'} discharging now · ${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h</span></div>`;
-    h += `<div class="small muted" style="margin-top:6px">Exposure index from what is happening now: <b>${Math.round(now.risk*100)}</b> <span class="badge ${cls(now.label)}">${cap(now.label)}</span></div></section>`;
-  }
-  h += `<section class="card"><h3>Five-day forecast</h3><p class="sub">Rainfall forecast through the spill and transport models</p>`;
-  h += `<table><tr><th>Day</th><th class="num">Exposure</th><th></th><th class="num">E.&nbsp;coli &gt;900</th><th class="num">Rain 48&nbsp;h</th></tr>`;
+// Day by day, with the exposure index and the E. coli figure: folded away, one tap to open.
+function dayTable(d, total, isLake, scope) {
+  let h = `<details class="card fold"><summary><span class="card-h">Day-by-day numbers</span></summary>`
+    + `<table><tr><th>Day</th><th class="num">Exposure</th><th></th><th class="num">E.&nbsp;coli &gt;900</th><th class="num">Rain 48&nbsp;h</th></tr>`;
   let anyNoData = false, anyOffSeason = false;
   for (const day of d.days) {
     const noData = !hasData(day); anyNoData = anyNoData || noData;
@@ -550,24 +654,63 @@ function render(d) {
   if (anyOffSeason) notes.push(`<sup>†</sup>Outside the May–September season the model was fitted on: an extrapolation.`);
   if (anyNoData) notes.push(`<b>No data</b>: the rainfall forecast for that day did not arrive; no figure is shown rather than one computed as if it were dry.`);
   if (notes.length) h += `<div class="small muted" style="margin-top:6px">${notes.join(' ')}</div>`;
-  h += `<details class="more"><summary>What these numbers mean</summary><div class="small muted">Exposure index (0–100): modelled chance that an upstream spill reaches here, from Open-Meteo rainfall through a spill model trained on 743,735 United Utilities discharge events (2023–25) and verified on a held-out year, then travel time, die-off and dilution. An index, not a probability. <b>E. coli &gt; 900</b>: estimated probability that a midday sample would exceed 900 cfu/100 ml, from rain at the spot in the previous 48 h, the exposure index, and season. Daily resolution. <a href="#levels">What the levels mean</a> · <a href="verification.html">How accurate is it?</a></div></details></section>`;
-  if (d.contributors.length) {
-    // The three that matter most are enough for most visits; the rest are one tap away.
-    const SHOW = 3, n = d.contributors.length;
-    h += `<section class="card"><h3>Upstream overflows that matter most</h3><p class="sub">Live status and today's modelled chance of a spill</p><table id="contrib"><tr><th>Overflow</th><th class="num">km</th><th class="num">hours</th><th class="num">reach</th><th class="num">spill today</th></tr>`;
-    d.contributors.forEach((c, i) => {
-      h += `<tr${i >= SHOW ? ' class="extra"' : ''}><td><span class="status-${c.status}" aria-hidden="true">●</span> ${esc(c.site_name ?? c.site_id)}<div class="muted small">${esc(c.company)} · ${statusText(c.status)}${c.latest_event_end ? ' · last ended ' + new Date(c.latest_event_end).toLocaleDateString('en-GB') : ''}${c.snap_confidence && c.snap_confidence !== 'high' ? ' · river match: ' + esc(c.snap_confidence) : ''}</div></td><td class="num">${fmt(c.distance_km + c.lake_distance_km,1)}</td><td class="num">${fmt(c.travel_h,0)}</td><td class="num">${fmt(c.weight,2)}</td><td class="num">${Math.round(c.p_spill_today*100)}%</td></tr>`;
-      L.circleMarker([c.lat, c.lon], { radius: 5 + 8*c.weight, color: colourFor(c.status), fillColor: colourFor(c.status), fillOpacity: .5, weight: 2 })
-        .bindTooltip(`${esc(c.site_name ?? c.site_id)}: ${(c.distance_km + c.lake_distance_km).toFixed(1)} km, reach ${c.weight.toFixed(2)}`).addTo(contribLayer);
-    });
-    h += `</table>${n > SHOW ? `<button type="button" class="btn" id="more-contrib" aria-controls="contrib" aria-expanded="false" style="margin-top:8px">Show all ${n}</button>` : ''}<div class="small muted" style="margin-top:6px">km and hours: distance and travel time along the river. Reach: the probability a spill there affects this spot, from die-off over the travel time and dilution by the size of the river network upstream.${total > n ? ` The ${n} with the most reach of ${total} upstream.` : ''}</div></section>`;
-  } else h += `<section class="card"><h3>No monitored overflows upstream</h3><div class="small muted">None within ${d.assumptions.max_upstream_km} km upstream. Risk from farms, wildlife and unmonitored sources is not modelled.</div></section>`;
-  h += actions(d);
-  h += tech(d);
-  document.getElementById('result').innerHTML = h; bindBack(); bindSave(d); bindShare(d);
+  return h + `<p class="small muted" style="margin:10px 0 0">Exposure index (0–100): modelled chance that an upstream spill reaches here, from Open-Meteo rainfall through a spill model trained on 743,735 United Utilities discharge events (2023–25) and verified on a held-out year, then travel time, die-off and dilution. An index, not a probability. <b>E. coli &gt; 900</b>: estimated probability that a midday sample would exceed 900 cfu/100 ml, from rain at the spot in the previous 48 h, the exposure index, and season. Daily resolution. <a href="#levels">What the levels mean</a> · <a href="verification.html">How accurate is it?</a></p></details>`;
+}
+// The overflows that matter most, as a list: on a phone a five-column table was too tight to read.
+function overflowCard(d, total) {
+  const SHOW = 3, n = d.contributors.length;
+  let h = `<section class="card"><h2 class="card-h">Overflows that matter most</h2><p class="sub">Live status, and today's modelled chance of a spill${total > n ? `: the ${n} with the most reach of ${total} upstream` : ''}</p><ul class="ovs" id="contrib">`;
+  d.contributors.forEach((c, i) => {
+    const far = fmt(c.distance_km + c.lake_distance_km, 1);
+    h += `<li${i >= SHOW ? ' class="extra"' : ''}><span class="sdot s${c.status}" aria-hidden="true"></span><div><div class="ov-name">${esc(c.site_name ?? c.site_id)}</div>`
+      + `<div class="ov-meta">${esc(c.company)} · ${statusText(c.status)}${c.latest_event_end ? ' · last ended ' + new Date(c.latest_event_end).toLocaleDateString('en-GB') : ''}${c.snap_confidence && c.snap_confidence !== 'high' ? ' · river match: ' + esc(c.snap_confidence) : ''}</div>`
+      + `<div class="ov-stats"><span>${far} km upstream, ${c.travel_h < 1 ? 'under an hour' : `about ${fmt(c.travel_h, 0)} h`} away</span><span>Reach <b>${Math.round(c.weight * 100)}%</b></span><span>Spill chance today <b>${Math.round(c.p_spill_today * 100)}%</b></span></div></div></li>`;
+    L.circleMarker([c.lat, c.lon], { radius: 5 + 8*c.weight, color: colourFor(c.status), fillColor: colourFor(c.status), fillOpacity: .5, weight: 2 })
+      .bindTooltip(`${esc(c.site_name ?? c.site_id)}: ${far} km, reach ${Math.round(c.weight * 100)}%`).addTo(contribLayer);
+  });
+  return h + `</ul>${n > SHOW ? `<button type="button" class="btn quiet" id="more-contrib" aria-controls="contrib" aria-expanded="false">Show all ${n}</button>` : ''}`
+    + `<p class="small muted" style="margin:8px 0 0">Reach: the chance a spill there affects this spot, from die-off over the travel time and dilution by the size of the river network upstream.</p></section>`;
+}
+
+function render(d) {
+  serverToday = DATA.generated_at.slice(0, 10);
+  contribLayer.clearLayers();
+  document.body.classList.replace('view-list', 'view-spot');
+  document.title = `${d.name}: sewage-spill forecast · ${BRAND}`;   // as on the spot's own page
+  const lv = level(d), loc = d.location || {};
+  const tags = [cap(d.kind), d.source === 'designated' ? 'Environment Agency designated bathing water' : null,
+    loc.watercourse ? esc(loc.watercourse) : null, loc.lake_area_km2 ? `${loc.lake_area_km2} km²` : null,
+    loc.adopted_main_channel ? 'side channel, traced as main river' : null,
+    d.notes && d.notes !== 'Environment Agency designated bathing water' ? esc(d.notes) : null].filter(Boolean);
+  let h = `<a href="${esc(ROOT.pathname)}" class="back" id="back">← All spots</a>`;
+  h += `<div class="title-row"><h1 class="spot-name">${esc(d.name)}</h1>${saveButton(d)}</div><div class="chips">${tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>`;
+  if (d.error) {
+    h += `<section class="hero"><div class="kicker">Sewage-spill forecast</div><div class="headline">${headline(d)}</div><p class="summary">${esc(d.error)}</p></section>`;
+    h += algae(d.algae) + `<section class="card phone-only"><h2 class="card-h">Where it is</h2><div id="spot-map"></div></section>` + actions(d);
+    setPanel(h); bindBack(); bindSave(d); bindShare(d); placeMap(); return;
+  }
+  const now = d.now, isLake = loc.mode === 'lake', scope = d.ecoli_scope || {}, total = d.upstream_summary.overflows;
+  h += freshness();
+  h += `<section class="hero ${headTone(d)}"><div class="kicker">Sewage-spill forecast</div><div class="headline">${headline(d)}</div>`
+    + `<p class="summary">${summary(d)}</p>${strip(d)}${ecoliLine(d)}`
+    // Always say how old it is: the stored copy (sw.js) can answer when the network is slow.
+    + `<p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p></section>`;
+  if (total) {
+    h += `<section class="card"><h2 class="card-h">Right now</h2><div class="now-row"><span class="big${now.discharging_upstream ? ' hot' : ''}">${now.discharging_upstream}</span>`
+      + `<div>of ${total} upstream overflow${total === 1 ? '' : 's'} discharging now<div class="small muted">${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h · ${now.monitored_upstream} of ${total} report live</div></div></div></section>`;
+  }
+  h += algae(d.algae);
+  h += `<section class="card phone-only"><h2 class="card-h">Upstream</h2><p class="sub">The spot (ringed) and the overflows that matter most; a bigger circle means more of a spill would reach here. Two fingers move the map.</p><div id="spot-map"></div>`
+    + `<p class="small muted" style="margin:0"><span class="dot sm" style="background:#c81e1e;margin-left:0"></span>discharging<span class="dot sm" style="background:#5b6470"></span>not discharging<span class="dot sm" style="background:#b3bac2"></span>offline or no feed</p></section>`;
+  h += d.contributors.length ? overflowCard(d, total)
+    : `<section class="card"><h2 class="card-h">No monitored overflows upstream</h2><p class="small muted" style="margin:0">None within ${d.assumptions.max_upstream_km} km upstream. Risk from farms, wildlife and unmonitored sources is not modelled.</p></section>`;
+  h += dayTable(d, total, isLake, scope);
+  h += actions(d) + tech(d);
+  setPanel(h); bindBack(); bindSave(d); bindShare(d);
   const more = document.getElementById('more-contrib');
   if (more) more.addEventListener('click', () => { const t = document.getElementById('contrib'), all = t.classList.toggle('all');
     more.setAttribute('aria-expanded', String(all)); more.textContent = all ? `Show the top 3` : `Show all ${d.contributors.length}`; });
+  placeMap();
 }
 function bindBack() { const b = document.getElementById('back'); if (b) b.addEventListener('click', e => { e.preventDefault();
   if (history.state && history.state.fromList) history.back();   // came from the list: back to it
@@ -576,8 +719,10 @@ function bindBack() { const b = document.getElementById('back'); if (b) b.addEve
 // In-page links (#about, #levels) must not follow <base> off a spot's own page to the home page.
 document.addEventListener('click', e => { const a = e.target.closest('a[href^="#"]'); if (!a) return;
   const el = document.getElementById(a.getAttribute('href').slice(1)); if (!el) return;
-  e.preventDefault(); const box = el.closest('details'); if (box) box.open = true;
+  e.preventDefault(); if (mapMode()) setMapMode(false); const box = el.closest('details'); if (box) box.open = true;
   el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+// A phone turned or a window resized across the breakpoint: put the map where that layout wants it.
+PHONE.addEventListener('change', () => { if (!PHONE.matches && mapMode()) setMapMode(false); setHeaderHeight(); placeMap(); });
 
 async function main() {
   DATA = await (await fetch('data/spots.json')).json();
@@ -585,15 +730,16 @@ async function main() {
   for (const s of DATA.spots) {
     const lab = level(s);
     L.circleMarker([s.lat, s.lon], { radius: 8, color: '#fff', weight: 1.5, fillColor: colour(lab), fillOpacity: .95 })
-      .bindTooltip(`${esc(s.name)}: ${cap(lab)}`).on('click', () => select(s.id)).addTo(spotLayer);
+      .bindTooltip(`${esc(s.name)}: ${headline(s)}`).on('click', () => select(s.id)).addTo(spotLayer);
   }
+  setHeaderHeight();
   const q = spotFromURL();
   if (q && DATA.spots.some(s => s.id === q)) {
     // An old ?spot= link becomes the spot's own address, the one to share.
     if (!location.pathname.includes('/spot/')) history.replaceState(history.state, '', spotPath(q));
     select(q, true, false);
   } else {
-    map.fitBounds(L.latLngBounds(DATA.spots.map(s => [s.lat, s.lon])), { padding: [16, 16] });
+    if (!PHONE.matches) fitAll();   // a phone's map is hidden (0 x 0) until Map is pressed, and fits then
     renderList();
   }
 }

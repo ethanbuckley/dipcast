@@ -49,7 +49,7 @@ MAX_NO_DATA_SHARE = 0.5   # more of today's forecasts without rainfall data than
 REWRITES = [('href="/verification"', 'href="verification.html"'), ('href="/terms"', 'href="terms.html"'),
             ('href="/privacy"', 'href="privacy.html"'), ('href="/"', 'href="index.html"'),
             ('href="/static/page.css"', 'href="page.css"'), ("fetch('/api/verification')", "fetch('data/verification.json')")]
-BRAND = "dipcast"
+BRAND = "Dipspot"
 HOME_TITLE = f"{BRAND} · sewage-spill forecasts for swim spots"
 DESCRIPTION = ("Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow "
                "data, rainfall forecasts and the river network.")
@@ -174,12 +174,14 @@ def site_url() -> str:
     domain sets DIPCAST_SITE_URL; otherwise it is this repository's GitHub Pages address, so a
     fork or a renamed repository gets its own."""
     url = os.environ.get(SITE_URL_ENV, "").strip()
-    if url and not re.match(r"https?://[^/\s]+", url):   # "dipcast.uk" would make every preview link relative
+    if url and not re.match(r"https?://[^/\s]+", url):   # "dipspot.co.uk" would make every preview link relative
         log.warning("%s=%r is not an http(s) address; using the Pages address", SITE_URL_ENV, url)
         url = ""
     if not url:
         owner, _, repo = os.environ.get("GITHUB_REPOSITORY", "ethanbuckley/dipcast").partition("/")
-        url = f"https://{owner.lower()}.github.io/{repo}/"
+        # A repository named <owner>.github.io is that account's own site, served at the root.
+        home = f"{owner.lower()}.github.io"
+        url = f"https://{home}/" if repo.lower() == home else f"https://{home}/{repo}/"
     return url.rstrip("/") + "/"
 
 
