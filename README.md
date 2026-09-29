@@ -1,6 +1,7 @@
-# dipcast
+# Dipspot
 
 Probabilistic sewage-pollution risk for river and lake swim spots in England.
+The code, the Python package (`dipcast`) and this repository keep the working name dipcast.
 
 Live site: https://ethanbuckley.github.io/dipcast/ (forecasts for 88 named
 spots, rebuilt several times a day by a scheduled GitHub Actions job; free to
@@ -8,7 +9,7 @@ run, never sleeps). Source: https://github.com/ethanbuckley/dipcast (MIT).
 Every forecast issued is scored later and published on the site's
 verification page.
 
-Click a point on a river or lake. dipcast traces the river network upstream,
+Click a point on a river or lake. Dipspot traces the river network upstream,
 finds every monitored storm overflow whose water reaches that point, and combines
 (a) what those overflows are doing right now, from the water companies' live
 feeds, with (b) how likely each is to spill over the coming days, from a model
@@ -24,7 +25,7 @@ Live sewage maps exist (the National Storm Overflow Hub, Surfers Against Sewage,
 WaterWatch, The Rivers Trust) and bathing-water risk forecasts exist for the ~950
 designated bathing waters (Islandswim, SAS). Inland river and lake spots, where
 most freshwater swimming happens, are mostly not designated bathing waters and
-had no forecast. dipcast covers any point on the network. Its distinguishing
+had no forecast. Dipspot covers any point on the network. Its distinguishing
 part is the transport step: an overflow 2 km upstream on the same river and one
 40 km up a tributary are not treated the same.
 
@@ -62,7 +63,7 @@ base rate 7.45% of days with a discharge:
 
 | Model | Brier | Log loss | AUC | Brier skill vs climatology |
 |---|---|---|---|---|
-| dipcast (pooled + site calibration) | 0.0447 | 0.154 | 0.929 | 0.33 |
+| Dipspot (pooled + site calibration) | 0.0447 | 0.154 | 0.929 | 0.33 |
 | pooled only | 0.0452 | 0.156 | 0.927 | 0.33 |
 | per-site climatology | 0.0669 | 0.246 | 0.768 | 0.00 |
 | naive rule: >10 mm in 48 h | 0.0621 | 0.224 | 0.758 | 0.07 |
@@ -132,7 +133,7 @@ is the check that the 2025 map still fits later years.
 lab samples at 38 inland designated bathing waters (20 rivers, 18 lakes). For
 every sample from May 2023 to September 2026 (2,165 samples; 1,750 at the 32
 sites with monitored overflows upstream) `scripts/validate_ecoli.py` computes
-what dipcast would have said for that day from reanalysis rainfall, and
+what Dipspot would have said for that day from reanalysis rainfall, and
 compares it with the naive competitor, rainfall at the site in the previous
 48 hours. Results (Spearman rank correlation with log E. coli; AUC for samples
 over 900 cfu/100 ml, the inland "sufficient" threshold):
@@ -140,15 +141,15 @@ over 900 cfu/100 ml, the inland "sufficient" threshold):
 | Predictor | Pooled ρ | Within-site ρ | AUC > 900 |
 |---|---|---|---|
 | rainfall, previous 48 h at the site | 0.09 | 0.35 | 0.65 |
-| dipcast spill risk (rain-driven spill model through transport) | 0.57 | 0.29 | 0.80 |
+| Dipspot spill risk (rain-driven spill model through transport) | 0.57 | 0.29 | 0.80 |
 
 Two different questions hide in that table. *Which sites* are contaminated:
-site-mean dipcast risk ranks the 32 sites' mean E. coli at ρ = 0.68, and
-site-mean rainfall does not (−0.25). The transport layer, the part of dipcast
+site-mean Dipspot risk ranks the 32 sites' mean E. coli at ρ = 0.68, and
+site-mean rainfall does not (−0.25). The transport layer, the part of Dipspot
 that is new, is what carries this. *Which days* are bad at a given site: on the
 raw scale rain in the last 48 hours leads (0.35 against 0.29; on rivers 0.48
 against 0.41), but a within-site comparison depends on the scale the site mean
-is removed on. On the logit scale, the scale dipcast combines contributions on,
+is removed on. On the logit scale, the scale Dipspot combines contributions on,
 spill risk is level with rain (0.35 against 0.35; rivers 0.47 against 0.48).
 Leave-one-year-out linear fits on that scale
 (`scripts/validate_ecoli_combined.py`) give within-site ρ of 0.35 for rain
@@ -161,7 +162,7 @@ correlates with E. coli at only 0.23 within site, and a spill had reached the
 spot within the previous 48 hours for 29% of samples: at those lakes,
 bacterial spikes are mostly not overflow-driven.
 
-The honest reading: dipcast's forecast tells a swimmer how exposed a spot is
+The honest reading: Dipspot's forecast tells a swimmer how exposed a spot is
 and when the overflows above it are likely to spill, and on rivers its
 day-to-day signal is as good as recent rainfall; it does not yet capture the
 diffuse runoff (farms, roads, urban drainage) that rain washes into rivers
@@ -171,7 +172,7 @@ exceedance directly from both, which these 2,165 samples make possible. Full
 tables: `data/processed/ecoli_validation*.json|csv`.
 
 Correction (14 Sep 2026): the first run of this validation (12 Sep) reported a
-within-site ρ of 0.23 for dipcast. That run fed only the sample days into the
+within-site ρ of 0.23 for Dipspot. That run fed only the sample days into the
 travel-time shift, which assumes consecutive days, so a fifth of each
 overflow's contribution landed on the following week's sample; it also applied
 the lead-4 rather than lead-0 Platt calibration. The hindcast now runs on a
@@ -207,8 +208,8 @@ the same-day figure stayed at 75%); the conclusions did not change.
 
 **E. coli exceedance model.** The map's "E. coli > 900" column: the estimated
 probability that a midday sample exceeds 900 cfu/100 ml. `scripts/train_ecoli.py`
-fits a logistic regression from things dipcast can compute anywhere: rain at the
-spot in the previous 48 and 24 h, dipcast's overflow exposure for the day, lake or
+fits a logistic regression from things Dipspot can compute anywhere: rain at the
+spot in the previous 48 and 24 h, Dipspot's overflow exposure for the day, lake or
 river, and season. The rain is Open-Meteo's archived lead-0 forecast, the same
 source the map uses for "today". The competitor that matters is rain alone: the
 question is whether the overflow exposure adds anything a rain gauge would not.
@@ -439,7 +440,7 @@ time contributes to today (it started at yesterday before, and did not).
   sampling season. On lakes it has no ranking skill and is not shown; outside
   the season it is an extrapolation and is marked as such.
 - OS Open Rivers has small breaks at weirs, mills and culverts, and side
-  channels (mill streams, leats) that are not connected upstream. dipcast joins
+  channels (mill streams, leats) that are not connected upstream. Dipspot joins
   653 headwater nodes to a foreign dead-end within 60 m that carries real
   network, and a pin on a channel with under 5 km upstream adopts a nearby
   channel with at least five times more. Without this the Thames overflows

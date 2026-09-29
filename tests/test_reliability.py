@@ -464,7 +464,9 @@ def test_home_screen_files_match_what_the_page_declares(tmp_path):
     bs = _build_site()
     src, html = bs.TEMPLATE.parent, bs.TEMPLATE.read_text()
     man = json.loads((src / "manifest.webmanifest").read_text())
-    assert man["name"] == "dipcast" and man["display"] == "standalone" and man["start_url"] == "./"
+    # One name everywhere a phone shows it: the manifest, the iOS home-screen title and the build's brand.
+    assert man["name"] == man["short_name"] == bs.BRAND and f'name="apple-mobile-web-app-title" content="{bs.BRAND}"' in html
+    assert man["display"] == "standalone" and man["start_url"] == "./"
     for ref in ("manifest.webmanifest", "icons/apple-touch-icon.png", "icons/icon.svg", "icons/icon-192.png"):
         assert f'href="{ref}"' in html and (src / ref).exists(), ref
     size = lambda p: "{}x{}".format(*struct.unpack(">II", p.read_bytes()[16:24]))   # the PNG header's width and height
