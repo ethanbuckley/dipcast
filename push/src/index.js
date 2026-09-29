@@ -132,8 +132,11 @@ async function subscribe(data, env) {
   const subscription = await cleanSubscription(data.subscription);
   const spots = cleanSpots(data.spots);
   const key = await subKey(subscription.endpoint);
-  if (spots.length === 0) await env.PUSH.delete(key);
-  else await env.PUSH.put(key, JSON.stringify({ subscription, spots, updated: new Date().toISOString() }));
+  if (spots.length === 0) { await env.PUSH.delete(key); return; }
+  // The spots also go in the key's metadata (at most 1024 bytes), so the cron finds who to alert
+  // from a list of keys alone instead of reading every record.
+  const meta = JSON.stringify(spots).length <= 1000 ? { metadata: { s: spots } } : {};
+  await env.PUSH.put(key, JSON.stringify({ subscription, spots, updated: new Date().toISOString() }), meta);
 }
 
 async function unsubscribe(data, env) {
@@ -142,10 +145,24 @@ async function unsubscribe(data, env) {
 }
 
 // ---- Cron ----
+// Every 2 minutes. A run either sends the next batch of queued alerts or, with nothing queued,
+// reads alerts.json and queues one alert for each subscriber of the spots that have just turned
+// high. On the free plan a run gets 50 outgoing requests and 10 ms of CPU, and one notification
+// took about 0.3 ms of CPU in Node, so a run sends at most SENDS_PER_RUN (15, or the env's; raise
+// it on the Paid plan): about 450 an hour. KV can take a minute to show a write everywhere, and a
+// repeat of a batch is silent (a notification with the same tag replaces the last one).
+const SENDS_PER_RUN = 15;
 
 export async function runCron(env, { fetch = globalThis.fetch, log = console.log, now = Date.now } = {}) {
   const authorize = vapidSigner(env); // fails on bad config every run, not only when a spot rises
-  const res = await fetch(`${env.SITE_URL}data/alerts.json`, { cache: 'no-store', signal: AbortSignal.timeout(15000) });
+  const perRun = Number(env.SENDS_PER_RUN) > 0 ? Math.floor(Number(env.SENDS_PER_RUN)) : SENDS_PER_RUN;
+  const tally = { sent: 0, removed: 0, failed: 0 };
+  const queued = await env.PUSH.get('queue', 'json');
+  if (queued?.items?.length) return drain(env, queued.items, true, perRun, authorize, tally, [], { fetch, log });
+
+  // A new address each minute, so no cache on the way hands back an older copy. (fetch's 'cache'
+  // option needs a recent compatibility date in Workers; a query string needs nothing.)
+  const res = await fetch(`${env.SITE_URL}data/alerts.json?t=${Math.floor(now() / 60000)}`, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`alerts.json: HTTP ${res.status}`);
   const alerts = await res.json();
   if (typeof alerts?.generated_at !== 'string' || !isObject(alerts.spots)) throw new Error('alerts.json: unexpected shape');
@@ -153,54 +170,84 @@ export async function runCron(env, { fetch = globalThis.fetch, log = console.log
   const prev = await env.PUSH.get('state', 'json');
   if (prev?.generated_at === alerts.generated_at) {
     log(`cron: alerts.json unchanged (${alerts.generated_at})`);
-    return { risen: [], sent: 0, removed: 0, failed: 0 };
+    return { risen: [], ...tally, queued: 0 };
   }
   const ranks = {};
   for (const [id, spot] of Object.entries(alerts.spots)) ranks[id] = Number.isInteger(spot?.rank) ? spot.rank : -1;
 
-  let result = { risen: [], sent: 0, removed: 0, failed: 0 };
   const t = now(), alerted = Object.fromEntries(Object.entries(prev?.alerted ?? {}).filter(([, at]) => t - Date.parse(at) < QUIET_MS));
+  let risen = [], items = [];
   if (!prev) {
     // A first run has nothing to compare with; alerting now would alert everyone.
     log(`cron: first run, saved ranks for ${Object.keys(ranks).length} spots, sent nothing`);
   } else {
-    const risen = Object.keys(ranks).filter((id) => ranks[id] >= HIGH && (prev.ranks?.[id] ?? -1) < HIGH && !alerted[id]);
+    risen = Object.keys(ranks).filter((id) => ranks[id] >= HIGH && (prev.ranks?.[id] ?? -1) < HIGH && !alerted[id]);
     for (const id of risen) alerted[id] = new Date(t).toISOString();
-    if (risen.length) result = { risen, ...await notify(env, alerts, new Set(risen), authorize, { fetch, log }) };
-    log(`cron: ${alerts.generated_at}: ${risen.length} spots rose to high; sent ${result.sent}, removed ${result.removed}, failed ${result.failed}`);
+    if (risen.length) items = await queueFor(env, alerts, new Set(risen), tally, log);
+    log(`cron: ${alerts.generated_at}: ${risen.length} spots rose to high, ${items.length} alerts to send`);
   }
   await env.PUSH.put('state', JSON.stringify({ generated_at: alerts.generated_at, ranks, ...(Object.keys(alerted).length ? { alerted } : {}) }));
-  return result;
+  if (!items.length) return { risen, ...tally, queued: 0 };
+  return drain(env, items, false, perRun, authorize, tally, risen, { fetch, log });
 }
 
 async function listKeys(kv, prefix) {
-  const names = [];
+  const keys = [];
   let cursor;
   do {
     const page = await kv.list({ prefix, cursor });
-    names.push(...page.keys.map((k) => k.name));
+    keys.push(...page.keys);
     cursor = page.list_complete ? undefined : page.cursor;
   } while (cursor);
-  return names;
+  return keys;
 }
 
-async function notify(env, alerts, risen, authorize, { fetch, log }) {
-  const tally = { sent: 0, removed: 0, failed: 0 };
+// One alert per subscriber of a risen spot: [{key, payload}]. The spots come from each key's
+// metadata; a record without them (too many spots to fit) is read.
+async function queueFor(env, alerts, risen, tally, log) {
+  const items = [];
+  for (const { name: key, metadata } of await listKeys(env.PUSH, 'sub:')) {
+    let spots = metadata?.s;
+    if (!Array.isArray(spots)) {
+      const record = await env.PUSH.get(key, 'json').catch(() => null);
+      if (record && !isPushService(record.subscription?.endpoint)) {
+        await env.PUSH.delete(key); // stored before its host was dropped from the list
+        tally.removed++;
+        log(`push ${key.slice(4, 16)}: removed, push service not allowed`);
+        continue;
+      }
+      spots = record?.spots ?? [];
+    }
+    const hits = spots.filter((id) => risen.has(id));
+    if (hits.length) items.push({ key, payload: alertPayload(hits, alerts.spots, env.SITE_URL) });
+  }
+  return items;
+}
+
+// Sends the first perRun alerts and keeps the rest in 'queue' for the next runs.
+async function drain(env, items, fromQueue, perRun, authorize, tally, risen, { fetch, log }) {
+  const batch = items.slice(0, perRun), rest = items.slice(perRun);
+  await send(env, batch, authorize, tally, { fetch, log });
+  if (rest.length) await env.PUSH.put('queue', JSON.stringify({ items: rest }));
+  else if (fromQueue) await env.PUSH.delete('queue');
+  log(`cron: sent ${tally.sent}, removed ${tally.removed}, failed ${tally.failed}; ${rest.length} still queued`);
+  return { risen, ...tally, queued: rest.length };
+}
+
+async function send(env, batch, authorize, tally, { fetch, log }) {
   // Logs name a subscription by a slice of its key hash; the endpoint itself is a secret.
   const fail = (key, why) => { tally.failed++; log(`push ${key.slice(4, 16)}: ${why}`); };
-  await eachLimit(await listKeys(env.PUSH, 'sub:'), CONCURRENCY, async (key) => {
+  await eachLimit(batch, CONCURRENCY, async ({ key, payload }) => {
     try {
       const record = await env.PUSH.get(key, 'json');
-      if (!record) return;
+      if (!record) return; // turned off since it was queued
       if (!isPushService(record.subscription?.endpoint)) {
-        await env.PUSH.delete(key); // stored before its host was dropped from the list
+        await env.PUSH.delete(key);
         tally.removed++;
         log(`push ${key.slice(4, 16)}: removed, push service not allowed`);
         return;
       }
-      const hits = (record.spots ?? []).filter((id) => risen.has(id));
-      if (!hits.length) return;
-      const res = await sendPush(record.subscription, alertPayload(hits, alerts.spots, env.SITE_URL), authorize, { fetch });
+      const res = await sendPush(record.subscription, payload, authorize, { fetch });
       if (res.status === 404 || res.status === 410) {
         await res.body?.cancel();
         await env.PUSH.delete(key); // the browser has dropped this subscription
@@ -215,7 +262,6 @@ async function notify(env, alerts, risen, authorize, { fetch, log }) {
       fail(key, err.message);
     }
   });
-  return tally;
 }
 
 async function eachLimit(items, limit, fn) {

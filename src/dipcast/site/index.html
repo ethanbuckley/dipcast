@@ -542,7 +542,10 @@ let syncTimer = null;
 const syncSoon = () => { clearTimeout(syncTimer); syncTimer = setTimeout(() => syncAlerts().catch(() => {}), 1000); };
 function alertsCard() {
   if (!DATA.push) return '';
-  const why = 'A notification when one of your saved spots turns high or very high, at most once a day for each. Turning alerts on sends the list of your saved spots, and nothing else about you, to Dipspot\'s alert service. <a href="privacy.html">Privacy notice</a>.';
+  // What consent needs to be informed (ICO): who gets what, for what, and how to take it back.
+  const why = 'A notification when one of your saved spots turns high or very high, at most once a day for each. An alert can be late or not come at all, so no alert does not mean the water is clean. '
+    + 'Turning alerts on sends your browser\'s push address and the list of your saved spots, and nothing else about you, to Dipspot\'s alert service. Alerts reach you through your browser maker\'s push service (Google, Apple, Mozilla or Microsoft), encrypted so it cannot read them. '
+    + 'You can turn them off here at any time, which deletes what the alert service holds. <a href="privacy.html">Privacy notice</a>.';
   const body = canPush() && offlineOff() ? `<p class="small" style="margin:0">Alerts need the offline copy, which is turned off in this browser. <a href="#your-data">Turn it back on</a> to use them.</p>`
     : canPush() ? `<button type="button" class="btn" id="alerts-btn" disabled>Turn on alerts</button>`
     : IOS && !navigator.standalone ? `<p class="small" style="margin:0">On iPhone and iPad, alerts work only in the Home Screen app: tap <b>Share</b>, then <b>Add to Home Screen</b>, open Dipspot from there and save your spots in it.</p>`

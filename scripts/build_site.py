@@ -113,6 +113,8 @@ PUSH_SWAPS = [
      "It stays on your device: it is not sent to Dipspot or to anyone else, unless you turn on alerts (below)."),
     ("Dipspot holds none, as described above;",
      "Dipspot holds none except, if you turn on alerts, the record described under Alerts, which turning them off deletes;"),
+    ('at the bottom of the home page. Clearing this site\'s data removes it too.',
+     'at the bottom of the home page. Alerts need it, so turning it off turns them off too. Clearing this site\'s data removes it too.'),
 ]
 
 
@@ -141,8 +143,11 @@ PUSH_PRIVACY = (
     "long random web address, run by your browser's maker (Google, Apple, Mozilla or Microsoft), that delivers "
     "notifications to this browser. Dipspot's alert service stores that address, with the identifiers of your "
     "saved spots, and nothing else: no name, email address or location. It uses them only to send a notification "
-    "when one of those spots' forecast turns high, and each notification passes through your browser maker's push "
-    "service. The basis is your consent: you turn alerts on, and turning them off withdraws it. The record is kept "
+    "when one of those spots' forecast turns high. Each notification passes through your browser maker's push "
+    "service, encrypted so that the push service cannot read it; that company is responsible for its own service. "
+    "Your browser also keeps a note of what it last sent, so that an unchanged list is not sent again. The basis is "
+    "your consent: you turn alerts on, and you can turn them off on the Saved page at any time, which withdraws it. "
+    "An alert can be late or not come at all, so no alert does not mean the water is clean. The record is kept "
     "until you turn alerts off, remove all your saved spots or turn off the offline copy (alerts need it), or until "
     "your browser's push service says the address no longer works; then it is deleted. The alert service runs on "
     "Cloudflare Workers, which may handle the record outside the UK under its own safeguards, and which sees your "

@@ -12,21 +12,21 @@ const alertsJson = (generated_at, spots) => ({ generated_at, spots: Object.fromE
 
 // A KV holding the given state and subscribers, and a network that serves alerts.json
 // and plays every push service, decrypting what it receives as the browser would.
-async function setup({ state, users = {}, status = () => 201 }) {
+async function setup({ state, users = {}, status = () => 201, meta = false }) {
   const kv = new FakeKV();
   if (state) await kv.put('state', JSON.stringify(state));
   const agents = {};
   for (const [name, spots] of Object.entries(users)) {
     const ua = makeUserAgent(`https://fcm.googleapis.com/fcm/send/${name}`);
     agents[ua.subscription.endpoint] = { name, ...ua };
-    await kv.put(await subKey(ua.subscription.endpoint), JSON.stringify({ subscription: ua.subscription, spots, updated: 'x' }));
+    await kv.put(await subKey(ua.subscription.endpoint), JSON.stringify({ subscription: ua.subscription, spots, updated: 'x' }), meta ? { metadata: { s: spots } } : {});
   }
-  kv.writes = 0;
+  kv.writes = 0; kv.gets = 0;
   const pushes = [];
   const alertFetches = [];
   let alerts;
   const fetch = async (url, init) => {
-    if (url === `${SITE}data/alerts.json`) { alertFetches.push(init); return Response.json(alerts); }
+    if (url.startsWith(`${SITE}data/alerts.json`)) { alertFetches.push({ url, ...init }); return Response.json(alerts); }
     const agent = agents[url];
     pushes.push({ to: agent.name, headers: init.headers, payload: agent.read(init.body) });
     return new Response(status(agent.name) === 201 ? null : 'gone', { status: status(agent.name) });
@@ -42,7 +42,8 @@ test('first run saves state and sends nothing', async () => {
   await t.run(alertsJson('T1', [spot('a', 3)]));
   assert.equal(t.pushes.length, 0);
   assert.deepEqual(await t.kv.get('state', 'json'), { generated_at: 'T1', ranks: { a: 3 } });
-  assert.equal(t.alertFetches[0].cache, 'no-store');
+  assert.match(t.alertFetches[0].url, /alerts\.json\?t=\d+$/);   // a new address each minute, past any cache
+  assert.equal(t.alertFetches[0].cache, undefined);   // Workers accept 'cache' only with a recent compatibility date
   assert.ok(t.alertFetches[0].signal instanceof AbortSignal);
 });
 
@@ -59,7 +60,7 @@ test('a spot rising from 1 to 2 pushes once to each of its subscribers and nobod
     users: { ann: ['a'], bob: ['c', 'a'], cat: ['c'], dan: ['z'] },
   });
   const result = await t.run(alertsJson('T2', [spot('a', 2, 'Pangbourne Meadow, River Thames'), spot('c', 1)]));
-  assert.deepEqual(result, { risen: ['a'], sent: 2, removed: 0, failed: 0 });
+  assert.deepEqual(result, { risen: ['a'], sent: 2, removed: 0, failed: 0, queued: 0 });
   assert.deepEqual(t.pushes.map((p) => p.to).sort(), ['ann', 'bob']);
   for (const p of t.pushes) {
     assert.deepEqual(p.payload, {
@@ -81,7 +82,7 @@ test('a spot rising from 1 to 2 pushes once to each of its subscribers and nobod
 test('a spot that drops back and rises again within 20 hours alerts once', async () => {
   const t = await setup({ state: { generated_at: 'T1', ranks: { a: 1 } }, users: { ann: ['a'] } });
   let clock = Date.parse('2026-09-30T08:00:00Z');
-  const run = (a) => runCron(t.env, { fetch: async (url, init) => url.endsWith('alerts.json') ? Response.json(a) : (t.pushes.push(url), new Response(null, { status: 201 })), log: () => {}, now: () => clock });
+  const run = (a) => runCron(t.env, { fetch: async (url, init) => url.includes('alerts.json') ? Response.json(a) : (t.pushes.push(url), new Response(null, { status: 201 })), log: () => {}, now: () => clock });
   await run(alertsJson('T2', [spot('a', 2)]));
   clock += 3 * 3600e3; await run(alertsJson('T3', [spot('a', 1)]));
   clock += 3 * 3600e3; await run(alertsJson('T4', [spot('a', 2)]));
@@ -118,7 +119,7 @@ test('404 and 410 delete the subscription; other failures are logged and kept', 
   const codes = { ann: 410, bob: 404, cat: 500, dan: 201 };
   const t = await setup({ state: { generated_at: 'T1', ranks: { a: 0 } }, users: { ann: ['a'], bob: ['a'], cat: ['a'], dan: ['a'] }, status: (n) => codes[n] });
   const result = await t.run(alertsJson('T2', [spot('a', 2)]));
-  assert.deepEqual(result, { risen: ['a'], sent: 1, removed: 2, failed: 1 });
+  assert.deepEqual(result, { risen: ['a'], sent: 1, removed: 2, failed: 1, queued: 0 });
   assert.equal(await t.kv.get(await t.keyOf('ann')), null);
   assert.equal(await t.kv.get(await t.keyOf('bob')), null);
   assert.notEqual(await t.kv.get(await t.keyOf('cat')), null);
@@ -150,7 +151,7 @@ test('a stored subscription on a host no longer allowed is deleted, not sent to'
   await t.kv.put('sub:old', JSON.stringify({ subscription: old, spots: ['a'] }));
   await t.kv.put('sub:idle', JSON.stringify({ subscription: { ...old, endpoint: 'https://example.com/idle' }, spots: ['z'] }));
   const result = await t.run(alertsJson('T2', [spot('a', 2)]));
-  assert.deepEqual(result, { risen: ['a'], sent: 1, removed: 2, failed: 0 });
+  assert.deepEqual(result, { risen: ['a'], sent: 1, removed: 2, failed: 0, queued: 0 });
   assert.deepEqual(t.pushes.map((p) => p.to), ['ann']);
   assert.equal(await t.kv.get('sub:old'), null);
   assert.equal(await t.kv.get('sub:idle'), null);
@@ -162,4 +163,35 @@ test('a failed alerts.json fetch throws and leaves state alone', async () => {
   const fetch = async () => new Response('nope', { status: 503 });
   await assert.rejects(runCron({ PUSH: kv, SITE_URL: SITE, ...vapid }, { fetch, log: () => {} }), /HTTP 503/);
   assert.equal((await kv.get('state', 'json')).generated_at, 'T1');
+});
+
+test('alerts past one run\'s share wait in a queue, sent in later runs before alerts.json is read again', async () => {
+  const users = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`u${String(i).padStart(2, '0')}`, ['a']]));
+  const t = await setup({ state: { generated_at: 'T1', ranks: { a: 1 } }, users });
+  const a = alertsJson('T2', [spot('a', 2)]);
+  assert.deepEqual(await t.run(a), { risen: ['a'], sent: 15, removed: 0, failed: 0, queued: 25 });
+  assert.deepEqual(await t.run(a), { risen: [], sent: 15, removed: 0, failed: 0, queued: 10 });
+  assert.deepEqual(await t.run(a), { risen: [], sent: 10, removed: 0, failed: 0, queued: 0 });
+  assert.equal(t.alertFetches.length, 1);   // the queue runs did not read alerts.json
+  assert.equal(await t.kv.get('queue'), null);
+  assert.equal(new Set(t.pushes.map((p) => p.to)).size, 40);   // everyone, once
+  assert.equal(t.pushes.length, 40);
+  await t.run(a);   // queue empty: back to reading alerts.json, which has not changed
+  assert.equal(t.alertFetches.length, 2);
+  assert.equal(t.pushes.length, 40);
+});
+
+test('SENDS_PER_RUN raises the batch on a paid plan', async () => {
+  const users = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`v${i}`, ['a']]));
+  const t = await setup({ state: { generated_at: 'T1', ranks: { a: 1 } }, users });
+  t.env.SENDS_PER_RUN = '100';
+  assert.deepEqual(await t.run(alertsJson('T2', [spot('a', 2)])), { risen: ['a'], sent: 40, removed: 0, failed: 0, queued: 0 });
+});
+
+test('with the spots in each key\'s metadata, only the records being sent to are read', async () => {
+  const t = await setup({ state: { generated_at: 'T1', ranks: { a: 1 } }, meta: true,
+    users: { ann: ['a'], bob: ['b'], cat: ['c'], dan: ['d'], eve: ['e'] } });
+  await t.run(alertsJson('T2', [spot('a', 2)]));
+  assert.deepEqual(t.pushes.map((p) => p.to), ['ann']);
+  assert.equal(t.kv.gets, 3);   // 'queue', 'state' and ann's record: not bob's, cat's, dan's or eve's
 });
