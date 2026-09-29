@@ -53,8 +53,9 @@ BRAND = "dipcast"
 HOME_TITLE = f"{BRAND} · sewage-spill forecasts for swim spots"
 DESCRIPTION = ("Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow "
                "data, rainfall forecasts and the river network.")
-# Spot ids that get a page of their own at spot/<id>/; index.html uses the same rule.
-SPOT_ID = re.compile(r"[a-z0-9-]+")
+# Spot ids that get a page of their own at spot/<id>/; index.html uses the same rule. Any other
+# id keeps its ?spot= address: one odd row in spots.csv must not stop the build.
+SPOT_ID = re.compile(r"[A-Za-z0-9_-]+")
 PAGE_META = re.compile(r"<!-- page-meta.*?<!-- /page-meta -->", re.DOTALL)
 LOADING = '<div id="result"><p class="muted">Loading forecasts…</p></div>'
 SITE_URL_ENV = "DIPCAST_SITE_URL"
@@ -173,6 +174,9 @@ def site_url() -> str:
     domain sets DIPCAST_SITE_URL; otherwise it is this repository's GitHub Pages address, so a
     fork or a renamed repository gets its own."""
     url = os.environ.get(SITE_URL_ENV, "").strip()
+    if url and not re.match(r"https?://[^/\s]+", url):   # "dipcast.uk" would make every preview link relative
+        log.warning("%s=%r is not an http(s) address; using the Pages address", SITE_URL_ENV, url)
+        url = ""
     if not url:
         owner, _, repo = os.environ.get("GITHUB_REPOSITORY", "ethanbuckley/dipcast").partition("/")
         url = f"https://{owner.lower()}.github.io/{repo}/"
@@ -181,8 +185,10 @@ def site_url() -> str:
 
 def page_meta(title: str, description: str, url: str, root: str, base: str | None = None) -> str:
     """The <head> block index.html marks with page-meta. Messaging apps and search engines need
-    absolute addresses for the page and its preview image. A spot's page, in spot/<id>/, gets a
-    relative <base> two levels up so it loads the same files; relative, so the pages work at any
+    absolute addresses for the page and its preview image. Every page gets a relative <base> at
+    the site root ("./" on the home page, "../../" in spot/<id>/). The page moves between the list
+    and spots with pushState, and without a <base> every relative link would then resolve inside
+    spot/<id>/; a <base> is resolved once, as the page loads. Relative, so the pages work at any
     address (a custom domain serves the site at / rather than /dipcast/)."""
     return "\n".join([
         *([f'<base href="{escape(base)}">'] if base else []),
@@ -248,7 +254,7 @@ def write_pages(site: Path, results: list[dict], token: str | None = None, root:
         (site / name).write_text(with_counter(s, token))
     shutil.copy(STATIC / "page.css", site / "page.css")
     copy_app_files(site)
-    home = PAGE_META.sub(lambda m: page_meta(HOME_TITLE, DESCRIPTION, root, root), template, count=1)
+    home = PAGE_META.sub(lambda m: page_meta(HOME_TITLE, DESCRIPTION, root, root, base="./"), template, count=1)
     (site / "index.html").write_text(with_counter(home, token))
     shutil.rmtree(site / "spot", ignore_errors=True)   # a spot dropped from spots.csv loses its page
     ids = []

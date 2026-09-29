@@ -203,14 +203,15 @@
 const BRAND = 'dipcast';
 const REPO = 'https://github.com/ethanbuckley/dipcast';
 const FEEDBACK = `${REPO}/issues/new?template=feedback.yml`;
-// The site root. A spot's own page (spot/<id>/) sets <base href="../../">, so relative links work
-// there too; the home page has no <base>. Relative both ways, so the site works at any address.
+// The site root. Built pages set a relative <base> at it ("./" on the home page, "../../" in
+// spot/<id>/), resolved once as the page loads, so pushState to spot/<id>/ does not move relative
+// links; relative, so the site works at any address.
 const ROOT = new URL('./', document.querySelector('base') ? document.baseURI
   : new URL(location.pathname.replace(/spot\/[^/]+\/?$/, ''), location.origin));
 // Spot ids that get their own page; scripts/build_site.py uses the same rule. Others keep ?spot=.
-const PAGE_ID = /^[a-z0-9-]+$/;
+const PAGE_ID = /^[A-Za-z0-9_-]+$/;
 const spotPath = id => PAGE_ID.test(id) ? `${ROOT.pathname}spot/${id}/` : `${ROOT.pathname}?spot=${encodeURIComponent(id)}`;
-const spotFromURL = () => { const m = location.pathname.match(/\/spot\/([a-z0-9-]+)\/?$/);
+const spotFromURL = () => { const m = location.pathname.match(/\/spot\/([A-Za-z0-9_-]+)\/?$/);
   return m ? m[1] : new URLSearchParams(location.search).get('spot'); };
 
 // Touch screens: one finger scrolls the page, two move the map (Leaflet's pinch pans as well as zooms).

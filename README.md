@@ -561,8 +561,11 @@ Each spot has its own page, `spot/<id>/`, written by `build_site.write_pages`:
 the same map page with the spot's name, a one-line description and absolute
 share-preview tags in its head (today's level is left out, because messaging
 apps keep a preview for days), plus `sitemap.xml`. Links shared from the site
-use these addresses, and old `?spot=` links are rewritten to them. A spot's
-page sets a relative `<base href="../../">`, so the pages work at any address.
+use these addresses, and old `?spot=` links are rewritten to them. Every page
+sets a relative `<base>` at the site root (`./` at home, `../../` on a spot's
+page). The page moves between the list and spots with `pushState`, and a
+`<base>` is fixed as the page loads, so its links do not follow the address
+into `spot/<id>/`; being relative, the pages work at any address.
 Share links, previews and the sitemap need the absolute one: the repository
 variable `DIPCAST_SITE_URL` (set it when adding a custom domain) or, unset, the
 repository's GitHub Pages address. `icons/og.png` is the preview image

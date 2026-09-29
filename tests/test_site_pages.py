@@ -22,7 +22,7 @@ SPOTS = [
      "upstream_summary": {"overflows": 15}, "days": [{"label": "very high"}]},
     {"id": "tarn", "name": "A Tarn", "kind": "lake", "days": [],
      "error": "An isolated lake with no river connection in the network: storm overflows cannot reach it by water."},
-    {"id": "Bad Id", "name": "Odd", "kind": "river", "upstream_summary": {"overflows": 0}, "days": []},
+    {"id": "Bad Id", "name": "Odd", "kind": "river", "upstream_summary": {"overflows": 0}, "days": []},   # a space
 ]
 
 
@@ -43,7 +43,7 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     assert "no monitored storm overflow can reach this lake" in (tmp_path / "spot" / "tarn" / "index.html").read_text()
     home = (tmp_path / "index.html").read_text()
     assert '<link rel="canonical" href="https://example.org/swim/">' in home
-    assert "<base" not in home.split("</head>")[0]   # the home page resolves links from its own address
+    assert '<base href="./">' in home.split("</head>")[0]   # pushState to spot/<id>/ must not move its links
     assert "Loading forecasts…" in home
     for f in ["sw.js", "manifest.webmanifest", "icons/og.png", "verification.html", "privacy.html", "page.css", ".nojekyll"]:
         assert (tmp_path / f).exists(), f
@@ -68,14 +68,17 @@ def test_site_url_follows_the_repository_unless_set(monkeypatch):
     assert bs.site_url() == "https://ethanbuckley.github.io/swimcast/"
     monkeypatch.setenv("DIPCAST_SITE_URL", "https://swim.example")
     assert bs.site_url() == "https://swim.example/"
+    monkeypatch.setenv("DIPCAST_SITE_URL", "swim.example")   # no scheme: previews would get relative links
+    assert bs.site_url() == "https://ethanbuckley.github.io/swimcast/"
 
 
-def test_every_listed_spot_can_have_its_own_page():
+def test_the_page_and_the_build_use_one_id_rule():
+    # Not a check of spots.csv: an odd id only loses its own page (it keeps ?spot=), and a failing
+    # test here would stop every build and leave the whole site stale.
     bs = _build_site()
-    ids = pd.read_csv(ROOT / "spots.csv")["id"]
-    assert ids.map(lambda i: bool(bs.SPOT_ID.fullmatch(i))).all()
+    assert bs.SPOT_ID.pattern == "[A-Za-z0-9_-]+"
     page = (ROOT / "src" / "dipcast" / "site" / "index.html").read_text()
-    assert "const PAGE_ID = /^[a-z0-9-]+$/;" in page   # the page's script uses the same rule
+    assert "const PAGE_ID = /^[A-Za-z0-9_-]+$/;" in page and "/\\/spot\\/([A-Za-z0-9_-]+)\\/?$/" in page
 
 
 def test_observations_from_is_the_first_day_with_a_mask():

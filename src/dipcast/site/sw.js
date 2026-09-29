@@ -36,21 +36,24 @@ self.addEventListener('fetch', e => {
   e.respondWith(fresh ? networkFirst(req) : storedFirst(req));
 });
 
+// A page is stored under its address without the query, so ?spot= or ?fbclid= links cannot leave an
+// older copy that an offline or slow visit would find first.
+const key = req => { const u = new URL(req.url); if (req.mode === 'navigate') u.search = ''; u.hash = ''; return u.href; };
+
 async function networkFirst(req) {
-  const cache = await caches.open(CACHE);
-  const net = fetch(req).then(res => { if (res.ok) cache.put(req, res.clone()); return res; });
+  const cache = await caches.open(CACHE), k = key(req);
+  const net = fetch(req).then(res => { if (res.ok) cache.put(k, res.clone()); return res; });
   net.catch(() => {});   // when the stored copy answers, a later network failure is expected
   try {
     return await Promise.race([net, new Promise((_, no) => setTimeout(() => no(new Error('slow')), TIMEOUT_MS))]);
   } catch (err) {
-    const hit = await cache.match(req, { ignoreSearch: req.mode === 'navigate' });
+    const hit = await cache.match(k);
     if (hit) return hit;
-    // A spot's page never opened before: the home page stands in, and reads the spot from the
-    // address. Spot pages sit two levels down, so it gets their <base> to keep its links working.
-    const home = req.mode === 'navigate' ? await cache.match('./') : undefined;
+    // A page never opened before (a spot's, say): the home page stands in and reads the spot from
+    // the address. Its first <base>, at this worker's scope, keeps its links working at any depth.
+    const home = req.mode === 'navigate' ? await cache.match(self.registration.scope) : undefined;
     if (!home) return net;
-    if (!/\/spot\/[^/]+\/$/.test(new URL(req.url).pathname)) return home;
-    const html = (await home.text()).replace('<head>', '<head>\n<base href="../../">');
+    const html = (await home.text()).replace('<head>', `<head>\n<base href="${self.registration.scope}">`);
     return new Response(html, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
   }
 }
