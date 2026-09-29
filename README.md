@@ -633,28 +633,51 @@ and it costs about £8 a month on Fly.io; the static site costs nothing.
 
 ## Before taking money or running ads
 
-Checked on 29 Sep 2026 against the licences and legislation; not a lawyer's
-review, which these points need before any of them happens.
+Checked on 29 Sep 2026 against the licences, the legislation and the providers'
+own pages, in a solicitor-style review by an AI assistant: not legal advice, and
+no substitute for a solicitor before any of these happens.
 
-- **Hosting.** GitHub's terms do not allow GitHub Pages to run an online
+- **Is Dipspot a business?** Probably not yet: no income, no ads, nothing sold.
+  But the Consumer Rights Act 2015 (s.2(2)) catches anyone "acting for purposes
+  relating to" a business, and building an audience for a planned launch could
+  meet that. The terms are therefore written as if the Unfair Contract Terms Act
+  1977 and the CRA apply: no exclusion of liability for death or personal injury
+  caused by negligence (UCTA s.2(1), CRA s.65), and the "without responsibility"
+  disclaimer yields to that (a disclaimer that stops a duty arising counts as an
+  exclusion for a business, UCTA s.13).
+- **Does the Met Office's share-alike licence reach the forecasts?** On this
+  reading, no. CC BY-SA 4.0 imposes share-alike only on "Adapted Material",
+  material changed in a way that needs the licensor's permission (s.1(a),
+  s.3(b)), and imposes no conditions on uses that need no permission (s.8(a)).
+  Database right protects against extracting or re-using all or a substantial
+  part of the data (Copyright and Rights in Databases Regulations 1997, reg 16).
+  Forecasts, levels and scores computed from the rainfall do neither. The
+  48-hour rainfall sums on the site are an insubstantial part, and are labelled
+  CC BY-SA anyway. The residual risk is contractual: Open-Meteo's Met Office page
+  says derived products "should" be shared alike, though its terms of use do not
+  impose it. For a paid data product, request a CC BY model (`models=`) and
+  re-check the spill and E. coli models against its rainfall, or get this
+  reading confirmed.
+- **Hosting.** GitHub's rules do not allow GitHub Pages to host an online
   business, so a paid Dipspot needs another host.
-- **Rainfall.** Open-Meteo's free API is for non-commercial use only; ads or
-  subscriptions need a paid plan. For England its default model returns the
-  Met Office's forecast, which is CC BY-SA 4.0: whether share-alike reaches the
-  forecasts built from it is a question for a lawyer. Choosing a CC BY model
-  (`models=` in the request) avoids it, but the spill and E. coli models would
-  then need re-checking against the new rainfall.
-- **Map tiles.** The OpenStreetMap Foundation's tile policy warns that
-  commercial or donation-seeking services may lose access; use a tile provider.
-- **Liability.** A business cannot exclude liability for death or personal
-  injury caused by negligence (Unfair Contract Terms Act 1977 s.2, Consumer
-  Rights Act 2015 s.65), so the terms carve those out. Before charging, get
-  public liability and professional indemnity insurance and trade through a
-  company.
-- **Data protection.** The privacy notice must name the controller and give a
-  private contact (UK GDPR Art 13; since 19 June 2026 also a way to complain to
-  the controller, DPA 2018 s.164A). The site probably owes the ICO no fee now
+- **Rainfall API.** Open-Meteo's free API excludes sites with subscriptions or
+  advertising; those need a paid plan, whose terms then apply.
+- **Map tiles.** The OpenStreetMap Foundation's tile policy warns commercial
+  services, and those that seek donations, that access may be withdrawn at any
+  point; use a tile provider before either.
+- **Insurance and a company.** Before charging, get public liability and
+  professional indemnity insurance, and trade through a company or LLP.
+- **Data protection.** The privacy notice names the controller and a private
+  contact, and says complaints are acknowledged within 30 days (UK GDPR Art 13;
+  DPA 2018 s.164A, from 19 June 2026). The site probably owes the ICO no fee now
   (personal and household processing is exempt); payments or ads would end that.
+- **Email alerts.** The privacy notice promises an update before they exist:
+  collect addresses only with clear consent, put an unsubscribe link in every
+  email, and have a processor agreement with the email service.
+- **Subscriptions.** Selling them brings in pre-contract information and 14-day
+  cancellation rights (Consumer Contracts Regulations 2013), and whatever
+  subscription rules of the Digital Markets, Competition and Consumers Act 2024
+  are in force by then.
 - **The page-view counter.** PECR (Schedule A1, in force 5 Feb 2026) lets it run
   without consent only with a free, simple way to object, which the site does
   not have yet (`COUNTER_TOKEN_ENV` in `scripts/build_site.py`).

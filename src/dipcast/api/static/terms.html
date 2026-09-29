@@ -6,6 +6,7 @@
 
 <h2>Who runs Dipspot</h2>
 <p>Dipspot is a free, non-commercial project run by one person, the owner of the GitHub account <a href="https://github.com/ethanbuckley">ethanbuckley</a>. It is not a company. Email <a href="mailto:ethan@ethanbuckley.me.uk">ethan@ethanbuckley.me.uk</a>; the <a href="/privacy">privacy notice</a> says what happens to what you send.</p>
+<p>In these terms, "we" and "us" mean the person who runs Dipspot, and "you" means anyone who uses it. These terms apply whenever you use the site. If you do not agree with them, please do not use it.</p>
 <p>Dipspot is independent. It is not run by, connected with or endorsed by the Environment Agency, any water company, Water UK, Stream, the Met Office, Ordnance Survey, Open-Meteo or OpenStreetMap.</p>
 
 <h2>What Dipspot is</h2>
@@ -17,27 +18,29 @@
 <h2>Before you swim</h2>
 <ul>
 <li>Nothing on this site is advice about your health or safety. Whether to go in the water is your decision.</li>
-<li>Do not rely on Dipspot alone. Check the signs at the water. At a designated bathing water, check the Environment Agency's page for it too: it shows advice against bathing that Dipspot does not. Each bathing water's page on Dipspot links to it.</li>
+<li>Do not rely on Dipspot alone. Check the signs at the water and follow them, and any instructions from lifeguards or the landowner. At a designated bathing water, check the Environment Agency's page for it too: it shows advice against bathing that Dipspot does not. Each bathing water's page on Dipspot links to it.</li>
 <li>Open water has dangers the site does not cover, among them cold water, currents, weirs, depth, hidden objects and algae.</li>
 <li>If someone is in trouble in the water, call 999. If you are unwell after swimming, contact your GP or NHS 111 and say that you have been swimming.</li>
 </ul>
 
 <h2>Accuracy</h2>
-<p>Everything on the site is given without responsibility for its accuracy. How often the forecast is right is published on the <a href="/verification">accuracy page</a>, including where it is wrong. Overflow status can be late, missing or wrong at source; some overflows have no live monitor; rainfall forecasts have errors that grow with lead time; the river network and outfall positions are approximate. Expect the forecast to be wrong some of the time.</p>
+<p>We take care over the site, but we do not promise that anything on it is accurate, complete or up to date. Subject to "Our responsibility to you" below, it is given without responsibility for its accuracy. How often the forecast is right is published on the <a href="/verification">accuracy page</a>, including where it is wrong. Overflow status can be late, missing or wrong at source; some overflows have no live monitor; rainfall forecasts have errors that grow with lead time; the river network and outfall positions are approximate. Expect the forecast to be wrong some of the time.</p>
 
 <h2>Water companies' data</h2>
-<p>Each overflow's status is shown as its water company publishes it. Whether an overflow is "expected to spill" is Dipspot's own model estimate, not a statement by the company, and it does not mean the company has broken any rule.</p>
+<p>Each overflow's status is shown as its water company publishes it. Whether an overflow is "expected to spill" is our model's estimate, not a statement by the company, and it does not mean the company has broken any rule.</p>
 
-<h2>Responsibility</h2>
-<p>Dipspot is free and provided as it is. Forecasts can be wrong, late or missing, and the site may be unavailable at any time.</p>
-<p>Dipspot does not exclude or limit liability for death or personal injury caused by negligence, for fraud, or for anything else that the law does not allow to be excluded or limited. Apart from that, Dipspot is not liable for any loss or damage that comes from using the site or relying on it, including the decision to swim or not to swim.</p>
+<h2 id="responsibility">Our responsibility to you</h2>
+<p>The site is free and provided as it is. Its forecasts can be wrong, late or missing. We do not promise that the site will be available, secure or free of errors.</p>
+<p>Nothing in these terms excludes or limits our liability for death or personal injury caused by our negligence, for fraud or fraudulent misrepresentation, or for anything else that the law does not allow us to exclude or limit.</p>
+<p>Subject to that, we are not liable for any loss or damage that comes from using the site or relying on it, including a decision to swim or not to swim, a wasted journey or a cancelled event. If you use the site for a business or to run an event, you do so at your own risk, and we are not liable to you for any loss of profit, income, business or opportunity.</p>
 
 <h2>Using the site, its data and its code</h2>
 <ul>
 <li>You may use and share the site for any lawful purpose. Please do not overload it.</li>
 <li>The third-party data in the site's pages and data files (<code>data/spots.json</code>, <code>data/overflows.geojson</code>, <code>data/verification.json</code>) and in the project's releases keeps its own licence, listed below. Nothing in these terms limits what that licence lets you do with it.</li>
-<li>Dipspot's own forecasts, levels and scores may be reused for non-commercial purposes if you credit Dipspot and keep the data credits below. Ask first about any other use.</li>
+<li>Our own forecasts, levels and scores may be reused for non-commercial purposes if you credit Dipspot and keep the data credits below. Ask first about any other use.</li>
 <li>The source code is open under the MIT licence. That licence covers the code, not the data.</li>
+<li>Links to other websites are there for convenience. We are not responsible for what those sites say or do.</li>
 </ul>
 
 <h2 id="data">Data sources and credits</h2>
@@ -51,6 +54,7 @@
 <li>E. coli results and algae checks from the Water Quality Explorer: © Environment Agency copyright and/or database right 2025. All rights reserved.</li>
 <li>Water Framework Directive lake water bodies: © Environment Agency copyright and/or database right 2015. All rights reserved. Contains Ordnance Survey data © Crown copyright 2013.</li>
 </ul></li>
+<li><b>River levels</b>, in the server version only: this uses Environment Agency flood and river level data from the real-time data API (Beta), <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>. The website does not use them.</li>
 <li><b>River network.</b> Ordnance Survey OS Open Rivers, <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">Open Government Licence v3.0</a>. Contains OS data © Crown copyright and database right 2026.</li>
 <li><b>Rainfall.</b> <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a>, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. For England, Open-Meteo serves the Met Office's UK forecasts: Met Office data © Crown copyright, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>. Dipspot adds the rainfall up over 24 and 48 hours and uses it in its models; the rainfall figures on the site stay under CC BY-SA 4.0. The models were trained on ERA5-Land reanalysis rainfall from the Copernicus Climate Change Service, and on Open-Meteo's archived forecasts, both via Open-Meteo.</li>
 <li><b>Map.</b> Map data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, under the <a href="https://opendatacommons.org/licenses/odbl/1-0/">Open Database Licence</a>; map tiles from the OpenStreetMap Foundation. The map library is <a href="https://leafletjs.com/">Leaflet</a> (BSD 2-Clause licence).</li>
@@ -61,6 +65,6 @@
 <p>These terms may change as the tool develops. The date at the top is the date of the current version. Earlier versions are kept in the <a href="https://github.com/ethanbuckley/dipcast/commits/main/src/dipcast/api/static/terms.html">file's history</a>.</p>
 
 <h2>Law</h2>
-<p>These terms are governed by the law of England and Wales.</p>
+<p>These terms are governed by the law of England and Wales, and the courts of England and Wales can hear any dispute about them. If you live in Scotland or Northern Ireland, you can also bring proceedings in your local courts. If a court decides that part of these terms cannot be enforced, the rest still applies.</p>
 <footer>Plain-English terms, checked against the legislation and the data licences on 29 September 2026 but not reviewed by a lawyer. They should be before Dipspot takes money, runs ads or moves to a domain of its own.</footer>
 </main></body></html>
