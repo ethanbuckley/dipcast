@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 from html import escape
@@ -72,6 +73,82 @@ WITH_COUNTER = ("Last updated 29 September 2026 (page-view counter).",
                  "loads, as any web server would, and its "
                  '<a href="https://www.cloudflare.com/privacypolicy/">privacy policy</a> applies to that. '
                  "There is no other analytics or tracking."))
+
+
+def lead_skill(processed: Path = config.PROCESSED) -> dict | None:
+    """How good a forecast for each day ahead has been, as a share of the same-day forecast's skill
+    (Brier skill against climatology), for a picked day on a spot's page. Spills: the 2025 held-out
+    test with archived rain forecasts, lead-calibrated and cross-fitted as the site runs it. Water
+    quality: the leave-one-year-out replay on rivers, where the figure is shown. Held from rising
+    with the days: a forecast further ahead is not better, and water quality's 0.64 at four days
+    against 0.55 at three (29 Sep 2026) is noise in 907 river samples. None if the tables are
+    missing."""
+    try:
+        leads = pd.read_csv(processed / "verification_leads_2025.csv").set_index("source")["brier_skill_vs_clim"]
+        spill = [float(leads[f"forecast lead {k}, isotonic cross-fitted (odd/even months)"]) for k in range(5)]
+        ev = json.loads((processed / "ecoli_model_eval.json").read_text())
+        clim = next(r["brier_river"] for r in ev["loyo"] if r["model"] == "climatology by type")
+        by = {r["lead"]: r["brier_river"] for r in ev["by_lead"] if r["exposure"] == "replayed exposure"}
+        water = [1 - by[k] / clim for k in range(5)]
+    except (OSError, KeyError, StopIteration, ValueError) as e:
+        log.warning("lead skill tables unreadable, a picked day will not say how sure it is: %s", e)
+        return None
+    held = lambda xs: [round(min(xs[: k + 1]) / xs[0], 2) for k in range(len(xs))]
+    return {"spill": held(spill), "water": held(water)}
+
+
+# Alerts (push/): on when both repository variables are set. The Worker's address and its public
+# key sit in spots.json for the page; the private key never leaves the Worker.
+PUSH_URL_ENV, PUSH_KEY_ENV = "DIPCAST_PUSH_URL", "DIPCAST_VAPID_PUBLIC_KEY"
+SAVED_LOCAL = "It stays on your device: it is not sent to Dipspot or to anyone else."
+SAVED_WITH_PUSH = "It stays on your device: it is not sent to Dipspot or to anyone else, unless you turn on alerts (below)."
+
+
+def push_config() -> dict | None:
+    url, key = (os.environ.get(PUSH_URL_ENV, "").strip(), os.environ.get(PUSH_KEY_ENV, "").strip())
+    if not (url or key):
+        return None
+    # An https address and a 65-byte P-256 public key in base64url (87 characters, no padding).
+    if not (re.fullmatch(r"https://[A-Za-z0-9.-]+(:\d+)?/", url) and re.fullmatch(r"[A-Za-z0-9_-]{87}", key)):
+        log.warning("%s must be https://host/ and %s a base64url P-256 public key: alerts left off", PUSH_URL_ENV, PUSH_KEY_ENV)
+        return None
+    return {"url": url, "key": key}
+
+
+def with_push(html: str, on: bool) -> str:
+    """The privacy page: the alerts section when alerts are on, else the planned-feature note."""
+    if not on:
+        return html
+    html = html.replace(SAVED_LOCAL, SAVED_WITH_PUSH)
+    return re.sub(r"<h2>If alerts are added</h2>\s*<p>.*?</p>", lambda _: PUSH_PRIVACY, html, count=1, flags=re.DOTALL)
+
+
+PUSH_PRIVACY = (
+    "<h2>Alerts</h2>\n<p>If you turn on alerts on the Saved page, your browser gives Dipspot a push address: a "
+    "long random web address, run by your browser's maker (Google, Apple, Mozilla or Microsoft), that delivers "
+    "notifications to this browser. Dipspot's alert service stores that address, with the identifiers of your "
+    "saved spots, and nothing else: no name, email address or location. It uses them only to send a notification "
+    "when one of those spots' forecast turns high, and the notification passes through your browser maker's push "
+    "service. Turning alerts off, or removing all your saved spots, deletes the record. The alert service runs on "
+    "Cloudflare Workers, which sees your IP address when you turn alerts on or off, as any web server would; "
+    '<a href="https://www.cloudflare.com/privacypolicy/">Cloudflare\'s privacy policy</a> applies to that.</p>')
+
+
+def write_alerts(site: Path, root: str, push_on: bool) -> bool:
+    """alerts.json beside spots.json: each spot's level and headline by the page's own rules
+    (scripts/alerts.js runs levels.js in Node). Without Node the file is not written; with alerts
+    on that stops them, so it is announced."""
+    try:
+        subprocess.run(["node", str(ROOT / "scripts" / "alerts.js"), str(site / "data" / "spots.json"),
+                        str(site / "data" / "alerts.json"), root], check=True, capture_output=True, text=True, timeout=120)
+        return True
+    except (OSError, subprocess.SubprocessError) as e:
+        msg = f"alerts.json not written ({getattr(e, 'stderr', '') or e})"
+        if push_on:
+            announce(msg)
+        else:
+            log.warning("%s", msg)
+        return False
 
 
 def with_counter(html: str, token: str | None) -> str:
@@ -190,6 +267,7 @@ def copy_app_files(site: Path) -> None:
     icon, a name and a full-screen window."""
     shutil.copy(TEMPLATE.parent / "manifest.webmanifest", site / "manifest.webmanifest")
     shutil.copy(TEMPLATE.parent / "sw.js", site / "sw.js")   # the offline copy; see the file
+    shutil.copy(TEMPLATE.parent / "levels.js", site / "levels.js")   # the level rules, which the page loads
     shutil.copytree(TEMPLATE.parent / "icons", site / "icons", dirs_exist_ok=True)
 
 
@@ -277,7 +355,7 @@ def sitemap(root: str, spot_ids: list[str], day: str) -> str:
 
 
 def write_pages(site: Path, results: list[dict], token: str | None = None, root: str | None = None,
-                day: str | None = None) -> int:
+                day: str | None = None, push: bool = False) -> int:
     """Every HTML page, the sitemap and the app files. Returns the number of spot pages. A spot
     whose id is not letters, digits and hyphens gets no page of its own and keeps ?spot=."""
     root = root or site_url()
@@ -288,7 +366,7 @@ def write_pages(site: Path, results: list[dict], token: str | None = None, root:
         s = (STATIC / name).read_text()
         for a, b in REWRITES:
             s = s.replace(a, b)
-        (site / name).write_text(with_counter(s, token))
+        (site / name).write_text(with_counter(with_push(s, push) if name == "privacy.html" else s, token))
     shutil.copy(STATIC / "page.css", site / "page.css")
     copy_app_files(site)
     home = PAGE_META.sub(lambda m: page_meta(HOME_TITLE, DESCRIPTION, root, root, base="./"), template, count=1)
@@ -342,13 +420,15 @@ def build(refresh: bool = True) -> dict:
     for w in health["warnings"]:
         announce(w)
     (SITE / "data").mkdir(parents=True, exist_ok=True)
+    push = push_config()
     (SITE / "data" / "spots.json").write_text(json.dumps({
         "generated_at": generated.isoformat(), "version": __version__, "n": len(results), "build": health,
-        "spots": results}, default=str))
+        "lead_skill": lead_skill(), **({"push": push} if push else {}), "spots": results}, default=str))
+    write_alerts(SITE, site_url(), push is not None)
     (SITE / "data" / "overflows.geojson").write_text(json.dumps(overflows_geojson(limit=20000), default=str))
     (SITE / "data" / "verification.json").write_text(json.dumps(load_verification(), default=str))
     token = os.environ.get(COUNTER_TOKEN_ENV, "").strip()
-    health["spot_pages"] = write_pages(SITE, results, token, day=generated.date().isoformat())
+    health["spot_pages"] = write_pages(SITE, results, token, day=generated.date().isoformat(), push=push is not None)
     summary = {**health, "seconds": round(time.time() - t0, 1), "generated_at": generated.isoformat()}
     summary.pop("failed_spots", None)
     log.info("site built: %s", summary)

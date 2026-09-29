@@ -338,13 +338,18 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
         p0 = np.nan_to_num(p, nan=0.0)
         ov["p_today"] = p0[:, today_idx] if p0.shape[1] > today_idx else 0.0
         ov["p_tomorrow"] = p0[:, today_idx + 1] if p0.shape[1] > today_idx + 1 else 0.0
+        # Every day shown, so a spot's page can say which overflows drive a day three days out, and
+        # rank them over all of those days. NaN (no rain data at the overflow's cell) goes out as
+        # None: 0 would read as "will not spill".
+        p_ahead = p[:, today_idx:today_idx + len(day_rows)]
         ov["now_contribution"] = now_contrib
         ov["impact_today"] = ov["weight"] * ov["p_today"]
         ov["relevance"] = np.maximum.reduce([
             ov["now_contribution"].to_numpy(dtype=float),
-            (ov["weight"] * np.maximum(ov["p_today"], ov["p_tomorrow"])).to_numpy(dtype=float),
+            ov["weight"].to_numpy(dtype=float) * np.nan_to_num(p_ahead, nan=0.0).max(axis=1, initial=0.0),
             0.1 * ov["weight"].to_numpy(dtype=float),   # keep close, quiet overflows visible
         ])
+        ov["p_days"] = [[None if np.isnan(v) else round(float(v), 3) for v in row] for row in p_ahead]
         top = ov.sort_values("relevance", ascending=False).head(include_contributors)
         for _, r in top.iterrows():
             contrib.append({k: _clean(r.get(k)) for k in [
@@ -358,6 +363,7 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
                 "weight": round(float(r["weight"]), 3),
                 "p_spill_today": round(float(r["p_today"]), 3),
                 "p_spill_tomorrow": round(float(r["p_tomorrow"]), 3),
+                "p_spill_days": r["p_days"],   # one per entry in "days", None where unknown
                 "now_contribution": round(float(r["now_contribution"]), 3),
             })
     out["contributors"] = contrib
