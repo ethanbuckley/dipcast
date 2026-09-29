@@ -1,0 +1,55 @@
+name: Feedback on a forecast
+description: How you used dipcast, and whether it changed what you did
+title: "Feedback: "
+labels: [feedback]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you. The answers decide what gets built next. This issue is public, so leave out your address and anything else personal.
+  - type: input
+    id: spot
+    attributes:
+      label: Which spot?
+      description: The spot's name on the site, or where you swim if it is not listed
+  - type: dropdown
+    id: who
+    attributes:
+      label: How do you use the water?
+      options:
+        - Swimming
+        - Paddling, kayaking or paddleboarding
+        - Rowing
+        - I run a club, an event or a centre
+        - I monitor or sample water
+        - Other
+  - type: dropdown
+    id: decision
+    attributes:
+      label: Did the forecast change what you did?
+      options:
+        - "Yes: I went somewhere else"
+        - "Yes: I went on a different day"
+        - "Yes: I stayed out of the water"
+        - "Yes: I went in, and felt surer about it"
+        - "No: I did what I would have done anyway"
+        - "I was only looking"
+    validations:
+      required: true
+  - type: textarea
+    id: confusing
+    attributes:
+      label: What was confusing, wrong or missing?
+      description: For example, a level that did not match what you saw at the water, or a word you did not understand
+  - type: dropdown
+    id: alerts
+    attributes:
+      label: Would a message when your spot's forecast turns moderate or worse be useful?
+      options:
+        - "Yes, by email"
+        - "Yes, as a phone notification"
+        - "No"
+  - type: textarea
+    id: other
+    attributes:
+      label: Anything else

@@ -354,6 +354,16 @@ method, and `scripts/spill_day_ratio.py` finds 1.00 spill-days per counted
 spill pooled over 5,886 United Utilities site-years, which supports the
 approximation there without establishing it per overflow or company.
 
+Correction (29 Sep 2026): these rules were written on 16-17 Sep but reached the
+live site on 28 Sep, when the commit carrying them was pushed to main (16:51
+UTC). The coverage file shows it: no overflow-day row from 16-27 Sep carries a
+half-hour observation mask, and 98% of 28 Sep's rows do. Under the gap rule a
+day without a mask can never be scored, so the live table was empty on 29 Sep
+(0 of 70,663 candidate overflow-days); 29 Sep is the first day that can be
+scored, if that day's polls meet the rule. The
+scorer now reports the first masked day (`observations_from`) and the
+verification page says why the table is empty.
+
 **Algae (an observation, not a forecast; 28 Sep 2026).** At every sampling visit to a
 bathing water the EA sampler records one of four levels of algae: none, a trace (1-2
 items), some at intervals (3-6), or enough to be objectionable (more than 6). This is
@@ -503,7 +513,11 @@ Not done yet, in the order I would do them:
 4. Let live history accumulate for the eight companies without event feeds,
    then fit their site calibration.
 5. Per-lake residence time (needs volume; WFD gives area only).
-6. Dwr Cymru live status (no ArcGIS feed; would need their own map's API).
+6. Dwr Cymru live status. On 29 Sep 2026 their storm-overflow map reads a
+   public ArcGIS layer (`services3.arcgis.com/KLNF7YxtENPLYVey/.../Spill_Prod__view/FeatureServer/0`,
+   2,362 overflows, status as text, no token). It carries no licence text, so
+   ask Dwr Cymru for reuse terms before building on it. It matters for the
+   English Wye spots, which have Welsh overflows upstream.
 
 ## Run
 
@@ -542,6 +556,20 @@ result is public at `/verification`, alongside the offline tests. `/terms` and
 bathing waters and about 50 well-known river and lake spots. Add one by pull
 request, or ask for one with the "Request a spot" issue template; it appears
 in the next run. Inclusion is not a statement that a spot is safe.
+
+Each spot has its own page, `spot/<id>/`, written by `build_site.write_pages`:
+the same map page with the spot's name, a one-line description and absolute
+share-preview tags in its head (today's level is left out, because messaging
+apps keep a preview for days), plus `sitemap.xml`. Links shared from the site
+use these addresses, and old `?spot=` links are rewritten to them. Every page
+sets `<base>` to the site root, taken from `DIPCAST_SITE_URL` or, failing that,
+the repository's GitHub Pages address. `icons/og.png` is the preview image
+(`uv run --with pillow python scripts/make_share_image.py` redraws it after a
+name change). `sw.js` keeps the page and the latest forecast on the device, so
+the home-screen app opens without signal and says how old the forecast is. A
+saved spot is kept in the browser's local storage only. The "Feedback" link
+opens `.github/ISSUE_TEMPLATE/feedback.yml`, which asks whether the forecast
+changed what the person did.
 
 `.github/workflows/site.yml` is scheduled every 30 minutes and also runs on
 every push. GitHub starts scheduled runs when it can: the 113 builds of 13-28

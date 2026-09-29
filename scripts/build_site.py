@@ -15,7 +15,9 @@ import re
 import shutil
 import sys
 import time
+from html import escape
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pandas as pd
 
@@ -48,6 +50,15 @@ MAX_NO_DATA_SHARE = 0.5   # more of today's forecasts without rainfall data than
 REWRITES = [('href="/verification"', 'href="verification.html"'), ('href="/terms"', 'href="terms.html"'),
             ('href="/privacy"', 'href="privacy.html"'), ('href="/"', 'href="index.html"'),
             ('href="/static/page.css"', 'href="page.css"'), ("fetch('/api/verification')", "fetch('data/verification.json')")]
+BRAND = "dipcast"
+HOME_TITLE = f"{BRAND} · sewage-spill forecasts for swim spots"
+DESCRIPTION = ("Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow "
+               "data, rainfall forecasts and the river network.")
+# Spot ids that get a page of their own at spot/<id>/; index.html uses the same rule.
+SPOT_ID = re.compile(r"[a-z0-9-]+")
+PAGE_META = re.compile(r"<!-- page-meta.*?<!-- /page-meta -->", re.DOTALL)
+LOADING = '<div id="result"><p class="muted">Loading forecasts…</p></div>'
+SITE_URL_ENV = "DIPCAST_SITE_URL"
 # Optional page-view counter (Cloudflare Web Analytics). Off unless the repository
 # variable is set; the token is public (it sits in the page), so it is a variable,
 # not a secret.
@@ -154,7 +165,103 @@ def copy_app_files(site: Path) -> None:
     """The web-app manifest and icons beside index.html: Add to Home Screen then gives an
     icon, a name and a full-screen window."""
     shutil.copy(TEMPLATE.parent / "manifest.webmanifest", site / "manifest.webmanifest")
+    shutil.copy(TEMPLATE.parent / "sw.js", site / "sw.js")   # the offline copy; see the file
     shutil.copytree(TEMPLATE.parent / "icons", site / "icons", dirs_exist_ok=True)
+
+
+def site_url() -> str:
+    """The published address, for canonical links, share previews and the sitemap. A custom
+    domain sets DIPCAST_SITE_URL; otherwise it is this repository's GitHub Pages address, so a
+    fork or a renamed repository gets its own."""
+    url = os.environ.get(SITE_URL_ENV, "").strip()
+    if not url:
+        owner, _, repo = os.environ.get("GITHUB_REPOSITORY", "ethanbuckley/dipcast").partition("/")
+        url = f"https://{owner.lower()}.github.io/{repo}/"
+    return url.rstrip("/") + "/"
+
+
+def page_meta(title: str, description: str, url: str, root: str) -> str:
+    """The <head> block index.html marks with page-meta. Messaging apps and search engines need
+    absolute addresses for the page and its preview image. The <base> at the site root lets a
+    page in spot/<id>/ load the same files, and lets the offline copy of the home page stand in
+    at any address."""
+    return "\n".join([
+        f'<base href="{escape(urlparse(root).path or "/")}">',
+        f"<title>{escape(title)}</title>",
+        f'<meta name="description" content="{escape(description)}">',
+        f'<link rel="canonical" href="{escape(url)}">',
+        '<meta property="og:type" content="website">',
+        f'<meta property="og:site_name" content="{escape(BRAND)}">',
+        f'<meta property="og:title" content="{escape(title)}">',
+        f'<meta property="og:description" content="{escape(description)}">',
+        f'<meta property="og:url" content="{escape(url)}">',
+        f'<meta property="og:image" content="{escape(root)}icons/og.png">',
+        '<meta property="og:image:width" content="1200">',
+        '<meta property="og:image:height" content="630">',
+        f'<meta property="og:image:alt" content="{escape(BRAND)}: sewage-spill forecasts for river and lake swim spots">',
+        '<meta name="twitter:card" content="summary_large_image">',
+    ])
+
+
+def spot_blurb(spot: dict) -> str:
+    """One sentence for a spot's search result and link preview. It leaves out today's level:
+    messaging apps keep a preview for days, and a level in it would go stale."""
+    name, kind = spot["name"], "lake" if spot.get("kind") == "lake" else "river"
+    n = (spot.get("upstream_summary") or {}).get("overflows")
+    if spot.get("error") and not str(spot["error"]).startswith("forecast failed"):
+        return f"{name}: no monitored storm overflow can reach this {kind} along the river network, so {BRAND} has no spill forecast for it."
+    if n == 0:
+        return f"{name}: no monitored storm overflows upstream. {BRAND} forecasts sewage-spill exposure for river and lake swim spots in England."
+    upstream = f" from the {n} monitored storm overflow{'' if n == 1 else 's'} upstream," if n else ""
+    return (f"Five-day sewage-spill forecast for {name},{upstream} using live overflow status, rainfall forecasts "
+            f"and the river network. Updated several times a day.")
+
+
+def spot_page(template: str, spot: dict, root: str) -> str:
+    """A spot's own page: the map page with the spot's name, description and address in its
+    <head>, and its name in the body for crawlers and for the moment before the script runs."""
+    url = f"{root}spot/{spot['id']}/"
+    blurb = spot_blurb(spot)
+    page = PAGE_META.sub(lambda m: page_meta(f"{spot['name']}: sewage-spill forecast · {BRAND}", blurb, url, root), template, count=1)
+    return page.replace(LOADING, f'<div id="result"><h2 class="spot-name">{escape(spot["name"])}</h2>'
+                                 f'<p class="muted">{escape(blurb)} Loading the forecast…</p></div>', 1)
+
+
+def sitemap(root: str, spot_ids: list[str], day: str) -> str:
+    urls = [root, f"{root}verification.html"] + [f"{root}spot/{i}/" for i in spot_ids]
+    body = "".join(f"<url><loc>{escape(u)}</loc><lastmod>{day}</lastmod></url>" for u in urls)
+    return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{body}</urlset>\n'
+
+
+def write_pages(site: Path, results: list[dict], token: str | None = None, root: str | None = None,
+                day: str | None = None) -> int:
+    """Every HTML page, the sitemap and the app files. Returns the number of spot pages. A spot
+    whose id is not letters, digits and hyphens gets no page of its own and keeps ?spot=."""
+    root = root or site_url()
+    template = TEMPLATE.read_text()
+    if not (PAGE_META.search(template) and LOADING in template):
+        raise ValueError("index.html has lost its page-meta block or its loading placeholder")
+    for name in ["verification.html", "terms.html", "privacy.html"]:
+        s = (STATIC / name).read_text()
+        for a, b in REWRITES:
+            s = s.replace(a, b)
+        (site / name).write_text(with_counter(s, token))
+    shutil.copy(STATIC / "page.css", site / "page.css")
+    copy_app_files(site)
+    home = PAGE_META.sub(lambda m: page_meta(HOME_TITLE, DESCRIPTION, root, root), template, count=1)
+    (site / "index.html").write_text(with_counter(home, token))
+    shutil.rmtree(site / "spot", ignore_errors=True)   # a spot dropped from spots.csv loses its page
+    ids = []
+    for r in results:
+        if not SPOT_ID.fullmatch(str(r["id"])):
+            log.warning("spot id %r is not letters, digits and hyphens: no page of its own, it keeps ?spot=", r["id"])
+            continue
+        (site / "spot" / r["id"]).mkdir(parents=True, exist_ok=True)
+        (site / "spot" / r["id"] / "index.html").write_text(with_counter(spot_page(template, r, root), token))
+        ids.append(r["id"])
+    (site / "sitemap.xml").write_text(sitemap(root, ids, day or pd.Timestamp.now(tz="Europe/London").date().isoformat()))
+    (site / ".nojekyll").write_text("")
+    return len(ids)
 
 
 def announce(warning: str) -> None:
@@ -195,15 +302,7 @@ def build(refresh: bool = True) -> dict:
     (SITE / "data" / "overflows.geojson").write_text(json.dumps(overflows_geojson(limit=20000), default=str))
     (SITE / "data" / "verification.json").write_text(json.dumps(load_verification(), default=str))
     token = os.environ.get(COUNTER_TOKEN_ENV, "").strip()
-    for name in ["verification.html", "terms.html", "privacy.html"]:
-        s = (STATIC / name).read_text()
-        for a, b in REWRITES:
-            s = s.replace(a, b)
-        (SITE / name).write_text(with_counter(s, token))
-    shutil.copy(STATIC / "page.css", SITE / "page.css")
-    copy_app_files(SITE)
-    (SITE / "index.html").write_text(with_counter(TEMPLATE.read_text(), token))
-    (SITE / ".nojekyll").write_text("")
+    health["spot_pages"] = write_pages(SITE, results, token, day=generated.date().isoformat())
     summary = {**health, "seconds": round(time.time() - t0, 1), "generated_at": generated.isoformat()}
     summary.pop("failed_spots", None)
     log.info("site built: %s", summary)
