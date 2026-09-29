@@ -4,6 +4,7 @@ absolute preview links, a spot's page has a relative <base>, and the live scorer
 observation records its coverage rule needs begin."""
 
 import shutil
+import subprocess
 import sys
 from itertools import pairwise
 from pathlib import Path
@@ -211,6 +212,13 @@ def test_the_privacy_notice_describes_alerts_only_when_they_are_on(tmp_path):
     for before, after in bs.PUSH_SWAPS:
         assert after in on and before not in on
     assert (tmp_path / "levels.js").exists()
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="needs Node")
+def test_the_offline_copy_rules():
+    # sw.js runs in a browser, so its tests are JavaScript; here so that the build's test step runs them.
+    r = subprocess.run(["node", "--test", str(ROOT / "tests" / "site_cache.test.cjs")], capture_output=True, text=True, timeout=60, check=False)
+    assert r.returncode == 0, r.stdout + r.stderr
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="needs Node")
