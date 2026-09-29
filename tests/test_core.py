@@ -73,6 +73,20 @@ def test_ecoli_features_and_rain_windows():
     assert q[1] > q[0] and 0 < q[0] < 1
 
 
+def test_ecoli_season_term_is_held_outside_the_sampling_season():
+    from dipcast.model.ecoli import features, season_day
+
+    days = pd.to_datetime(["2026-05-01", "2026-07-15", "2026-09-30", "2026-10-15", "2026-12-15", "2027-01-20",
+                           "2027-02-10", "2027-04-30", "2028-11-01"]).tz_localize("Europe/London")
+    doy = season_day(days)
+    assert list(doy[:3]) == [121, 196, 273]              # inside the season: unchanged
+    assert list(doy[3:6]) == [273, 273, 273]             # October to January: 30 September
+    assert list(doy[6:8]) == [121, 121]                  # February to April: 1 May
+    assert doy[8] == 274                                 # 2028 is a leap year: 30 September is day 274
+    X = features(np.full(len(days), 5.0), np.full(len(days), 2.0), np.full(len(days), 0.02), np.zeros(len(days)), days)
+    assert X.loc[3:5, "doy_sin"].nunique() == 1 and X.loc[3, "doy_cos"] == X.loc[2, "doy_cos"]
+
+
 def test_observed_spill_days_and_date_join():
     """A forecast log day (timestamp, as DuckDB returns DATE) must join to observed spill days (date)."""
     from dipcast.forecast_log import observed_spill_days

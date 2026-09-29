@@ -26,13 +26,28 @@ SAMPLE_HOUR = 12          # EA samples are taken 10:00-14:00; the model's rain w
 FEATURES = ["lrain48", "lrain24", "logit_risk", "lake", "lake_x_lrain48", "doy_sin", "doy_cos"]
 
 
+def season_day(when) -> np.ndarray:
+    """Day of year for the seasonal term, held inside the May-September sampling season.
+
+    The EA samples bathing waters from May to September only, so the model has seen no other
+    month. Outside it the day-of-year curve would carry on its summer shape with nothing to test
+    it against: with rain and exposure fixed it rose from 38% on 30 September to 48% in mid-
+    December (29 Sep 2026). So October to January take 30 September's value and February to April
+    1 May's, the nearer end of the season. The fitting samples all fall inside it (3 May to 7
+    September), so the fitted model is unchanged."""
+    t = pd.DatetimeIndex(pd.to_datetime(when))
+    doy, month, leap = t.dayofyear.to_numpy(), t.month.to_numpy(), t.is_leap_year.astype(int)
+    first, last = 121 + leap, 273 + leap   # 1 May and 30 September
+    return np.where((month >= 10) | (month == 1), last, np.where(month < 5, first, doy))
+
+
 def features(rain_48h, rain_24h, risk, lake, when) -> pd.DataFrame:
     """Array-like inputs of equal length; `when` is datetime-like (for day of year)."""
     r48 = np.log1p(np.clip(np.asarray(rain_48h, dtype=float), 0, None))
     r24 = np.log1p(np.clip(np.asarray(rain_24h, dtype=float), 0, None))
     p = np.clip(np.asarray(risk, dtype=float), 1e-3, 1 - 1e-3)
     lk = np.asarray(lake, dtype=float)
-    doy = pd.DatetimeIndex(pd.to_datetime(when)).dayofyear.to_numpy()
+    doy = season_day(when)
     return pd.DataFrame({
         "lrain48": r48, "lrain24": r24, "logit_risk": np.log(p / (1 - p)), "lake": lk,
         "lake_x_lrain48": lk * r48,

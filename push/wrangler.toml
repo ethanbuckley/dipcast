@@ -1,0 +1,19 @@
+name = "dipspot-push"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+[[kv_namespaces]]
+binding = "PUSH"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[triggers]
+crons = ["*/30 * * * *"]
+
+[vars]
+SITE_URL = "https://ethanbuckley.github.io/dipcast/"
+ALLOWED_ORIGIN = "https://ethanbuckley.github.io"
+VAPID_SUBJECT = "REPLACE_WITH_mailto:you@example.com"
+VAPID_PUBLIC_KEY = "REPLACE_WITH_PUBLIC_KEY"
+# VAPID_PRIVATE_KEY is a secret, not a var. Set it with:
+#   npx wrangler secret put VAPID_PRIVATE_KEY
+# Never write it in this file. This file is committed, so anything here is public.

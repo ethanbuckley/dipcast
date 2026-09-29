@@ -3,10 +3,13 @@ name (never today's level, which a cached preview would show for days), every pa
 absolute preview links, a spot's page has a relative <base>, and the live scorer reports when the
 observation records its coverage rule needs begin."""
 
+import shutil
 import sys
+from itertools import pairwise
 from pathlib import Path
 
 import pandas as pd
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -113,8 +116,8 @@ def test_the_committed_ratings_cover_every_inland_bathing_water():
     rated = [v for v in c["sites"].values() if "class" in v]
     assert rated and all(v["class"] in {"excellent", "good", "sufficient", "poor"} and v["year"] >= 2020 for v in rated)
     assert all(v["url"].startswith("https://environment.data.gov.uk/bwq/profiles/") for v in c["sites"].values())
-    page = (ROOT / "src" / "dipcast" / "site" / "index.html").read_text()   # the page's names for the four
-    assert "const CLASS_LEVEL = { excellent: 'low', good: 'low', sufficient: 'moderate', poor: 'high' };" in page
+    rules = (ROOT / "src" / "dipcast" / "site" / "levels.js").read_text()   # the page's names for the four
+    assert "const CLASS_LEVEL = { excellent: 'low', good: 'low', sufficient: 'moderate', poor: 'high' };" in rules
 
 
 def test_the_credits_travel_with_the_data_and_the_terms_link_every_licence(tmp_path):
@@ -154,3 +157,58 @@ def test_observations_from_is_the_first_day_with_a_mask():
     assert observations_from(cov) == "2026-09-28"
     assert observations_from(cov.assign(slots=0)) is None   # rows written before the masks existed
     assert observations_from(pd.DataFrame()) is None
+
+
+def test_lead_skill_starts_at_one_and_never_rises():
+    skill = _build_site().lead_skill()
+    for k in ("spill", "water"):
+        s = skill[k]
+        assert len(s) == 5 and s[0] == 1.0 and all(0 < b <= a for a, b in pairwise(s))
+
+
+def test_alerts_are_off_unless_both_settings_are_sound(monkeypatch):
+    bs = _build_site()
+    monkeypatch.delenv(bs.PUSH_URL_ENV, raising=False)
+    monkeypatch.delenv(bs.PUSH_KEY_ENV, raising=False)
+    assert bs.push_config() is None
+    key = "B" + "A" * 86
+    monkeypatch.setenv(bs.PUSH_URL_ENV, "https://dipspot-push.example.workers.dev/")
+    monkeypatch.setenv(bs.PUSH_KEY_ENV, key)
+    assert bs.push_config() == {"url": "https://dipspot-push.example.workers.dev/", "key": key}
+    monkeypatch.setenv(bs.PUSH_URL_ENV, "http://dipspot-push.example.workers.dev/")   # not https
+    assert bs.push_config() is None
+    monkeypatch.setenv(bs.PUSH_URL_ENV, "https://dipspot-push.example.workers.dev/")
+    monkeypatch.setenv(bs.PUSH_KEY_ENV, key + '"')   # would break out of the page's JSON
+    assert bs.push_config() is None
+
+
+def test_the_privacy_notice_describes_alerts_only_when_they_are_on(tmp_path):
+    bs = _build_site()
+    bs.write_pages(tmp_path, SPOTS[:1], root="https://example.org/")
+    off = (tmp_path / "privacy.html").read_text()
+    assert "<h2>If alerts are added</h2>" in off and "push address" not in off
+    for before, _ in bs.PUSH_SWAPS:   # a rewrite of the notice must not leave a swap with nothing to swap
+        assert before in off, before
+    bs.write_pages(tmp_path, SPOTS[:1], root="https://example.org/", push=True)
+    on = (tmp_path / "privacy.html").read_text()
+    assert "<h2>Alerts</h2>" in on and "push address" in on and "If alerts are added" not in on
+    for before, after in bs.PUSH_SWAPS:
+        assert after in on and before not in on
+    assert (tmp_path / "levels.js").exists()
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="needs Node")
+def test_the_alerts_file_uses_the_page_rules(tmp_path):
+    import json
+    bs = _build_site()
+    (tmp_path / "data").mkdir()
+    river = {"id": "a", "name": "A river", "kind": "river", "upstream_summary": {"overflows": 3}, "location": {"mode": "river"},
+             "now": {"label": "low", "discharging_upstream": 0},
+             "days": [{"date": "2026-09-29", "risk": 0.5, "label": "high"}, {"date": "2026-09-30", "risk": 0.01, "label": "low"}]}
+    (tmp_path / "data" / "spots.json").write_text(json.dumps({"generated_at": "2026-09-29T08:00:00+01:00", "spots": [river, SPOTS[1]]}))
+    assert bs.write_alerts(tmp_path, "https://example.org/swim/", push_on=False)
+    out = json.loads((tmp_path / "data" / "alerts.json").read_text())
+    assert out["generated_at"] == "2026-09-29T08:00:00+01:00"
+    assert out["spots"]["a"] == {"name": "A river", "rank": 2, "level": "high", "headline": "High today: sewage spills",
+                                 "url": "https://example.org/swim/spot/a/"}
+    assert out["spots"]["tarn"]["rank"] == -1 and out["spots"]["tarn"]["level"] == "not covered"

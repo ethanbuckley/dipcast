@@ -444,8 +444,17 @@ time contributes to today (it started at yesterday before, and did not).
   the water rather than a lab test, and reaches the archive about a week after the visit.
   From October to April it is last season's final check, dated as such.
 - The E. coli column is validated on river bathing waters in the May-September
-  sampling season. On lakes it has no ranking skill and is not shown; outside
-  the season it is an extrapolation and is marked as such.
+  sampling season. On lakes it has no ranking skill and is not shown. The EA
+  takes no samples from October to April (all 2,165 samples in
+  `bwq_samples.parquet` fall in May-September), so then nothing tests it. It
+  still counts towards the level, so that a wet autumn day does not read as
+  clean water, and it is marked † on the page. Its day-of-year term is held at
+  30 September's value from October to January and 1 May's from February to
+  April (`ecoli.season_day`): left to run, the fitted curve, with rain and
+  exposure fixed, rose from 38% on 30 September to 48% in mid-December with
+  nothing to check it, and the term adds no skill even in season (rain + season
+  scores level with rain alone). The fitting samples all fall inside the held
+  range, so the fitted model is unchanged.
 - OS Open Rivers has small breaks at weirs, mills and culverts, and side
   channels (mill streams, leats) that are not connected upstream. Dipspot joins
   653 headwater nodes to a foreign dead-end within 60 m that carries real
@@ -580,7 +589,8 @@ repository's GitHub Pages address. `icons/og.png` is the preview image
 (`uv run --with pillow python scripts/make_share_image.py` redraws it after a
 name change). `sw.js` keeps the page and the latest forecast on the device, so
 the home-screen app opens without signal and says how old the forecast is. A
-saved spot is kept in the browser's local storage only, and `saved/` lists the
+saved spot is kept in the browser's local storage (and by the alert service, if
+alerts are turned on), and `saved/` lists the
 saved spots with their five days; `saved/#spots=a,b` offers a list someone
 shared (after the `#`, so it never reaches a server). An iPhone's Home Screen
 app has storage of its own: spots saved in Safari do not appear in it (checked
@@ -589,7 +599,8 @@ in the iOS 27 simulator, 29 Sep 2026), and the Saved page says so. The
 the forecast changed what the person did.
 
 **The level on the map and in the list** is the worst of four things, worked
-out in the page (`risk()` in `index.html`): the spill forecast's level; on
+out by `src/dipcast/site/levels.js` (`risk()`), which the page loads and the
+build runs in Node for the alerts, so the two cannot disagree: the spill forecast's level; on
 rivers with overflows upstream, the E. coli column in bands of under 10%, 25%,
 50% and over (the minimum inland standard lets about one sample in ten be over
 900); the Environment Agency's rating, where "poor" (advice against bathing applies
@@ -608,6 +619,34 @@ against bathing after an incident is not included, for the same reason and
 because the service sends no CORS header, so a browser page elsewhere cannot
 read it either: on 29 Sep 2026 it covered Ham and Kingston and Frensham Great
 Pond (algae). Each bathing water's page links to the EA's page instead.
+
+**One day.** A spot's five days are buttons. Picking one shows, in place of the
+summary of today and tomorrow, that day's level and what set it: the spills
+(how many overflows are expected to spill, the exposure index, and the three
+overflows most likely to reach the spot that day, from each overflow's spill
+chance for every day, `p_spill_days`), the water quality, the rain, and how good
+a forecast that far ahead has been. That last is `lead_skill` in `spots.json`,
+each day's Brier skill as a share of the same-day forecast's, from
+`verification_leads_2025.csv` (spills, lead-calibrated and cross-fitted) and
+`ecoli_model_eval.json` (water quality on rivers), held from rising with the
+days: 1.0, 0.84, 0.79, 0.70 and 0.59 for spills and 1.0, 0.75, 0.69, 0.55 and
+0.55 for water quality on 29 Sep 2026. The open day is in the address
+(`spot/<id>/#day=2026-10-01`), so a shared link opens it, and a day on a Saved
+card opens the spot on that day. The map has a day picker too, which colours
+the spots, and the "Low risk only" switch, by one day. On a phone a spot's page
+starts with a small map of where it is; a tap opens the full map there.
+
+**Alerts** (`push/`, set up by hand: `push/README.md`). A Cloudflare Worker
+keeps, for each browser that turns alerts on from the Saved page, its push
+address and the ids of its saved spots, and nothing else. Each build writes
+`data/alerts.json`, every spot's level and headline by `levels.js`
+(`scripts/alerts.js`, which needs Node; the runners have it). Every 30 minutes
+the Worker compares it with the previous one and sends a notification for any
+saved spot that has just turned high or very high, at most once a spot in 20
+hours. The page shows the switch only when the repository variables
+`DIPCAST_PUSH_URL` and `DIPCAST_VAPID_PUBLIC_KEY` are set, and the privacy
+notice gains its alerts section only then. On an iPhone, alerts work only in
+the Home Screen app.
 
 `.github/workflows/site.yml` is scheduled every 30 minutes and also runs on
 every push. GitHub starts scheduled runs when it can: the 113 builds of 13-28
