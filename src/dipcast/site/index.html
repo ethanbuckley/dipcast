@@ -402,7 +402,8 @@ function summary(d) {
     return k >= total ? (total === 1 ? ': the overflow upstream is expected to spill' : `: all ${total} overflows upstream are expected to spill`)
       : k >= 1 ? `: about ${k} of the ${total} overflows upstream ${k === 1 ? 'is' : 'are'} expected to spill`
       : ': a spill from a nearby overflow upstream is possible'; };
-  if (!ORDER[peak.label]) out.push(known.length === days.length ? 'Low today and for the next four days.' : 'Low on every day with a forecast.');
+  // All low: the headline already says so, so say what it rests on rather than repeat it.
+  if (!ORDER[peak.label]) out.push(`A spill from the ${total === 1 ? 'overflow' : `${total} overflows`} upstream is unlikely to reach here${known.length === days.length ? '' : ' on any day with a forecast'}.`);
   else if (peak === days[0]) out.push(`${cap(peak.label)} today${why(peak)}.`);
   else {
     out.push(hasData(days[0]) ? `${cap(days[0].label)} today.` : 'No forecast for today.');
