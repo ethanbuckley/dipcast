@@ -17,3 +17,5 @@ nav a { text-decoration:none; font-weight:550; } nav a:hover { text-decoration:u
 nav a.brand { margin-right:auto; color:var(--ink); font-weight:700; font-size:18px; letter-spacing:-.015em; }
 a:focus-visible { outline:3px solid var(--accent-2); outline-offset:2px; border-radius:4px; }
 footer { margin-top:48px; padding-top:16px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
+.short { border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:8px; padding:2px 18px 6px; background:#f5f7f8; margin:0 0 8px; }
+.short h2 { margin:14px 0 4px; } .short ul { margin:0; padding-left:18px; } .short li { margin:7px 0; }

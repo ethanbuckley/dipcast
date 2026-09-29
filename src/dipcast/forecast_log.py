@@ -217,6 +217,17 @@ def slot_stats(slots: np.ndarray, slots_per_day: int = SLOTS_PER_DAY) -> pd.Data
                          "last_h": np.where(n > 0, (last + 1) * step, np.nan), "max_gap_h": gap})
 
 
+def observations_from(cov: pd.DataFrame) -> str | None:
+    """The first day on which any overflow carries a half-hour observation mask. The coverage
+    rule needs the mask, so no earlier day can be scored. Rows written before the masks
+    existed read as 0. The mask code was written on 16 Sep 2026 but reached the live site on
+    28 Sep, so the page must not imply scoring could have started earlier."""
+    if cov.empty or "slots" not in cov:
+        return None
+    masked = cov.loc[cov["slots"].astype("int64") != 0, "day"]
+    return str(masked.min()) if len(masked) else None
+
+
 def covered_site_days(cov: pd.DataFrame, min_known: int = MIN_KNOWN_POLLS,
                       max_gap_h: float = MAX_GAP_H) -> pd.DataFrame:
     """(site_id, day) pairs whose observation supports a 'no spill' verdict: at
@@ -277,6 +288,7 @@ def verify_live(as_of: date | None = None) -> dict:
     fc = fc[fc["before_cutoff"]]
     # Score only overflow-days whose observation supports a verdict either way.
     cov_all = load_coverage()
+    out["observations_from"] = observations_from(cov_all)
     cov = covered_site_days(cov_all)
     out["coverage_from"] = str(cov["day"].min()) if len(cov) else None
     if len(cov):
