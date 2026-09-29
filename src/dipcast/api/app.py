@@ -94,6 +94,11 @@ def index():
     return FileResponse(STATIC / "index.html", headers=NO_CACHE)
 
 
+@app.get("/about")
+def about_page():
+    return FileResponse(STATIC / "about.html", headers=NO_CACHE)
+
+
 @app.get("/verification")
 def verification_page():
     return FileResponse(STATIC / "verification.html", headers=NO_CACHE)

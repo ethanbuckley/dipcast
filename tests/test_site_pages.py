@@ -51,7 +51,8 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     for f in ["sw.js", "manifest.webmanifest", "icons/og.png", "verification.html", "privacy.html", "page.css", ".nojekyll"]:
         assert (tmp_path / f).exists(), f
     sm = (tmp_path / "sitemap.xml").read_text()
-    assert sm.count("<url>") == 4 and "<loc>https://example.org/swim/spot/tarn/</loc>" in sm
+    assert sm.count("<url>") == 5 and "<loc>https://example.org/swim/spot/tarn/</loc>" in sm
+    assert "<loc>https://example.org/swim/about.html</loc>" in sm
     assert "<lastmod>2026-09-29</lastmod>" in sm
     # The Saved page: its list is in the browser, so nothing in it for a search engine.
     saved = (tmp_path / "saved" / "index.html").read_text()
@@ -59,6 +60,21 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     assert '<base href="../">' in head and '<meta name="robots" content="noindex">' in head
     assert '<link rel="canonical" href="https://example.org/swim/saved/">' in head and "<title>Saved spots · Dipspot</title>" in head
     assert "saved/" not in sm and "noindex" not in home
+
+
+def test_about_page_counts_this_builds_spots_and_links_work_on_the_static_site(tmp_path):
+    bs = _build_site()
+    spots = [{**SPOTS[0], "source": "designated"}, {**SPOTS[1], "source": "curated"}]
+    bs.write_pages(tmp_path, spots, root="https://example.org/")
+    about = (tmp_path / "about.html").read_text()
+    assert '<span id="n-spots">2</span> spots, <span id="n-bw">1</span> of them designated' in about
+    # The server's absolute links become the static site's relative files, on every page.
+    for name in ["about.html", "verification.html", "terms.html", "privacy.html"]:
+        page = (tmp_path / name).read_text()
+        assert 'href="about.html">About</a>' in page, name
+        assert 'href="/' not in page, name
+    home = (tmp_path / "index.html").read_text()
+    assert '<a href="about.html">About Dipspot</a>' in home and '<a href="about.html" class="desk-only">About</a>' in home
 
 
 def test_the_page_view_counter_reaches_spot_pages_and_a_dropped_spot_loses_its_page(tmp_path):
