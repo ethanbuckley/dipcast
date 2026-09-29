@@ -21,4 +21,5 @@ for (const s of data.spots) {
   spots[s.id] = { name: s.name, rank: L.rank(level), level, headline: L.headline(s),
     url: PAGE_ID.test(s.id) ? `${root}spot/${s.id}/` : `${root}?spot=${encodeURIComponent(s.id)}` };
 }
-fs.writeFileSync(out, JSON.stringify({ generated_at: data.generated_at, spots }));
+// The data credits travel with every published data file (build_site.data_credits).
+fs.writeFileSync(out, JSON.stringify({ generated_at: data.generated_at, ...(data.credits ? { credits: data.credits } : {}), spots }));

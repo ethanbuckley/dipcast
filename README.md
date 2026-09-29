@@ -31,16 +31,23 @@ part is the transport step: an overflow 2 km upstream on the same river and one
 
 ## Data
 
-| Source | What | Access |
+| Source | What | Licence (all open, no key) |
 |---|---|---|
-| Water company live feeds (9 companies, ArcGIS) | Current status of ~14,200 overflows, latest event start/end | Open, no key |
-| United Utilities EDM event history 2023-2025 | 743,735 discharge events with start/end | Open, no key |
-| EA storm overflow annual returns 2021-2025 | Spill counts and hours per overflow per year, WFD waterbody, for all 10 companies | Open, no key |
-| Open-Meteo | Hourly rainfall: ERA5-Land archive for training, model forecast for prediction | Open, no key |
-| OS Open Rivers | 193,040 directed watercourse links incl. lake traversals, BNG | Open Government Licence |
-| EA WFD Lake Water Bodies Cycle 3 | 564 lake polygons (lakes over 50 ha, 5 ha in protected areas), names and areas | Open, no key |
-| EA flood-monitoring API | Near-real-time river levels and typical ranges | Open, no key |
-| EA Water Quality Archive | E. coli results and the sampler's visual algae check at the 38 inland bathing waters | Open, no key |
+| Water company live feeds (9 companies, ArcGIS, via the National Storm Overflow Hub) | Current status of ~14,200 overflows, latest event start/end | CC BY 4.0, per company |
+| United Utilities EDM event history 2023-2025 (via Stream) | 743,735 discharge events with start/end; training only | CC BY 4.0 |
+| Stream ID lookup | Company ids to EA permit ids (`id_lookup.parquet`) | CC BY 4.0 |
+| EA storm overflow annual returns 2021-2025 | Spill counts and hours per overflow per year, WFD waterbody, for all 10 companies | OGL v3 |
+| EA bathing water quality (bwq) | Classifications (`data/raw/bathing_water_classifications.json`) and in-season samples | OGL v3 |
+| Open-Meteo | Hourly rainfall: ERA5-Land archive for training, model forecast for prediction | CC BY 4.0; the forecast for England is Met Office data, CC BY-SA 4.0 |
+| OS Open Rivers | 193,040 directed watercourse links incl. lake traversals, BNG | OGL v3 |
+| EA WFD Lake Water Bodies Cycle 3 | 564 lake polygons (lakes over 50 ha, 5 ha in protected areas), names and areas | OGL v3 |
+| EA flood-monitoring API | Near-real-time river levels and typical ranges; the API version only | OGL v3 |
+| EA Water Quality Archive (Water Quality Explorer) | E. coli results and the sampler's visual algae check at the 38 inland bathing waters | OGL v3 |
+
+The notices each provider asks for are on the site's terms page ("Data sources
+and credits"), and `data/spots.json`, `data/overflows.geojson` and
+`data/verification.json` carry them in a `credits` field (`data_credits` in
+`scripts/build_site.py`). The MIT licence covers the code, not the data.
 
 Dwr Cymru (Wales) publishes no live feed to ArcGIS; its 128 overflows appear with
 annual spill history only and no "right now" status. Every English company is live.
@@ -596,8 +603,9 @@ out by `src/dipcast/site/levels.js` (`risk()`), which the page loads and the
 build runs in Node for the alerts, so the two cannot disagree: the spill forecast's level; on
 rivers with overflows upstream, the E. coli column in bands of under 10%, 25%,
 50% and over (the minimum inland standard lets about one sample in ten be over
-900); the Environment Agency's rating, where "poor" (the EA advises against
-bathing all season) makes every day at least high; and the sampler's algae
+900); the Environment Agency's rating, where "poor" (advice against bathing applies
+all season; the local authority that controls the water issues it, not the EA)
+makes every day at least high; and the sampler's algae
 check if under two weeks old. On 29 Sep 2026 the spill forecast alone had all
 nine Thames spots on "low", and all 13 poor-rated bathing waters on "low" for
 that day (7 of them for the next day too). The ratings are in
@@ -661,6 +669,60 @@ a public repository after 60 days without activity.
 The click-anywhere API (below) is the same code behind a FastAPI server. It
 is what to run when someone needs forecasts for arbitrary points or an API,
 and it costs about £8 a month on Fly.io; the static site costs nothing.
+
+## Before taking money or running ads
+
+Checked on 29 Sep 2026 against the licences, the legislation and the providers'
+own pages, in a solicitor-style review by an AI assistant: not legal advice, and
+no substitute for a solicitor before any of these happens.
+
+- **Is Dipspot a business?** Probably not yet: no income, no ads, nothing sold.
+  But the Consumer Rights Act 2015 (s.2(2)) catches anyone "acting for purposes
+  relating to" a business, and building an audience for a planned launch could
+  meet that. The terms are therefore written as if the Unfair Contract Terms Act
+  1977 and the CRA apply: no exclusion of liability for death or personal injury
+  caused by negligence (UCTA s.2(1), CRA s.65), and the "without responsibility"
+  disclaimer yields to that (a disclaimer that stops a duty arising counts as an
+  exclusion for a business, UCTA s.13).
+- **Does the Met Office's share-alike licence reach the forecasts?** On this
+  reading, no. CC BY-SA 4.0 imposes share-alike only on "Adapted Material",
+  material changed in a way that needs the licensor's permission (s.1(a),
+  s.3(b)), and imposes no conditions on uses that need no permission (s.8(a)).
+  Database right protects against extracting or re-using all or a substantial
+  part of the data (Copyright and Rights in Databases Regulations 1997, reg 16).
+  Forecasts, levels and scores computed from the rainfall do neither. The
+  48-hour rainfall sums on the site are an insubstantial part, and are labelled
+  CC BY-SA anyway. The residual risk is contractual: Open-Meteo's Met Office page
+  says derived products "should" be shared alike, though its terms of use do not
+  impose it. For a paid data product, request a CC BY model (`models=`) and
+  re-check the spill and E. coli models against its rainfall, or get this
+  reading confirmed.
+- **Hosting.** GitHub's rules do not allow GitHub Pages to host an online
+  business, so a paid Dipspot needs another host.
+- **Rainfall API.** Open-Meteo's free API excludes sites with subscriptions or
+  advertising; those need a paid plan, whose terms then apply.
+- **Map tiles.** The OpenStreetMap Foundation's tile policy warns commercial
+  services, and those that seek donations, that access may be withdrawn at any
+  point; use a tile provider before either.
+- **Insurance and a company.** Before charging, get public liability and
+  professional indemnity insurance, and trade through a company or LLP.
+- **Data protection.** The privacy notice names the controller and a private
+  contact, and says complaints are acknowledged within 30 days (UK GDPR Art 13;
+  DPA 2018 s.164A, from 19 June 2026). The site probably owes the ICO no fee now
+  (personal and household processing is exempt); payments or ads would end that.
+- **Email alerts.** The privacy notice promises an update before they exist:
+  collect addresses only with clear consent, put an unsubscribe link in every
+  email, and have a processor agreement with the email service.
+- **Subscriptions.** Selling them brings in pre-contract information and 14-day
+  cancellation rights (Consumer Contracts Regulations 2013), and whatever
+  subscription rules of the Digital Markets, Competition and Consumers Act 2024
+  are in force by then.
+- **The page-view counter.** PECR (Schedule A1, in force 5 Feb 2026) lets it run
+  without consent only with a free, simple way to object, which the site does
+  not have yet (`COUNTER_TOKEN_ENV` in `scripts/build_site.py`).
+- **Advertising rules.** A .uk domain or paid placement brings the site's own
+  claims under the CAP Code: never "safe", and hold evidence for every factual
+  claim (rules 3.7 and 3.9).
 
 ## Deploy the click-anywhere API (optional)
 

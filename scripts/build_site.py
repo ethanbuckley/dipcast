@@ -48,7 +48,7 @@ MIN_OK_SHARE = 0.8        # fewer spots with a forecast than this and the build 
 MAX_NO_DATA_SHARE = 0.5   # more of today's forecasts without rainfall data than this: fail
 # The pages were written for the FastAPI routes; rewrite them for flat files.
 REWRITES = [('href="/verification"', 'href="verification.html"'), ('href="/terms"', 'href="terms.html"'),
-            ('href="/privacy"', 'href="privacy.html"'), ('href="/"', 'href="index.html"'),
+            ('href="/privacy"', 'href="privacy.html"'), ('href="/terms#data"', 'href="terms.html#data"'), ('href="/"', 'href="index.html"'),
             ('href="/static/page.css"', 'href="page.css"'), ("fetch('/api/verification')", "fetch('data/verification.json')")]
 BRAND = "Dipspot"
 HOME_TITLE = f"{BRAND} · sewage-spill forecasts for swim spots"
@@ -64,10 +64,13 @@ LOADING = '<div id="result"><p class="muted">Loading forecasts…</p></div>'
 SITE_URL_ENV = "DIPCAST_SITE_URL"
 # Optional page-view counter (Cloudflare Web Analytics). Off unless the repository
 # variable is set; the token is public (it sits in the page), so it is a variable,
-# not a secret.
+# not a secret. Before setting it: since 5 Feb 2026 PECR (Schedule A1) lets a counter run
+# without consent only if visitors get clear information and a free, simple way to object,
+# and there is no way to object yet. The first string is the privacy notice's own lead,
+# so the terms page's date is not touched.
 COUNTER_TOKEN_ENV = "DIPCAST_CF_BEACON_TOKEN"
-NO_COUNTER = ("Last updated 29 September 2026.", "There is no analytics script and no third-party tracking.")
-WITH_COUNTER = ("Last updated 29 September 2026 (page-view counter).",
+NO_COUNTER = ("and what it does not. Last updated 29 September 2026.", "There is no analytics script and no third-party tracking.")
+WITH_COUNTER = ("and what it does not. Last updated 29 September 2026 (page-view counter).",
                 ("Page views are counted with Cloudflare Web Analytics. Cloudflare states that it sets no cookies, "
                  "uses no local storage and does not fingerprint visitors. It sees your IP address when the counter "
                  "loads, as any web server would, and its "
@@ -100,8 +103,17 @@ def lead_skill(processed: Path = config.PROCESSED) -> dict | None:
 # Alerts (push/): on when both repository variables are set. The Worker's address and its public
 # key sit in spots.json for the page; the private key never leaves the Worker.
 PUSH_URL_ENV, PUSH_KEY_ENV = "DIPCAST_PUSH_URL", "DIPCAST_VAPID_PUBLIC_KEY"
-SAVED_LOCAL = "It stays on your device: it is not sent to Dipspot or to anyone else."
-SAVED_WITH_PUSH = "It stays on your device: it is not sent to Dipspot or to anyone else, unless you turn on alerts (below)."
+# With alerts on, the privacy notice's sentences that say nothing leaves the device, and that
+# Dipspot holds no personal data, would be untrue: each is swapped for one that is not. A test
+# checks that every one is still in the notice, so a rewrite cannot leave one behind unswapped.
+PUSH_SWAPS = [
+    ("<li>Your saved spots and your location stay on your device.</li>",
+     "<li>Your location stays on your device. So do your saved spots, unless you turn on alerts.</li>"),
+    ("It stays on your device: it is not sent to Dipspot or to anyone else.",
+     "It stays on your device: it is not sent to Dipspot or to anyone else, unless you turn on alerts (below)."),
+    ("Dipspot holds none, as described above;",
+     "Dipspot holds none except, if you turn on alerts, the record described under Alerts, which turning them off deletes;"),
+]
 
 
 def push_config() -> dict | None:
@@ -119,7 +131,8 @@ def with_push(html: str, on: bool) -> str:
     """The privacy page: the alerts section when alerts are on, else the planned-feature note."""
     if not on:
         return html
-    html = html.replace(SAVED_LOCAL, SAVED_WITH_PUSH)
+    for a, b in PUSH_SWAPS:
+        html = html.replace(a, b)
     return re.sub(r"<h2>If alerts are added</h2>\s*<p>.*?</p>", lambda _: PUSH_PRIVACY, html, count=1, flags=re.DOTALL)
 
 
@@ -128,9 +141,12 @@ PUSH_PRIVACY = (
     "long random web address, run by your browser's maker (Google, Apple, Mozilla or Microsoft), that delivers "
     "notifications to this browser. Dipspot's alert service stores that address, with the identifiers of your "
     "saved spots, and nothing else: no name, email address or location. It uses them only to send a notification "
-    "when one of those spots' forecast turns high, and the notification passes through your browser maker's push "
-    "service. Turning alerts off, or removing all your saved spots, deletes the record. The alert service runs on "
-    "Cloudflare Workers, which sees your IP address when you turn alerts on or off, as any web server would; "
+    "when one of those spots' forecast turns high, and each notification passes through your browser maker's push "
+    "service. The basis is your consent: you turn alerts on, and turning them off withdraws it. The record is kept "
+    "until you turn alerts off, remove all your saved spots or turn off the offline copy (alerts need it), or until "
+    "your browser's push service says the address no longer works; then it is deleted. The alert service runs on "
+    "Cloudflare Workers, which may handle the record outside the UK under its own safeguards, and which sees your "
+    "IP address when you turn alerts on or off or change your saved spots, as any web server would; "
     '<a href="https://www.cloudflare.com/privacypolicy/">Cloudflare\'s privacy policy</a> applies to that.</p>')
 
 
@@ -238,6 +254,32 @@ def attach_algae(results: list[dict], fetch: bool = True) -> int:
             r["algae"] = c
             n += 1
     return n
+
+
+# The credits every published data file carries. A credit has to travel with republished data:
+# CC BY 4.0 s.3(a) and s.4 for the water companies' feeds, OGL v3 for the EA and OS. The full
+# notices are on the terms page ("Data sources and credits"), which the "full" link points to.
+LICENCES = {
+    "CC BY 4.0": "https://creativecommons.org/licenses/by/4.0/",
+    "CC BY-SA 4.0": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "OGL v3.0": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+}
+
+
+def data_credits(root: str) -> dict:
+    return {
+        "attribution": (
+            "Storm overflow status from Anglian Water Services, Northumbrian Water, Severn Trent Water, South West Water, "
+            "Southern Water (© 2026), Thames Water, United Utilities, Wessex Water (© 2024) and Yorkshire Water, via the "
+            "National Storm Overflow Hub, CC BY 4.0. Environment Agency data © Environment Agency copyright and/or "
+            "database right, OGL v3.0. Contains OS data © Crown copyright and database right 2026. Weather data by "
+            "Open-Meteo.com, CC BY 4.0, from Met Office forecasts © Crown copyright, CC BY-SA 4.0: rainfall figures "
+            "stay under CC BY-SA 4.0."),
+        "modified": ("Combined, filtered and modelled by Dipspot. The forecasts, levels and scores are Dipspot's own "
+                     "estimates, not the data providers'. None of the providers endorses Dipspot."),
+        "licences": LICENCES,
+        "full": f"{root}terms.html#data",
+    }
 
 
 CLASSIFICATIONS = config.RAW / "bathing_water_classifications.json"
@@ -420,13 +462,15 @@ def build(refresh: bool = True) -> dict:
     for w in health["warnings"]:
         announce(w)
     (SITE / "data").mkdir(parents=True, exist_ok=True)
+    credits = data_credits(site_url())
     push = push_config()
     (SITE / "data" / "spots.json").write_text(json.dumps({
         "generated_at": generated.isoformat(), "version": __version__, "n": len(results), "build": health,
-        "lead_skill": lead_skill(), **({"push": push} if push else {}), "spots": results}, default=str))
-    write_alerts(SITE, site_url(), push is not None)
-    (SITE / "data" / "overflows.geojson").write_text(json.dumps(overflows_geojson(limit=20000), default=str))
-    (SITE / "data" / "verification.json").write_text(json.dumps(load_verification(), default=str))
+        "lead_skill": lead_skill(), **({"push": push} if push else {}), "credits": credits, "spots": results}, default=str))
+    write_alerts(SITE, site_url(), push is not None)   # carries the credits from spots.json
+    # GeoJSON allows extra top-level members, so the credits sit beside the features.
+    (SITE / "data" / "overflows.geojson").write_text(json.dumps({**overflows_geojson(limit=20000), "credits": credits}, default=str))
+    (SITE / "data" / "verification.json").write_text(json.dumps({**load_verification(), "credits": credits}, default=str))
     token = os.environ.get(COUNTER_TOKEN_ENV, "").strip()
     health["spot_pages"] = write_pages(SITE, results, token, day=generated.date().isoformat(), push=push is not None)
     summary = {**health, "seconds": round(time.time() - t0, 1), "generated_at": generated.isoformat()}

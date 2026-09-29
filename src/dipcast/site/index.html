@@ -179,6 +179,7 @@
   ul.dd-ovs { list-style:none; margin:8px 0 0; padding:0; font-size:14px; line-height:1.4; }
   ul.dd-ovs li { display:flex; gap:8px; margin-top:4px; } ul.dd-ovs .sdot { width:10px; height:10px; margin-top:5px; }
   .issued { font-size:13px; color:var(--muted); margin:10px 0 0; }
+  .check { font-size:14px; line-height:1.4; margin:8px 0 0; padding-top:8px; border-top:1px solid rgba(0,0,0,.09); }
   .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; margin:12px 0; }
   .card-h { font-size:17px; font-weight:750; margin:0 0 2px; }
   .sub { color:var(--muted); font-size:13.5px; margin:0 0 10px; }
@@ -316,7 +317,7 @@
         <dl>
           <dt>Sewage spills</dt><dd>The exposure index (0–100): the modelled chance that a spill from an overflow upstream reaches the spot. Low under 15, moderate 15 to 40, high 40 to 70, very high 70 or more.</dd>
           <dt>Water quality</dt><dd>On rivers with overflows upstream: the chance a water sample would show E. coli over 900 per 100 ml, from any source, runoff after rain included. Low under 10%, moderate 10 to 25%, high 25 to 50%, very high over 50%. The minimum bathing-water standard lets about one sample in ten be over 900.</dd>
-          <dt>Environment Agency rating</dt><dd>At a designated bathing water, the EA's yearly rating from up to four seasons of lab samples. When it is poor, the EA advises against bathing all season, so the level is at least high on every day. Where there is no daily forecast, the rating sets the level: excellent or good low, sufficient moderate, poor high.</dd>
+          <dt>Environment Agency rating</dt><dd>At a designated bathing water, the EA's yearly rating from up to four seasons of lab samples. When it is poor, advice against bathing applies all season, so the level is at least high on every day. Where there is no daily forecast, the rating sets the level: excellent or good low, sufficient moderate, poor high.</dd>
           <dt>Algae</dt><dd>At a designated bathing water, the EA sampler's last look, if under two weeks old: enough algae to be objectionable makes the level at least high, some at intervals at least moderate.</dd>
           <dt>Not included</dt><dd>The EA's short-term advice against bathing after a pollution incident or an algal bloom. A bathing water's page links to the EA's page, which has it.</dd>
         </dl>
@@ -337,13 +338,14 @@
           <dt>What it does not know</dt><dd>Anything about a specific farm, road, outfall or algal bloom: only monitored storm overflows are modelled.</dd>
         </dl>
       </details>
-      <details class="more"><summary>Saved spots, offline use and your data</summary>
+      <details class="more" id="your-data"><summary>Saved spots, offline use and your data</summary>
         <p class="small muted">Saved spots are kept in this browser, and sent nowhere unless you turn on alerts on the Saved page. After a first visit the page and the latest forecast are stored on your device, so the site opens without signal at the water's edge; it then says how old the forecast is. <a href="privacy.html">Privacy notice</a>.</p>
+        <p class="small"><button type="button" class="linkbtn small" id="offline-btn" hidden>Turn off the offline copy</button> <span class="muted" id="offline-msg" aria-live="polite"></span></p>
       </details>
     </section>
     <footer class="fine">
       <p><a href="verification.html">How accurate is it?</a> · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=feedback.yml">Feedback</a> · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">Request a spot</a> · <a href="terms.html">Terms of use</a> · <a href="privacy.html">Privacy</a> · <a href="https://github.com/ethanbuckley/dipcast">Source code</a> (MIT)</p>
-      <p>Data: water company live feeds via the National Storm Overflow Hub (CC BY 4.0) · Environment Agency annual returns, bathing waters and lake water bodies (OGL v3; contains Environment Agency information © Environment Agency and database right) · Contains OS data © Crown copyright and database right 2026 · Weather data by <a href="https://open-meteo.com/">Open-Meteo.com</a> (CC BY 4.0) · Map © OpenStreetMap contributors.</p>
+      <p>Data: storm overflow status from Anglian, Northumbrian, Severn Trent, South West, Southern, Thames, United Utilities, Wessex and Yorkshire Water via the National Storm Overflow Hub (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>; combined and modelled by Dipspot) · Environment Agency data © Environment Agency copyright and/or database right (<a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">OGL v3.0</a>) · Contains OS data © Crown copyright and database right 2026 · <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a> (CC BY 4.0), from Met Office forecasts © Crown copyright (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>) · Map © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors. None of these bodies endorses Dipspot. <a href="terms.html#data">All credits and licences</a>.</p>
     </footer>
   </main>
 </div>
@@ -519,11 +521,12 @@ async function alertsOn() {
   const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(DATA.push.key) });
   await sendSub(sub);
 }
-async function alertsOff() {
-  const sub = await pushSub(); if (!sub) return;
+async function alertsOff() {   // true if alerts were on
+  const sub = await pushSub(); if (!sub) return false;
   await fetch(DATA.push.url + 'unsubscribe', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ endpoint: sub.endpoint }) });
   await sub.unsubscribe();
   try { localStorage.removeItem(PUSH_KEY); } catch (e) { /* nothing kept */ }
+  return true;
 }
 // The list changed, or the page opened: send it again if it differs from what the service holds,
 // or once a week (a browser can renew its push address).
@@ -540,7 +543,8 @@ const syncSoon = () => { clearTimeout(syncTimer); syncTimer = setTimeout(() => s
 function alertsCard() {
   if (!DATA.push) return '';
   const why = 'A notification when one of your saved spots turns high or very high, at most once a day for each. Turning alerts on sends the list of your saved spots, and nothing else about you, to Dipspot\'s alert service. <a href="privacy.html">Privacy notice</a>.';
-  const body = canPush() ? `<button type="button" class="btn" id="alerts-btn" disabled>Turn on alerts</button>`
+  const body = canPush() && offlineOff() ? `<p class="small" style="margin:0">Alerts need the offline copy, which is turned off in this browser. <a href="#your-data">Turn it back on</a> to use them.</p>`
+    : canPush() ? `<button type="button" class="btn" id="alerts-btn" disabled>Turn on alerts</button>`
     : IOS && !navigator.standalone ? `<p class="small" style="margin:0">On iPhone and iPad, alerts work only in the Home Screen app: tap <b>Share</b>, then <b>Add to Home Screen</b>, open Dipspot from there and save your spots in it.</p>`
     : `<p class="small" style="margin:0">This browser cannot show notifications from websites.</p>`;
   return `<section class="card" aria-labelledby="alerts-h"><h2 class="card-h" id="alerts-h">Alerts</h2><p class="sub">${why}</p>${body}<p class="small muted" id="alerts-msg" aria-live="polite" style="margin:8px 0 0"></p></section>`;
@@ -628,11 +632,15 @@ function standing(d) {
   // only: its service refuses the build's machines and does not answer other sites' pages.
   const live = cl.url ? ` <a href="${esc(cl.url)}">The EA's page</a> has its latest samples and any short-term advice against bathing, after pollution or algae, which this page does not include.` : '';
   if (c) rows.push(factorRow(`Environment Agency rating, ${cl.year}`, CLASS_LEVEL[c], cap(c),
-    (c === 'poor' ? '<b>The Environment Agency advises against bathing here.</b> ' : '')
+    (c === 'poor' ? '<b>Advice against bathing applies here</b> while the rating is poor, and should be shown on signs at the water. ' : '')
     + `From its lab samples over up to four seasons${ratingHistory(cl)}.${live}`));
   else if (d.classification) rows.push(factorRow('Environment Agency rating', null, 'Not yet rated', `A designated bathing water too new to have a rating.${live}`));
   return rows.join('');
 }
+// Beside every reading: a forecast is not a test, and the signs at the water come first. A website
+// that, read as a whole, tells people to check for themselves owes them less (Patchett v SPATA [2009]).
+const check = d => `<p class="check">A forecast, not a water test: check the signs at the water before you swim.${d.source === 'designated' ? ''
+  : ' This is not a designated bathing water, so the Environment Agency does not test it for bathing.'}</p>`;
 // "; poor every year since 2021", or "; poor in 2024": the ratings before the latest.
 function ratingHistory(cl) {
   const h = (cl.history || []).filter(([y]) => y !== cl.year); if (!h.length) return '';
@@ -768,6 +776,7 @@ const MARKERS = new Map();
 const mapLevel = s => VIEW.day ? dayLevel(s, VIEW.day) : level(s);
 const mapWhen = () => VIEW.day ? dayWord(VIEW.day) : 'today and tomorrow';
 const lowLabel = () => VIEW.day ? `Low risk ${dayWord(VIEW.day)}` : 'Low risk';
+const lowListNote = () => `Low risk from pollution ${mapWhen()}, going by the forecasts and the EA's ratings. Not a safety check: look at the signs at the water before you swim.`;
 const markerTip = s => { const l = mapLevel(s);
   return `${esc(s.name)}: ${!VIEW.day ? headline(s) : ORDER[l] !== undefined ? `${cap(l)} ${dayWord(VIEW.day)}` : `no level ${dayWord(VIEW.day)}`}`; };
 function styleMarkers() {
@@ -778,6 +787,7 @@ function styleMarkers() {
     m.setRadius(on ? (VIEW.lowOnly ? 9 : 8) : 4);
     if (on) m.bringToFront();
   }
+  const ln = document.getElementById('low-note-list'); if (ln) { ln.hidden = !VIEW.lowOnly; ln.textContent = lowListNote(); }
   const b = document.getElementById('lowbtn');
   if (b) { b.setAttribute('aria-pressed', String(VIEW.lowOnly)); b.querySelector('.n').textContent = DATA.spots.filter(s => mapLevel(s) === 'low').length; }
   document.querySelectorAll('[data-low]').forEach(x => x.setAttribute('aria-pressed', String(VIEW.lowOnly)));
@@ -861,7 +871,8 @@ function renderList() {
   let h = `<section class="intro"><h1>Sewage and water quality at your swim spot</h1><p class="lede">Five-day forecasts for ${DATA.spots.length} river and lake spots in England, with the Environment Agency's rating where there is one. <a href="#about">How it works</a></p>`
     + `<div class="search">${SEARCH_ICON}<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(VIEW.q)}"></div>`
     + `<div class="chips-row" role="group" aria-label="Show"><button type="button" class="chip-btn low" data-low aria-pressed="${VIEW.lowOnly}"><span class="dot" style="background:${colour('low')}"></span><span data-low-t>${lowLabel()}</span></button>`
-    + `${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div></section>`;
+    + `${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div>`
+    + `<p class="small muted" id="low-note-list"${VIEW.lowOnly ? '' : ' hidden'}>${lowListNote()}</p></section>`;
   h += freshness();
   if (saved.length) h += `<section class="group" aria-labelledby="saved-h"><h2 class="group-head" id="saved-h">Saved spots</h2><ul class="spots" id="saved-list">${saved.map(spotItem).join('')}</ul></section>`;
   h += `<section class="group" aria-labelledby="all-h"><div class="group-bar"><h2 class="group-head" id="all-h">All spots</h2>`
@@ -939,7 +950,7 @@ function renderSaved() {
   INCOMING = offered.length ? INCOMING : null;
   h += freshness();
   if (spots.length) h += `<ul class="scards" id="scards">${spots.map(savedCard).join('')}</ul>`
-    + `<p class="small muted" style="margin:10px 2px 0">Updated ${issued()} (${ago(ageMin())} ago). Tap a spot for its full forecast, or a day for that day. <a href="#levels">What the levels mean</a>.${spots.some(anyUntested) ? ' ' + UNTESTED_NOTE : ''}</p>`;
+    + `<p class="small muted" style="margin:10px 2px 0">Updated ${issued()} (${ago(ageMin())} ago). Tap a spot for its full forecast, or a day for that day. <a href="#levels">What the levels mean</a>. Forecasts, not water tests: check the signs at the water before you swim.${spots.some(anyUntested) ? ' ' + UNTESTED_NOTE : ''}</p>`;
   else h += `<div class="card empty-saved"><div class="big-star" aria-hidden="true">☆</div><h2 class="card-h">No saved spots yet</h2>`
     + `<p class="sub" style="margin:4px 0 16px">Open a spot and press <b>☆&nbsp;Save</b>. It then shows here with the days ahead.`
     + `${navigator.standalone ? ' Spots saved in Safari do not appear in the Home Screen app: iPhones keep the two apart, so save them again here.' : ''}</p>`
@@ -1127,14 +1138,14 @@ function render(d) {
   if (d.error) {
     DAY = null;   // no days here: a day link opens the spot, and the address loses the day
     if (dayFromURL()) history.replaceState(history.state, '', location.pathname + location.search);
-    h += hero(factors(d));
+    h += hero(factors(d) + check(d));
     h += algae(d.algae) + `<section class="card phone-only"><h2 class="card-h">Where it is</h2><div id="spot-map"></div></section>` + actions(d);
     setPanel(h); bindBack(); bindSave(d); bindShare(d); placeMap(); miniMap(d); return;
   }
   const now = d.now, isLake = loc.mode === 'lake', scope = d.ecoli_scope || {}, total = d.upstream_summary.overflows;
   h += freshness();
   // Always say how old it is: the stored copy (sw.js) can answer when the network is slow.
-  h += hero(`${strip(d)}<div id="day-view">${factors(d)}</div><p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p>`);
+  h += hero(`${strip(d)}<div id="day-view">${factors(d)}</div><p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p>${check(d)}`);
   if (total) {
     h += `<section class="card"><h2 class="card-h">Right now</h2><div class="now-row"><span class="big${now.discharging_upstream ? ' hot' : ''}">${now.discharging_upstream}</span>`
       + `<div>of ${total} upstream overflow${total === 1 ? '' : 's'} discharging now<div class="small muted">${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h · ${now.monitored_upstream} of ${total} report live</div></div></div></section>`;
@@ -1190,7 +1201,37 @@ document.addEventListener('visibilitychange', () => { if (document.visibilitySta
 // Back online after opening the page offline: fetch the current forecast.
 if (!navigator.onLine) window.addEventListener('online', () => location.reload(), { once: true });
 // The page and the latest forecast kept on the device, for the water's edge without signal (sw.js).
-if ('serviceWorker' in navigator) navigator.serviceWorker.register(new URL('sw.js', ROOT)).catch(() => {});
+// It can be turned off: since 5 Feb 2026 PECR (Schedule A1) allows storage the site works without
+// only with clear information (the privacy notice) and a free, simple way to object. The choice is
+// kept in this browser; turning the copy off removes the worker and everything it stored.
+const OFFLINE_KEY = 'dipcast.offline';
+const offlineOff = () => { try { return localStorage.getItem(OFFLINE_KEY) === 'off'; } catch (e) { return false; } };
+const registerSW = () => navigator.serviceWorker.register(new URL('sw.js', ROOT)).catch(() => {});
+async function setOffline(on) {   // returns false when the browser would not keep the choice
+  let kept = true;
+  try { if (on) localStorage.removeItem(OFFLINE_KEY); else localStorage.setItem(OFFLINE_KEY, 'off'); } catch (e) { kept = false; }
+  if (on) { registerSW(); return kept; }
+  for (const r of await navigator.serviceWorker.getRegistrations()) await r.unregister();
+  if ('caches' in window) for (const k of await caches.keys()) if (k.startsWith('dipcast-')) await caches.delete(k);
+  return kept;
+}
+if ('serviceWorker' in navigator) {
+  if (!offlineOff()) registerSW();
+  const b = document.getElementById('offline-btn'), m = document.getElementById('offline-msg');
+  const label = () => { b.textContent = offlineOff() ? 'Turn the offline copy back on' : 'Turn off the offline copy'; };
+  b.hidden = false; label();
+  b.addEventListener('click', async () => {
+    const on = offlineOff();
+    // Alerts arrive through the worker this removes: turn them off first, so the alert service
+    // deletes its record now rather than at the next alert.
+    const alerts = !on && DATA && DATA.push && canPush() ? await alertsOff().catch(() => false) : false;
+    const kept = await setOffline(on).catch(() => false);
+    label();
+    m.textContent = !kept ? 'This browser is not keeping site data, so this lasts only until you close the page.'
+      : on ? 'The offline copy is on again.' : `The offline copy is off, and deleted from this device.${alerts ? ' Alerts are off too: they need it.' : ''}`;
+    if (DATA && document.body.classList.contains('view-saved')) renderSaved();   // the alerts card follows
+  });
+}
 </script>
 </body>
 </html>

@@ -30,9 +30,12 @@ const shortDay = iso => iso === today() ? 'Today' : new Date(iso + 'T12:00:00').
 //    tighter: on 29 Sep 2026 the model put Pangbourne and Wallingford on the Thames at 11-15%
 //    while none of the 20 samples at each this season had been over 900, so a 10% line for
 //    "high" would have called clean water poor.
-//  - The Environment Agency's rating of a designated bathing water: at "poor" it advises against
-//    bathing all season (regulation 13), so the spot is at least high on every day, whatever the
-//    forecast. 13 of the 38 designated spots were rated poor for 2025; on 29 Sep 2026 all 13 read
+//  - The Environment Agency's rating of a designated bathing water: at "poor", advice against
+//    bathing applies while the rating stands, so the spot is at least high on every day, whatever
+//    the forecast. The local authority that controls the water issues that advice, not the EA
+//    (Bathing Water Regulations 2013, reg 13(1)(b)), so the page names no one; the EA issues it
+//    for short-term pollution, which this page does not get. 13 of the 38 designated spots were
+//    rated poor for 2025; on 29 Sep 2026 all 13 read
 //    "low" for today, and 7 of them for today and tomorrow.
 //  - The EA sampler's latest look at a bathing water, if under 14 days old: algae "enough to be
 //    objectionable" makes the day at least high, "some at intervals" at least moderate. It cannot
@@ -92,7 +95,7 @@ function headParts(s) {
   if (l === NO_OVERFLOWS) return ['No monitored overflows upstream', ''];
   if (!daily(s) && rank(algaeLevel(s)) > rank(CLASS_LEVEL[classOf(s)] ?? null)) return [cap(l), 'algae at the last check'];
   if (!daily(s) || worstNear(s)[0].by === 'record')
-    return advisedAgainst(s) ? ['Rated poor', 'the EA advises against bathing'] : [`Rated ${classOf(s)} by the EA`, ''];
+    return advisedAgainst(s) ? ['Rated poor', 'advice against bathing'] : [`Rated ${classOf(s)} by the EA`, ''];
   const [r, when] = worstNear(s);
   if (rank(r.level) > 0) return [`${cap(r.level)} ${when}`, because(r)];
   const x = laterDay(s);
