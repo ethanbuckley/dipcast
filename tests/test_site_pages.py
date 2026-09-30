@@ -217,7 +217,7 @@ def test_the_privacy_notice_describes_alerts_only_when_they_are_on(tmp_path):
 @pytest.mark.skipif(shutil.which("node") is None, reason="needs Node")
 def test_the_offline_copy_rules():
     # sw.js runs in a browser, so its tests are JavaScript; here so that the build's test step runs them.
-    r = subprocess.run(["node", "--test", str(ROOT / "tests" / "site_cache.test.cjs")], capture_output=True, text=True, timeout=60, check=False)
+    r = subprocess.run(["node", "--test", str(ROOT / "tests" / "site_cache.test.cjs"), str(ROOT / "tests" / "site_planner.test.cjs")], capture_output=True, text=True, timeout=60, check=False)
     assert r.returncode == 0, r.stdout + r.stderr
 
 

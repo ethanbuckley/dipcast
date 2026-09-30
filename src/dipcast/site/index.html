@@ -99,6 +99,13 @@
   h1, h2, h3 { letter-spacing:-.01em; }
 
   /* The list */
+  .intro { padding:18px; border:1px solid var(--line); border-radius:20px; background:linear-gradient(135deg,#e5f3ef,#fff 75%); }
+  .intro .eyebrow { margin:0 0 8px; color:var(--brand); font-size:12px; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
+  .planner { margin:16px 0 12px; }
+  .planner label { display:block; font-size:14px; font-weight:650; margin-bottom:6px; }
+  .planner select { width:100%; min-height:46px; padding:10px; font:inherit; color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:10px; }
+  .planner-note { margin:7px 0 0; font-size:13px; color:var(--muted); }
+  select:focus-visible { outline:3px solid var(--brand-2); outline-offset:2px; }
   .intro h1 { font-size:26px; line-height:1.15; letter-spacing:-.02em; margin:4px 0 6px; }
   .lede { color:var(--muted); margin:0; font-size:15.5px; }
   .search { position:relative; margin:16px 0 10px; }
@@ -789,6 +796,11 @@ const dayName = iso => dayWord(iso).replace(/^on /, '');
 function showDay(d, iso) {
   const x = iso ? d.days.slice(0, 5).find(y => y.date === iso) : null;
   DAY = x ? iso : null;
+  const hero = document.getElementById('risk-hero');
+  const [head, why] = x ? [dayHeadline(d, iso), dateLabel(iso)] : headParts(d);
+  hero.className = 'hero ' + (x ? tone(dayLevel(d, iso)) : headTone(d));
+  hero.querySelector('.headline').textContent = head;
+  hero.querySelector('.head-why').textContent = why ? cap(why) : '';
   const addr = location.pathname + location.search + (DAY ? '#day=' + DAY : '');
   if (addr !== location.pathname + location.search + location.hash) history.replaceState(history.state, '', addr);
   document.getElementById('day-view').innerHTML = x ? dayDetail(d, x) : factors(d);
@@ -838,7 +850,7 @@ legend.addTo(map);
 const MARKERS = new Map();
 const mapLevel = s => VIEW.day ? dayLevel(s, VIEW.day) : level(s);
 const mapWhen = () => VIEW.day ? dayWord(VIEW.day) : 'today and tomorrow';
-const lowLabel = () => VIEW.day ? `Low risk ${dayWord(VIEW.day)}` : 'Low risk';
+const lowLabel = () => 'Low risk';
 const lowListNote = () => `Low risk from pollution ${mapWhen()}, going by the forecasts and the EA's ratings. Not a safety check: look at the signs at the water before you swim.`;
 const markerTip = s => { const l = mapLevel(s);
   return `${esc(s.name)}: ${!VIEW.day ? headline(s) : ORDER[l] !== undefined ? `${cap(l)} ${dayWord(VIEW.day)}` : `no level ${dayWord(VIEW.day)}`}`; };
@@ -858,7 +870,12 @@ function styleMarkers() {
   document.getElementById('low-note').textContent = `Low risk ${mapWhen()} from pollution. Not a safety check: currents, cold water and the EA's short-term warnings are not included.`;
   document.querySelector('.map-legend .ttl').textContent = VIEW.day ? `Pollution risk ${dayWord(VIEW.day)}` : 'Pollution risk, today and tomorrow';
 }
-function setMapDay(iso) { VIEW.day = iso || null; styleMarkers(); if (document.getElementById('spots')) drawSpots(); }
+function setMapDay(iso) {
+  VIEW.day = iso || null;
+  document.querySelectorAll('#mapday, #listday').forEach(el => { el.value = VIEW.day || ''; });
+  styleMarkers();
+  if (document.getElementById('spots')) drawSpots();
+}
 // The five days, once the forecast has loaded: its dates, not the phone's.
 function fillMapDays() {
   const sel = document.getElementById('mapday');
@@ -913,25 +930,28 @@ function setPanel(h) { parkMap(); if (MINI) { MINI.remove(); MINI = null; } docu
 
 // ------------------------------------------------------------------------------ the list
 const FILTERS = { all: 'All', river: 'Rivers', lake: 'Lakes', designated: 'Bathing waters' };
-const SORTS = { risk: 'Risk', name: 'A–Z', near: 'Near me' };
+const SORTS = { risk: 'Highest risk', name: 'A–Z', near: 'Near me' };
 const SEARCH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>';
-function overview() {
-  const rated = DATA.spots.filter(s => ORDER[level(s)] !== undefined);
-  const up = rated.filter(s => rank(level(s)) >= 1), high = up.filter(s => rank(level(s)) >= 2);
-  if (!up.length) return `All ${rated.length} spots with a level are low today and tomorrow.`;
-  return `${rated.length - up.length} of ${rated.length} spots with a level are low today and tomorrow; ${high.length} ${high.length === 1 ? 'is' : 'are'} high or very high.`;
+function overview(spots) {
+  const rated = spots.filter(s => ORDER[mapLevel(s)] !== undefined);
+  const low = rated.filter(s => mapLevel(s) === 'low').length;
+  const high = rated.filter(s => rank(mapLevel(s)) >= 2).length;
+  return `${low} low · ${rated.length - low - high} moderate · ${high} high or very high · ${spots.length - rated.length} without a level. ${cap(mapWhen())}.`;
 }
+// A chosen date must describe the same forecast in the list, on the map and in the detail link.
+const listHeadline = s => VIEW.day ? dayHeadline(s, VIEW.day) : headline(s);
+const listPath = s => spotPath(s.id) + (VIEW.day && daily(s) ? '#day=' + VIEW.day : '');
 const dist = s => VIEW.here ? km(VIEW.here, [s.lat, s.lon]) : null;
 function spotItem(s) {
   const d = dist(s);
   const meta = [cap(s.kind), s.source === 'designated' ? 'bathing water' : null, d !== null ? `${d < 10 ? d.toFixed(1) : Math.round(d)} km away` : null].filter(Boolean).join(' · ');
-  return `<li><a class="row" href="${esc(spotPath(s.id))}" data-id="${esc(s.id)}"><span class="row-main"><span class="nm">${esc(s.name)}</span>`
-    + `<span class="hl ${headTone(s)}">${headline(s)}</span><span class="k">${meta}</span></span>${week(s)}</a></li>`;
+  return `<li><a class="row" href="${esc(listPath(s))}" data-id="${esc(s.id)}"><span class="row-main"><span class="nm">${esc(s.name)}</span>`
+    + `<span class="hl ${tone(mapLevel(s))}">${listHeadline(s)}</span><span class="k">${meta}</span></span>${week(s)}</a></li>`;
 }
 function bindItems(ul) {
   ul.querySelectorAll('a[data-id]').forEach(a => a.addEventListener('click', e => {
     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;   // new tab or window: let the link work
-    e.preventDefault(); select(a.dataset.id, true); }));
+    e.preventDefault(); select(a.dataset.id, true, true, VIEW.day); }));
 }
 function setView(v) {
   document.body.classList.remove('view-list', 'view-saved', 'view-spot'); document.body.classList.add('view-' + v);
@@ -945,19 +965,21 @@ function renderList() {
   document.title = `${BRAND} · sewage-spill forecasts for swim spots`;
   const saved = DATA.spots.filter(s => SAVED.has(s.id));
   const sorts = Object.entries(SORTS).filter(([k]) => k !== 'near' || 'geolocation' in navigator);
-  let h = `<section class="intro"><h1>Sewage and water quality at your swim spot</h1><p class="lede">Five-day forecasts for ${DATA.spots.length} river and lake spots in England, with the Environment Agency's rating where there is one. <a href="#about">How it works</a>${STANDALONE ? '' : ' · <a href="#home-screen">Add to your Home Screen</a>'}</p>`
+  let h = `<section class="intro"><p class="eyebrow">Plan your next swim</p><h1>Check the water before you go</h1><p class="lede">Five-day pollution forecasts for ${DATA.spots.length} spots in England. <a href="#about">How it works</a></p>`
     + `<div class="search">${SEARCH_ICON}<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(VIEW.q)}"></div>`
+    + `<div class="planner"><label for="listday">When are you swimming?</label><select id="listday"><option value="">Today and tomorrow · overview</option>${[0,1,2,3,4].map(k => addDays(today(), k)).map(iso => `<option value="${iso}"${VIEW.day === iso ? ' selected' : ''}>${dateLabel(iso)}</option>`).join('')}</select><p class="planner-note">Forecasts, not water tests. Check local advice.</p></div>`
     + `<div class="chips-row" role="group" aria-label="Show"><button type="button" class="chip-btn low" data-low aria-pressed="${VIEW.lowOnly}"><span class="dot" style="background:${colour('low')}"></span><span data-low-t>${lowLabel()}</span></button>`
     + `${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div>`
     + `<p class="small muted" id="low-note-list"${VIEW.lowOnly ? '' : ' hidden'}>${lowListNote()}</p></section>`;
   h += notices();
-  if (saved.length) h += `<section class="group" aria-labelledby="saved-h"><h2 class="group-head" id="saved-h">Saved spots</h2><ul class="spots" id="saved-list">${saved.map(spotItem).join('')}</ul></section>`;
+  if (saved.length) h += `<section class="group" id="saved-group" aria-labelledby="saved-h"><h2 class="group-head" id="saved-h">Saved spots</h2><ul class="spots" id="saved-list">${saved.map(spotItem).join('')}</ul></section>`;
   h += `<section class="group" aria-labelledby="all-h"><div class="group-bar"><h2 class="group-head" id="all-h">All spots</h2>`
     + `<div class="sortseg" role="group" aria-label="Sort">${sorts.map(([k, t]) => `<button type="button" data-sort="${k}" aria-pressed="${VIEW.sort === k}">${t}</button>`).join('')}</div></div>`
-    + `<p class="overview">${overview()}</p><p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p><ul class="spots" id="spots"></ul><p class="count" id="count" role="status"></p></section>`;
-  h += `<p class="small muted" style="margin-top:14px">Updated ${issued()} (${ago(ageMin())} ago), several times a day. The coloured bars are the next five days. <a href="#levels">What the levels mean</a>. ${saved.length ? '' : 'Open a spot and press Save to keep it at the top and on your Saved page. '}Missing your spot? <a href="${REPO}/issues/new?template=spot-request.yml">Request it</a>.</p>`;
+    + `<p class="overview" id="overview"></p><p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p><ul class="spots" id="spots"></ul><p class="count" id="count" role="status"></p></section>`;
+  h += `<p class="small muted" style="margin-top:14px">Updated ${issued()} (${ago(ageMin())} ago), several times a day. The coloured bars are the next five days. <a href="#levels">What the levels mean</a>. ${saved.length ? '' : 'Open a spot and press Save to keep it at the top and on your Saved page. '}${STANDALONE ? '' : '<a href="#home-screen">Add to your Home Screen</a>. '}Missing your spot? <a href="${REPO}/issues/new?template=spot-request.yml">Request it</a>.</p>`;
   setPanel(h);
   if (saved.length) bindItems(document.getElementById('saved-list'));
+  document.getElementById('listday').addEventListener('change', e => setMapDay(e.target.value));
   // Only the list redraws as you type; redrawing the box itself dropped the focus after one letter.
   document.getElementById('q').addEventListener('input', e => { VIEW.q = e.target.value; drawSpots(); });
   // The keyboard's Search key: there is no form to submit, so close the keyboard to show the results.
@@ -992,9 +1014,18 @@ function drawSpots() {
   const found = s => { const t = searchText(s); return words.every(w => t.includes(w)); };
   const keep = s => found(s) && (VIEW.filter === 'all'
     || (VIEW.filter === 'designated' ? s.source === 'designated' : s.kind === VIEW.filter)) && (!VIEW.lowOnly || mapLevel(s) === 'low');
-  const rank = s => ORDER[level(s)] ?? -1;
+  const rank = s => ORDER[mapLevel(s)] ?? -1;
   const items = DATA.spots.filter(keep).sort((a, b) => VIEW.sort === 'near' && VIEW.here ? dist(a) - dist(b)
     : VIEW.sort === 'risk' ? rank(b) - rank(a) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name));
+  const savedGroup = document.getElementById('saved-group');
+  if (savedGroup) {
+    savedGroup.hidden = Boolean(VIEW.q.trim() || VIEW.filter !== 'all' || VIEW.lowOnly);
+    const savedList = document.getElementById('saved-list');
+    savedList.innerHTML = DATA.spots.filter(s => SAVED.has(s.id)).map(spotItem).join('');
+    bindItems(savedList);
+  }
+  document.getElementById('all-h').textContent = VIEW.q.trim() || VIEW.filter !== 'all' || VIEW.lowOnly ? 'Matching spots' : 'All spots';
+  document.getElementById('overview').textContent = overview(items);
   ul.innerHTML = items.length ? items.map(spotItem).join('')
     : `<li class="empty"><p style="margin:0 0 10px">No spots match. Dipspot covers ${DATA.spots.length} river and lake spots in England. Missing yours? <a href="${REPO}/issues/new?template=spot-request.yml">Request it</a>.</p>`
       + `<button type="button" class="btn" id="clear-filters">Clear search and filters</button></li>`;
@@ -1220,8 +1251,8 @@ function render(d) {
   h += `<div class="title-row"><h1 class="spot-name">${esc(d.name)}</h1>${saveButton(d)}</div><div class="chips">${tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>`
     + `<div class="loc phone-only"><div id="loc-map" aria-hidden="true"></div><button type="button" class="loc-open" id="loc-open" aria-label="Open map at ${esc(d.name)}">Open map</button></div>`;
   const [head, why] = headParts(d);
-  const hero = body => `<section class="hero ${headTone(d)}"><div class="kicker">Pollution risk</div><div class="headline">${head}</div>`
-    + `${why ? `<div class="head-why">${cap(why)}</div>` : ''}${body}</section>`;
+  const hero = body => `<section class="hero ${headTone(d)}" id="risk-hero"><div class="kicker">Pollution risk</div><div class="headline">${head}</div>`
+    + `<div class="head-why">${why ? cap(why) : ''}</div>${body}</section>`;
   if (d.error) {
     DAY = null;   // no days here: a day link opens the spot, and the address loses the day
     if (dayFromURL()) history.replaceState(history.state, '', location.pathname + location.search);

@@ -111,7 +111,16 @@ const dayLevel = (s, iso) => {
   return x ? risk(s, x).level ?? NO_FORECAST : NO_FORECAST;
 };
 
+// Keep standing ratings distinct from daily predictions when planning a particular day.
+function dayHeadline(s, iso) {
+  if (!daily(s)) return headline(s);
+  const x = s.days.slice(0, 5).find(d => d.date === iso), r = x ? risk(s, x) : {level:null};
+  if (!r.level) return 'No forecast for this day';
+  if (r.by === 'record') return 'Rated poor: advice against bathing';
+  return `${cap(r.level)}${rank(r.level) > 0 ? ': ' + because(r) : ' forecast risk'}`;
+}
+
 if (typeof module === 'object' && module.exports) {
   module.exports = { ORDER, NOT_COVERED, NO_FORECAST, NO_OVERFLOWS, setToday, today, rank, risk, level, dayLevel,
-    headParts, headline, daily };
+    headParts, headline, dayHeadline, daily };
 }
