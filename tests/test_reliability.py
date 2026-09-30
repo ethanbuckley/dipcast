@@ -505,4 +505,6 @@ def test_page_view_counter_is_off_by_default_and_disclosed_when_on():
     assert with_counter(privacy, "not-a-token'><script>") == privacy     # a malformed token cannot inject markup
     on = with_counter(privacy, "0123456789abcdef0123456789abcdef")
     assert on.count("static.cloudflareinsights.com/beacon.min.js") == 1 and '"token": "0123456789abcdef0123456789abcdef"' in on
+    assert '<script id="page-counter">' in on and "dipcast.count" in on and "__TOKEN__" not in on   # loads only without an objection
+    assert "Don't count my visits" in on                  # the notice says how to object
     assert all(s in on for s in WITH_COUNTER) and not any(s in on for s in NO_COUNTER)

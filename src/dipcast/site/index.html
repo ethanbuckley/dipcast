@@ -380,6 +380,7 @@
       <details class="more" id="your-data"><summary>Saved spots, offline use and your data</summary>
         <p class="small muted">Saved spots are kept in this browser, and sent nowhere unless you turn on alerts on the Saved page. After a first visit the page and the latest forecast are stored on your device, so the site opens without signal at the water's edge; it then says how old the forecast is. <a href="privacy.html">Privacy notice</a>.</p>
         <p class="small"><button type="button" class="linkbtn small" id="offline-btn" hidden>Turn off the offline copy</button> <span class="muted" id="offline-msg" aria-live="polite"></span></p>
+        <p class="small" id="count-row" hidden><span class="muted">Page views are counted, without cookies.</span> <button type="button" class="linkbtn small" id="count-btn">Don't count my visits</button> <span class="muted" id="count-msg" aria-live="polite"></span></p>
       </details>
       <details class="more" id="home-screen"><summary>Add SwimSignal to your Home Screen</summary>
         <p class="small muted">It then opens from its own icon, without the browser's bars. No account is needed.</p>
@@ -1421,6 +1422,27 @@ if ('serviceWorker' in navigator) {
     m.textContent = !kept ? 'This browser is not keeping site data, so this lasts only until you close the page.'
       : on ? 'The offline copy is on again.' : `The offline copy is off, and deleted from this device.${alerts ? ' Alerts are off too: they need it.' : ''}`;
     if (DATA && document.body.classList.contains('view-saved')) renderSaved();   // the alerts card follows
+  });
+}
+// The page-view counter, when the build switched it on (counter.js is then inline as #page-counter):
+// the free, simple way to object that PECR Schedule A1 asks for. counter.js reads the same key before
+// it loads anything, so the choice holds from the next page opened in this browser.
+if (document.getElementById('page-counter')) {
+  const COUNT_KEY = 'dipcast.count';
+  const row = document.getElementById('count-row'), b = document.getElementById('count-btn'), m = document.getElementById('count-msg');
+  const countOff = () => { try { return localStorage.getItem(COUNT_KEY) === 'off'; } catch (e) { return false; } };
+  const label = () => { b.textContent = countOff() ? 'Count my visits again' : "Don't count my visits"; };
+  row.hidden = false; label();
+  if (navigator.globalPrivacyControl === true || navigator.doNotTrack === '1') {
+    b.hidden = true; m.textContent = 'Your browser asks sites not to track it, so your visits are not counted.';
+  }
+  b.addEventListener('click', () => {
+    const was = countOff(); let kept = true;
+    try { if (was) localStorage.removeItem(COUNT_KEY); else localStorage.setItem(COUNT_KEY, 'off'); } catch (e) { kept = false; }
+    label();
+    m.textContent = !kept ? 'This browser is not keeping site data, so it cannot keep this choice.'
+      : was ? 'Your visits will be counted again from the next page you open.'
+      : 'Your visits from this browser are not counted from the next page you open.';
   });
 }
 </script>
