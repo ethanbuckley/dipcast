@@ -10,8 +10,8 @@ id = "REPLACE_WITH_KV_NAMESPACE_ID"
 crons = ["*/2 * * * *"]   # queued alerts go out in batches; see README
 
 [vars]
-SITE_URL = "https://ethanbuckley.github.io/dipcast/"
-ALLOWED_ORIGIN = "https://ethanbuckley.github.io"
+SITE_URL = "https://swimsignal.co.uk/"
+ALLOWED_ORIGIN = "https://swimsignal.co.uk"
 VAPID_SUBJECT = "REPLACE_WITH_mailto:you@example.com"
 VAPID_PUBLIC_KEY = "REPLACE_WITH_PUBLIC_KEY"
 # SENDS_PER_RUN = "15"   # alerts per run; raise it on the Workers Paid plan (README)
