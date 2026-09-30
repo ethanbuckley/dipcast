@@ -244,7 +244,7 @@ def test_feedback_and_experience_are_built_for_nested_github_pages(tmp_path):
     feedback = (tmp_path / "feedback.html").read_text()
     assert 'href="page.css"' in feedback and 'href="index.html"' in feedback
     assert 'href="/' not in feedback
-    assert "ethan@ethanbuckley.me.uk" in feedback and "Prepare email" in feedback
+    assert "hello@swimsignal.co.uk" in feedback and "Prepare email" in feedback
     home = (tmp_path / "index.html").read_text()
     assert '<script src="experience.js">' in home
     assert (tmp_path / "experience.js").exists()

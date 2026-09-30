@@ -5,7 +5,7 @@ label {display:block;font-weight:650;margin:18px 0 6px} input,select,textarea {f
 </style></head><body><main>
 <nav><a href="/" class="brand">SwimSignal</a><a href="/">Explore</a><a href="/about">About</a><a href="/privacy">Privacy</a></nav>
 <h1>Help shape SwimSignal</h1><p class="lead">Tell Ethan what worked, what was confusing, or which spot is missing. No account needed.</p>
-<p>This form prepares an email to <a href="mailto:ethan@ethanbuckley.me.uk">ethan@ethanbuckley.me.uk</a>. You review and send it from your email app. Nothing you type is submitted to a server or saved by this form.</p>
+<p>This form prepares an email to <a href="mailto:hello@swimsignal.co.uk">hello@swimsignal.co.uk</a>. You review and send it from your email app. Nothing you type is submitted to a server or saved by this form.</p>
 <form id="feedback-form">
 <label for="kind">What would you like to share?</label><select id="kind"><option value="feedback">Feedback about the app</option><option value="spot">Request a swim spot</option><option value="problem">Report a data or display problem</option></select>
 <label for="spot">Spot or area (optional)</label><input id="spot" maxlength="160" autocomplete="off" placeholder="River, lake, nearest town or spot name">
@@ -23,7 +23,7 @@ function prepareEmail(kind, spot, decision, message) {
   const types = {feedback:'Feedback',spot:'Spot request',problem:'Data or display problem'};
   const subject = 'SwimSignal · ' + (types[kind] || types.feedback);
   const body = [spot ? 'Spot / area: ' + spot : '', decision ? 'Effect on my plans: ' + decision : '', message].filter(Boolean).join('\n\n');
-  return {text: subject + '\n\n' + body, href:'mailto:ethan@ethanbuckley.me.uk?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body)};
+  return {text: subject + '\n\n' + body, href:'mailto:hello@swimsignal.co.uk?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body)};
 }
 $('feedback-form').addEventListener('submit', e => {
   e.preventDefault();
@@ -34,7 +34,7 @@ $('feedback-form').addEventListener('submit', e => {
 $('message').addEventListener('input', () => $('message').setCustomValidity(''));
 $('feedback-form').addEventListener('input', () => { $('prepared').hidden = true; });
 $('copy').addEventListener('click', async () => {
-  try { await navigator.clipboard.writeText($('email-preview').value); $('copy-status').textContent = 'Copied. Paste it into an email to ethan@ethanbuckley.me.uk.'; }
+  try { await navigator.clipboard.writeText($('email-preview').value); $('copy-status').textContent = 'Copied. Paste it into an email to hello@swimsignal.co.uk.'; }
   catch { $('email-preview').focus(); $('email-preview').select(); $('copy-status').textContent = 'Select and copy the text above, then email Ethan directly.'; }
 });
 </script></main></body></html>
