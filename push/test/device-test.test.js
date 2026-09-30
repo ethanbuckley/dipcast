@@ -13,7 +13,7 @@ test('the device smoke test sends one clearly labelled, short-lived notification
     assert.equal(url, ua.subscription.endpoint);
     assert.equal(init.headers.TTL, '60');
     const payload = ua.read(init.body);
-    assert.equal(payload.title, 'Dipspot test notification');
+    assert.equal(payload.title, 'SwimSignal test notification');
     assert.match(payload.body, /not a water-quality warning/);
     assert.equal(payload.url, env.SITE_URL + 'saved/');
     assert.equal(Date.parse(payload.expires_at), at + 60000);

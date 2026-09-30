@@ -1,4 +1,4 @@
-// Dipspot push alerts. The site's pages subscribe here; every 2 minutes the cron
+// SwimSignal push alerts. The site's pages subscribe here; every 2 minutes the cron
 // compares the site's alerts.json with the last run and pushes to people whose saved
 // spots have just become high.
 

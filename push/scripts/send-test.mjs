@@ -11,7 +11,7 @@ export async function sendTest(subscription, env, { fetch = globalThis.fetch, no
   if (site.protocol !== 'https:') throw new Error('SITE_URL must be HTTPS');
   const at = now();
   const response = await sendPush(subscription, {
-    title: 'Dipspot test notification',
+    title: 'SwimSignal test notification',
     body: 'Your notification test arrived. This is not a water-quality warning.',
     url: new URL('saved/', site.href.endsWith('/') ? site : new URL(site.href + '/')).href,
     tag: 'dipspot-device-test',

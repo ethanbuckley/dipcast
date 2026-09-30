@@ -109,6 +109,11 @@ def terms_page():
     return FileResponse(STATIC / "terms.html", headers=NO_CACHE)
 
 
+@app.get("/feedback")
+def feedback_page():
+    return FileResponse(STATIC / "feedback.html", headers=NO_CACHE)
+
+
 @app.get("/privacy")
 def privacy_page():
     return FileResponse(STATIC / "privacy.html", headers=NO_CACHE)

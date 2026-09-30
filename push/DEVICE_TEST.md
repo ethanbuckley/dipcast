@@ -13,7 +13,7 @@ Do not deploy or enable production alerts as part of an automated test. Record i
 1. Open the HTTPS test site in Safari, add it to the Home Screen, then launch its icon.
 2. Save a test spot. Enable alerts and accept the notification prompt yourself.
 3. Lock the phone. Have the reviewer send the single test notification described below.
-4. Confirm that it says **Dipspot test notification**, arrives on the lock screen or in Notification Centre, and opens the app's Saved page when tapped. Note Focus mode and notification settings if no banner appears.
+4. Confirm that it says **SwimSignal test notification**, arrives on the lock screen or in Notification Centre, and opens the app's Saved page when tapped. Note Focus mode and notification settings if no banner appears.
 5. Remove the test spot, then turn alerts off. Confirm the Worker subscription is updated/deleted after propagation; a subsequent test cron should not send to it.
 6. Close and reopen the Home Screen app. Check that the saved spots, permission state and offline forecast timestamp remain understandable.
 

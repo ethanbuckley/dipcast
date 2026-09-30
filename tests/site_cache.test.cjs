@@ -59,7 +59,7 @@ test('a first visit without a connection fails rather than invent a forecast', a
 test('an expired delivered push displays a check-latest notice, not the old risk', async () => {
   const w = worker(async () => {});
   await w.push({ title: 'Very high today', body: 'Old pollution claim', expires_at: new Date(Date.now() - 1000).toISOString(), url: SCOPE + 'spot/a/' });
-  assert.equal(w.notifications[0].title, 'Dipspot forecast update');
+  assert.equal(w.notifications[0].title, 'SwimSignal forecast update');
   assert.match(w.notifications[0].body, /expired/);
   assert.equal(w.notifications[0].data.url, SCOPE + 'spot/a/');
   assert.ok(!w.notifications[0].body.includes('Old pollution'));
@@ -75,7 +75,7 @@ test('a fresh push includes its UK forecast issue time', async () => {
 test('an invalid explicit expiry cannot show a current pollution claim', async () => {
   const w = worker(async () => {});
   await w.push({ title: 'High today', expires_at: 'not a date' });
-  assert.equal(w.notifications[0].title, 'Dipspot forecast update');
+  assert.equal(w.notifications[0].title, 'SwimSignal forecast update');
 });
 
 test('a legacy notification still works and a null payload cannot crash the handler', async () => {
@@ -83,5 +83,5 @@ test('a legacy notification still works and a null payload cannot crash the hand
   await w.push({ title: 'Legacy', body: 'Message' });
   await w.push(null);
   assert.equal(w.notifications[0].title, 'Legacy');
-  assert.equal(w.notifications[1].title, 'Dipspot');
+  assert.equal(w.notifications[1].title, 'SwimSignal');
 });

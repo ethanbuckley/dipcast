@@ -8,11 +8,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- page-meta: scripts/build_site.py replaces this block on every page it writes (absolute
      links for share previews; a spot's own page gets its name, a description and a <base>). -->
-<title>Dipspot · sewage-spill forecasts for swim spots</title>
+<title>SwimSignal · sewage-spill forecasts for swim spots</title>
 <meta name="description" content="Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow data, rainfall forecasts and the river network.">
 <meta property="og:type" content="website">
-<meta property="og:site_name" content="Dipspot">
-<meta property="og:title" content="Dipspot">
+<meta property="og:site_name" content="SwimSignal">
+<meta property="og:title" content="SwimSignal">
 <meta property="og:description" content="Will sewage from upstream storm overflows reach this swim spot? Forecasts for river and lake swim spots in England.">
 <meta property="og:image" content="icons/og.png">
 <meta name="twitter:card" content="summary_large_image">
@@ -26,7 +26,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Dipspot">
+<meta name="apple-mobile-web-app-title" content="SwimSignal">
 <!-- Pinned by hash, so a changed file on the CDN is refused rather than run. -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
@@ -99,6 +99,22 @@
   h1, h2, h3 { letter-spacing:-.01em; }
 
   /* The list */
+  .evidence dl { margin:12px 0 0; }
+  .evidence dt { font-size:13px; font-weight:750; margin-top:12px; color:var(--brand); }
+  .evidence dd { margin:3px 0 0; font-size:14px; color:var(--muted); }
+  .compare-fields { display:grid; gap:10px; margin:14px 0; }
+  .compare-fields label { font-size:14px; font-weight:650; }
+  .compare-fields select { display:block; width:100%; min-height:44px; margin-top:4px; padding:8px; font:inherit; background:white; border:1px solid var(--line); border-radius:8px; }
+  .compare-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
+  .compare-table { width:100%; min-width:540px; border-collapse:collapse; font-size:14px; }
+  .compare-table caption { text-align:left; padding:10px; color:var(--muted); }
+  .compare-table th, .compare-table td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; min-width:150px; }
+  .compare-table th { background:#f1f7f5; }
+  .compare-table th a { display:block; min-height:44px; padding:4px 0; }
+  .compare-table th[scope=row] { min-width:100px; }
+  .comparison > summary { cursor:pointer; font-weight:750; font-size:18px; padding:6px 0; }
+  .comparison[open] > summary { margin-bottom:10px; }
+  .evidence summary { cursor:pointer; font-weight:650; padding:8px 0; }
   .intro { padding:18px; border:1px solid var(--line); border-radius:20px; background:linear-gradient(135deg,#e5f3ef,#fff 75%); }
   .intro .eyebrow { margin:0 0 8px; color:var(--brand); font-size:12px; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
   .planner { margin:16px 0 12px; }
@@ -322,14 +338,14 @@
 <body class="view-list">
 <a class="skip" href="#panel">Skip to forecasts</a>
 <header class="top" id="top">
-  <a class="brand" href="./"><img src="icons/icon.svg" alt="" width="30" height="30">Dipspot</a>
+  <a class="brand" href="./"><img src="icons/icon.svg" alt="" width="30" height="30">SwimSignal</a>
   <!-- A phone shows none of these: Saved and Map are in the bar at the bottom, and About is linked from the list's intro. -->
   <nav aria-label="Site">
     <a href="saved/" class="hbtn" id="savedbtn" aria-label="Saved spots">Saved<span class="n" id="saved-n" hidden></span></a>
     <button type="button" class="hbtn phone-only" id="mapbtn" aria-pressed="false">Map</button>
     <a href="verification.html" class="desk-only">Accuracy</a>
     <a href="about.html" class="desk-only">About</a>
-    <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=feedback.yml" class="desk-only">Feedback</a>
+    <a href="feedback.html" class="desk-only">Feedback</a>
   </nav>
 </header>
 <div id="app">
@@ -338,7 +354,7 @@
     <div id="result"><p class="muted">Loading forecasts…</p></div>
     <section class="about" id="about">
       <h2>About these forecasts</h2>
-      <p>For each spot, Dipspot traces the river upstream, finds every monitored storm overflow whose water reaches it, and combines what those overflows are doing now with how likely each is to spill over the next five days, allowing for travel time, bacterial die-off and dilution. It is a forecast, not a water test: "low" is not a guarantee of clean water, and inclusion of a spot is not a statement that it is safe to swim there. <a href="verification.html">How accurate is it?</a></p>
+      <p>For each spot, SwimSignal traces the river upstream, finds every monitored storm overflow whose water reaches it, and combines what those overflows are doing now with how likely each is to spill over the next five days, allowing for travel time, bacterial die-off and dilution. It is a forecast, not a water test: "low" is not a guarantee of clean water, and inclusion of a spot is not a statement that it is safe to swim there. <a href="verification.html">How accurate is it?</a></p>
       <details class="more" id="levels"><summary>What the levels mean</summary>
         <p class="small muted">A day's level is the highest of these. A spot's page shows each one.</p>
         <dl>
@@ -369,9 +385,9 @@
         <p class="small muted">Saved spots are kept in this browser, and sent nowhere unless you turn on alerts on the Saved page. After a first visit the page and the latest forecast are stored on your device, so the site opens without signal at the water's edge; it then says how old the forecast is. <a href="privacy.html">Privacy notice</a>.</p>
         <p class="small"><button type="button" class="linkbtn small" id="offline-btn" hidden>Turn off the offline copy</button> <span class="muted" id="offline-msg" aria-live="polite"></span></p>
       </details>
-      <details class="more" id="home-screen"><summary>Add Dipspot to your Home Screen</summary>
+      <details class="more" id="home-screen"><summary>Add SwimSignal to your Home Screen</summary>
         <p class="small muted">It then opens from its own icon, without the browser's bars. No account is needed.</p>
-        <p><button type="button" class="btn" id="install-btn" hidden>Add Dipspot</button></p>
+        <p><button type="button" class="btn" id="install-btn" hidden>Add SwimSignal</button></p>
         <ul class="small">
           <li><b>iPhone or iPad:</b> tap <b>Share</b>, then <b>Add to Home Screen</b>.</li>
           <li><b>Android:</b> open the browser's menu and look for <b>Install app</b> or <b>Add to Home screen</b>.</li>
@@ -381,8 +397,8 @@
       </details>
     </section>
     <footer class="fine">
-      <p><a href="about.html">About Dipspot</a> · <a href="verification.html">How accurate is it?</a> · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=feedback.yml">Feedback</a> · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">Request a spot</a> · <a href="terms.html">Terms of use</a> · <a href="privacy.html">Privacy</a> · <a href="https://github.com/ethanbuckley/dipcast">Source code</a> (MIT)</p>
-      <p>Data: storm overflow status from Anglian, Northumbrian, Severn Trent, South West, Southern, Thames, United Utilities, Wessex and Yorkshire Water via the National Storm Overflow Hub (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>; combined and modelled by Dipspot) · Environment Agency data © Environment Agency copyright and/or database right (<a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">OGL v3.0</a>) · Contains OS data © Crown copyright and database right 2026 · <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a> (CC BY 4.0), from Met Office forecasts © Crown copyright (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>) · Map © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors. None of these bodies endorses Dipspot. <a href="terms.html#data">All credits and licences</a>.</p>
+      <p><a href="about.html">About SwimSignal</a> · <a href="verification.html">How accurate is it?</a> · <a href="feedback.html">Feedback</a> · <a href="feedback.html?type=spot">Request a spot</a> · <a href="terms.html">Terms of use</a> · <a href="privacy.html">Privacy</a> · <a href="https://github.com/ethanbuckley/dipcast">Source code</a> (MIT)</p>
+      <p>Data: storm overflow status from Anglian, Northumbrian, Severn Trent, South West, Southern, Thames, United Utilities, Wessex and Yorkshire Water via the National Storm Overflow Hub (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>; combined and modelled by SwimSignal) · Environment Agency data © Environment Agency copyright and/or database right (<a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">OGL v3.0</a>) · Contains OS data © Crown copyright and database right 2026 · <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a> (CC BY 4.0), from Met Office forecasts © Crown copyright (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>) · Map © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors. None of these bodies endorses SwimSignal. <a href="terms.html#data">All credits and licences</a>.</p>
     </footer>
   </main>
 </div>
@@ -392,11 +408,12 @@
   <a href="saved/" id="nav-saved" aria-label="Saved spots"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>Saved<span class="n" id="nav-saved-n" hidden></span></a>
 </nav>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="experience.js"></script>
 <script src="levels.js"></script>   <!-- the levels and headlines: shared with the build and the alerts -->
 <script>
-const BRAND = 'Dipspot';
+const BRAND = 'SwimSignal';
 const REPO = 'https://github.com/ethanbuckley/dipcast';
-const FEEDBACK = `${REPO}/issues/new?template=feedback.yml`;
+const FEEDBACK = 'feedback.html?type=feedback';
 // The site root. Built pages set a relative <base> at it ("./" on the home page, "../" in saved/,
 // "../../" in spot/<id>/), resolved once as the page loads, so pushState to spot/<id>/ does not
 // move relative links; relative, so the site works at any address.
@@ -607,11 +624,11 @@ function alertsCard() {
   if (!DATA.push) return '';
   // What consent needs to be informed (ICO): who gets what, for what, and how to take it back.
   const why = 'A notification when one of your saved spots turns high or very high, at most once a day for each. An alert can be late or not come at all, so no alert does not mean the water is clean. '
-    + 'Turning alerts on sends your browser\'s push address and the list of your saved spots, and nothing else about you, to Dipspot\'s alert service. Alerts reach you through your browser maker\'s push service (Google, Apple, Mozilla or Microsoft), encrypted so it cannot read them. '
+    + 'Turning alerts on sends your browser\'s push address and the list of your saved spots, and nothing else about you, to SwimSignal\'s alert service. Alerts reach you through your browser maker\'s push service (Google, Apple, Mozilla or Microsoft), encrypted so it cannot read them. '
     + 'You can turn them off here at any time, which deletes what the alert service holds. <a href="privacy.html">Privacy notice</a>.';
   const body = canPush() && offlineOff() ? `<p class="small" style="margin:0">Alerts need the offline copy, which is turned off in this browser. <a href="#your-data">Turn it back on</a> to use them.</p>`
     : canPush() ? `<button type="button" class="btn" id="alerts-btn" disabled>Turn on alerts</button>`
-    : IOS && !navigator.standalone ? `<p class="small" style="margin:0">On iPhone and iPad, alerts work only in the Home Screen app: tap <b>Share</b>, then <b>Add to Home Screen</b>, open Dipspot from there and save your spots in it.</p>`
+    : IOS && !navigator.standalone ? `<p class="small" style="margin:0">On iPhone and iPad, alerts work only in the Home Screen app: tap <b>Share</b>, then <b>Add to Home Screen</b>, open SwimSignal from there and save your spots in it.</p>`
     : `<p class="small" style="margin:0">This browser cannot show notifications from websites.</p>`;
   return `<section class="card" aria-labelledby="alerts-h"><h2 class="card-h" id="alerts-h">Alerts</h2><p class="sub">${why}</p>${body}<p class="small muted" id="alerts-msg" aria-live="polite" style="margin:8px 0 0"></p></section>`;
 }
@@ -805,6 +822,8 @@ function showDay(d, iso) {
   if (addr !== location.pathname + location.search + location.hash) history.replaceState(history.state, '', addr);
   document.getElementById('day-view').innerHTML = x ? dayDetail(d, x) : factors(d);
   document.querySelectorAll('#day-strip [data-day]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.day === DAY)));
+  const evidence = document.getElementById('evidence-card');
+  if (evidence) evidence.outerHTML = evidenceCard(d, DAY);
   const close = document.getElementById('day-close');
   if (close) close.addEventListener('click', () => { showDay(d, null); document.querySelector(`#day-strip [data-day="${iso}"]`).focus(); });
 }
@@ -976,7 +995,7 @@ function renderList() {
   h += `<section class="group" aria-labelledby="all-h"><div class="group-bar"><h2 class="group-head" id="all-h">All spots</h2>`
     + `<div class="sortseg" role="group" aria-label="Sort">${sorts.map(([k, t]) => `<button type="button" data-sort="${k}" aria-pressed="${VIEW.sort === k}">${t}</button>`).join('')}</div></div>`
     + `<p class="overview" id="overview"></p><p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p><ul class="spots" id="spots"></ul><p class="count" id="count" role="status"></p></section>`;
-  h += `<p class="small muted" style="margin-top:14px">Updated ${issued()} (${ago(ageMin())} ago), several times a day. The coloured bars are the next five days. <a href="#levels">What the levels mean</a>. ${saved.length ? '' : 'Open a spot and press Save to keep it at the top and on your Saved page. '}${STANDALONE ? '' : '<a href="#home-screen">Add to your Home Screen</a>. '}Missing your spot? <a href="${REPO}/issues/new?template=spot-request.yml">Request it</a>.</p>`;
+  h += `<p class="small muted" style="margin-top:14px">Updated ${issued()} (${ago(ageMin())} ago), several times a day. The coloured bars are the next five days. <a href="#levels">What the levels mean</a>. ${saved.length ? '' : 'Open a spot and press Save to keep it at the top and on your Saved page. '}${STANDALONE ? '' : '<a href="#home-screen">Add to your Home Screen</a>. '}Missing your spot? <a href="feedback.html?type=spot">Request it</a>.</p>`;
   setPanel(h);
   if (saved.length) bindItems(document.getElementById('saved-list'));
   document.getElementById('listday').addEventListener('change', e => setMapDay(e.target.value));
@@ -1027,7 +1046,7 @@ function drawSpots() {
   document.getElementById('all-h').textContent = VIEW.q.trim() || VIEW.filter !== 'all' || VIEW.lowOnly ? 'Matching spots' : 'All spots';
   document.getElementById('overview').textContent = overview(items);
   ul.innerHTML = items.length ? items.map(spotItem).join('')
-    : `<li class="empty"><p style="margin:0 0 10px">No spots match. Dipspot covers ${DATA.spots.length} river and lake spots in England. Missing yours? <a href="${REPO}/issues/new?template=spot-request.yml">Request it</a>.</p>`
+    : `<li class="empty"><p style="margin:0 0 10px">No spots match. SwimSignal covers ${DATA.spots.length} river and lake spots in England. Missing yours? <a href="feedback.html?type=spot">Request it</a>.</p>`
       + `<button type="button" class="btn" id="clear-filters">Clear search and filters</button></li>`;
   document.getElementById('count').textContent = items.length === DATA.spots.length ? `${items.length} spots.` : `Showing ${items.length} of ${DATA.spots.length} spots.`;
   const clear = document.getElementById('clear-filters');
@@ -1053,6 +1072,49 @@ function savedCard(s) {
     + `<div class="scard-hl">${headline(s)}</div>${s.error ? `<p class="small muted" style="margin:0">${esc(s.error)}</p>` : cells(s, true)}${nowLine(s)}</li>`;
 }
 const listOf = spots => `<ul class="inc-list">${spots.slice(0, 5).map(s => `<li>${esc(s.name)}</li>`).join('')}${spots.length > 5 ? `<li>and ${spots.length - 5} more</li>` : ''}</ul>`;
+const COMPARE = { ids: null, day: null, open: false };
+function compareSection(spots) {
+  if (spots.length < 2) return '<section class="card"><h2 class="card-h">Compare your spots</h2><p class="sub">Save at least two spots to compare their forecasts and evidence for the same day.</p></section>';
+  const ids = comparisonIds(COMPARE.ids || spots.slice(0,2).map(s => s.id), spots);
+  COMPARE.ids = ids;
+  const dates = [0,1,2,3,4].map(k => addDays(today(),k));
+  if (!dates.includes(COMPARE.day)) COMPARE.day = VIEW.day || dates[0];
+  return `<details class="card comparison"${COMPARE.open ? ' open' : ''}><summary>Compare your spots</summary><p class="sub">Choose up to three saved spots for the same day. A lower forecast level does not guarantee safe water.</p>
+    <div class="compare-fields"><label>Compare day<select id="compare-day">${dates.map(iso => `<option value="${iso}"${iso === COMPARE.day ? ' selected' : ''}>${dateLabel(iso)}</option>`).join('')}</select></label>
+    ${[0,1,2].map(i => `<label>Spot ${i+1}${i===2 ? ' (optional)' : ''}<select data-compare="${i}"><option value="">Choose a spot</option>${spots.map(s => `<option value="${esc(s.id)}"${s.id === ids[i] ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}</select></label>`).join('')}</div>
+    <p class="small muted" id="compare-status" role="status"></p><div id="compare-result"></div></details>`;
+}
+function drawComparison() {
+  const box = document.getElementById('compare-result'); if (!box) return;
+  const choices = [...document.querySelectorAll('[data-compare]')].map(el => el.value);
+  const available = DATA.spots.filter(s => SAVED.has(s.id));
+  COMPARE.ids = comparisonIds(choices, available);
+  COMPARE.day = document.getElementById('compare-day').value;
+  const spots = COMPARE.ids.map(id => available.find(s => s.id === id));
+  document.getElementById('compare-status').textContent = spots.length < 2 ? 'Choose at least two different saved spots.' : `${spots.length} spots · ${dateLabel(COMPARE.day)}. Scroll sideways to compare all columns.`;
+  if (spots.length < 2) { box.innerHTML = ''; return; }
+  const rows = ['Forecast', 'Live spill feeds', 'EA rating', 'Water samples', 'Model limits', 'Algae observation', 'Local warnings'];
+  const facts = spots.map(s => Object.fromEntries(evidenceRows(s,COMPARE.day,issued())));
+  box.innerHTML = `<div class="compare-scroll" tabindex="0" role="region" aria-label="Spot comparison"><table class="compare-table"><caption>${dateLabel(COMPARE.day)} · issued ${issued()} (${ago(ageMin())} ago)</caption><thead><tr><th scope="col">Evidence</th>${spots.map(s => `<th scope="col"><a data-compare-spot="${esc(s.id)}" href="${esc(spotPath(s.id))}${daily(s) ? '#day='+COMPARE.day : ''}">${esc(s.name)}</a></th>`).join('')}</tr></thead><tbody>
+    <tr><th scope="row">Pollution risk</th>${spots.map(s => `<td><b>${esc(dayHeadline(s,COMPARE.day))}</b></td>`).join('')}</tr>
+    ${rows.map(label => `<tr><th scope="row">${label}</th>${facts.map(f => `<td>${esc(f[label])}</td>`).join('')}</tr>`).join('')}
+    <tr><th scope="row">Official advice</th>${spots.map(s => `<td>${s.classification?.url ? `<a href="${esc(s.classification.url)}">Check EA advice</a>` : 'Check local signs and the water manager; no EA bathing-water page linked.'}</td>`).join('')}</tr></tbody></table></div>`;
+  box.querySelectorAll('[data-compare-spot]').forEach(a => a.addEventListener('click', e => { if (!plainClick(e)) return; e.preventDefault(); select(a.dataset.compareSpot,true,true,COMPARE.day); }));
+}
+function refreshComparison() {
+  const host = document.getElementById('compare-host');
+  if (host) { const open = host.querySelector('details')?.open; host.innerHTML = compareSection(DATA.spots.filter(s => SAVED.has(s.id))); const details = host.querySelector('details'); if (details) details.open = Boolean(open); bindComparison(); }
+}
+function bindComparison() {
+  const details = document.querySelector('.comparison');
+  if (details) details.addEventListener('toggle', () => { COMPARE.open = details.open; });
+  document.querySelectorAll('#compare-day, [data-compare]').forEach(el => el.addEventListener('change',drawComparison));
+  drawComparison();
+}
+function evidenceCard(d, iso) {
+  const rows = evidenceRows(d,iso || today(),issued());
+  return `<section class="card evidence" id="evidence-card"><h2 class="card-h">What this is based on</h2><p class="sub">Forecasts, monitoring and official records are different kinds of evidence.</p><dl>${rows.slice(0,3).map(([label,text]) => `<dt>${label}</dt><dd>${esc(text)}</dd>`).join('')}</dl><details><summary>Samples, limits and local warnings</summary><dl>${rows.slice(3).map(([label,text]) => `<dt>${label}</dt><dd>${esc(text)}</dd>`).join('')}</dl>${d.classification?.url ? `<p><a href="${esc(d.classification.url)}">Check latest EA samples and advice</a></p>` : ''}</details></section>`;
+}
 function renderSaved() {
   contribLayer.clearLayers(); selLayer.clearLayers(); current = null; shown = 'saved';
   setView('saved');
@@ -1067,6 +1129,7 @@ function renderSaved() {
   else if (INCOMING) h += `<p class="notice quiet" role="status">${INCOMING.length === 1 ? 'The spot in that link is' : 'The spots in that link are'} already saved here.</p>`;
   INCOMING = offered.length ? INCOMING : null;
   h += notices();
+  h += `<div id="compare-host">${compareSection(spots)}</div>`;
   if (spots.length) h += `<ul class="scards" id="scards">${spots.map(savedCard).join('')}</ul>`
     + `<p class="small muted" style="margin:10px 2px 0">Updated ${issued()} (${ago(ageMin())} ago). Tap a spot for its full forecast, or a day for that day. <a href="#levels">What the levels mean</a>. Forecasts, not water tests: check the signs at the water before you swim.${spots.some(anyUntested) ? ' ' + UNTESTED_NOTE : ''}</p>`;
   else h += `<div class="card empty-saved"><div class="big-star" aria-hidden="true">☆</div><h2 class="card-h">No saved spots yet</h2>`
@@ -1078,7 +1141,7 @@ function renderSaved() {
   if (spots.length) h += `<section class="card"><h2 class="card-h">Share this list</h2><p class="sub">A link that opens ${spots.length === 1 ? 'this spot' : `these ${spots.length} spots`} on another phone or browser, or for a friend. It holds which spots they are and nothing else.</p>`
     + `<button type="button" class="btn" id="share-list">Share this list</button><p class="small muted" id="share-list-msg" aria-live="polite" style="margin:8px 0 0"></p></section>`;
   setPanel(h);
-  bindBack(); bindSavedPage(spots, offered); bindAlerts();
+  bindBack(); bindSavedPage(spots, offered); bindAlerts(); bindComparison();
   for (const s of spots) L.circleMarker([s.lat, s.lon], { radius: 13, color: '#0f5a61', weight: 2.5, fill: false, interactive: false }).addTo(selLayer);
   if (spots.length && !PHONE.matches) map.fitBounds(L.latLngBounds(spots.map(s => [s.lat, s.lon])), { padding: [60, 60], maxZoom: 11 });
   placeMap();
@@ -1095,11 +1158,13 @@ function bindSavedPage(spots, offered) {
       li.className = 'scard removed';
       li.innerHTML = `<span>Removed <b>${esc(s.name)}</b>.</span><button type="button" class="linkbtn" data-undo="${esc(id)}" data-at="${at}">Undo</button>`;
       li.querySelector('[data-undo]').focus();
+      refreshComparison();
     } else if (undo) {
       const id = undo.dataset.undo, a2 = [...SAVED];
       a2.splice(Math.min(+undo.dataset.at, a2.length), 0, id); setSaved(a2);
       const li = undo.closest('li'); li.outerHTML = savedCard(DATA.spots.find(x => x.id === id));
       const back = ul.querySelector(`[data-unsave="${CSS.escape(id)}"]`); if (back) back.focus();
+      refreshComparison();
     }
   });
   const find = $('find');
@@ -1170,7 +1235,7 @@ function actions(d) {
   return `<div class="actions"><button type="button" class="btn primary" id="share">Copy link to this spot</button>`
     + `<a class="btn" href="${esc(FEEDBACK)}&amp;spot=${encodeURIComponent(d.name)}">Tell us how you used this</a></div>`
     + `<p class="small muted" id="share-msg" aria-live="polite" style="margin:0 0 6px"></p>`
-    + `<p class="small muted" style="margin:0 0 6px">Did the forecast change where or when you swam? That is what decides whether this site is worth building on. Feedback goes to a public GitHub issue and needs a GitHub account.</p>`;
+    + `<p class="small muted" style="margin:0 0 6px">Did the forecast change where or when you swam? That is what decides whether this site is worth building on. Prepare a private email to Ethan. No GitHub account needed.</p>`;
 }
 function bindShare(d) {
   const b = document.getElementById('share'); if (!b) return;
@@ -1256,7 +1321,7 @@ function render(d) {
   if (d.error) {
     DAY = null;   // no days here: a day link opens the spot, and the address loses the day
     if (dayFromURL()) history.replaceState(history.state, '', location.pathname + location.search);
-    h += hero(factors(d) + check(d));
+    h += hero(factors(d) + check(d)) + evidenceCard(d, DAY);
     h += algae(d.algae) + `<section class="card phone-only"><h2 class="card-h">Where it is</h2><div id="spot-map"></div></section>` + actions(d);
     setPanel(h); bindBack(); bindSave(d); bindShare(d); placeMap(); miniMap(d); return;
   }
@@ -1264,6 +1329,7 @@ function render(d) {
   h += notices();
   // Always say how old it is: the stored copy (sw.js) can answer when the network is slow.
   h += hero(`${strip(d)}<div id="day-view">${factors(d)}</div><p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p>${check(d)}`);
+  h += evidenceCard(d, DAY);
   if (total) {
     h += `<section class="card"><h2 class="card-h">Right now</h2><div class="now-row"><span class="big${now.discharging_upstream ? ' hot' : ''}">${now.discharging_upstream}</span>`
       + `<div>of ${total} upstream overflow${total === 1 ? '' : 's'} discharging now<div class="small muted">${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h · ${now.monitored_upstream} of ${total} report live</div></div></div></section>`;
@@ -1335,7 +1401,7 @@ document.getElementById('install-btn').addEventListener('click', async () => {
   try { await p.prompt(); } catch (e) { document.getElementById('install-msg').textContent = 'Use the browser menu instead, as below.'; }
 });
 window.addEventListener('appinstalled', () => { INSTALL = null; document.getElementById('install-btn').hidden = true;
-  document.getElementById('install-msg').textContent = 'Dipspot is on your Home Screen. Open it from there.'; });
+  document.getElementById('install-msg').textContent = 'SwimSignal is on your Home Screen. Open it from there.'; });
 // The page and the latest forecast kept on the device, for the water's edge without signal (sw.js).
 // It can be turned off: since 5 Feb 2026 PECR (Schedule A1) allows storage the site works without
 // only with clear information (the privacy notice) and a free, simple way to object. The choice is
