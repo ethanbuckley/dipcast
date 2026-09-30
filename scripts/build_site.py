@@ -47,11 +47,11 @@ KEEP_CONTRIBUTORS = 10
 MIN_OK_SHARE = 0.8        # fewer spots with a forecast than this and the build fails (no publish)
 MAX_NO_DATA_SHARE = 0.5   # more of today's forecasts without rainfall data than this: fail
 # The pages were written for the FastAPI routes; rewrite them for flat files.
-REWRITES = [('href="/verification"', 'href="verification.html"'), ('href="/terms"', 'href="terms.html"'),
+REWRITES = [('href="/feedback"', 'href="feedback.html"'), ('href="/feedback?type=spot"', 'href="feedback.html?type=spot"'), ('href="/verification"', 'href="verification.html"'), ('href="/terms"', 'href="terms.html"'),
             ('href="/about"', 'href="about.html"'),
             ('href="/privacy"', 'href="privacy.html"'), ('href="/terms#data"', 'href="terms.html#data"'), ('href="/"', 'href="index.html"'),
             ('href="/static/page.css"', 'href="page.css"'), ("fetch('/api/verification')", "fetch('data/verification.json')")]
-BRAND = "Dipspot"
+BRAND = "SwimSignal"
 HOME_TITLE = f"{BRAND} · sewage-spill forecasts for swim spots"
 DESCRIPTION = ("Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow "
                "data, rainfall forecasts and the river network.")
@@ -70,8 +70,8 @@ SITE_URL_ENV = "DIPCAST_SITE_URL"
 # and there is no way to object yet. The first string is the privacy notice's own lead,
 # so the terms page's date is not touched.
 COUNTER_TOKEN_ENV = "DIPCAST_CF_BEACON_TOKEN"
-NO_COUNTER = ("and what it does not. Last updated 29 September 2026.", "There is no analytics script and no third-party tracking.")
-WITH_COUNTER = ("and what it does not. Last updated 29 September 2026 (page-view counter).",
+NO_COUNTER = ("and what it does not. Last updated 30 September 2026.", "There is no analytics script and no third-party tracking.")
+WITH_COUNTER = ("and what it does not. Last updated 30 September 2026 (page-view counter).",
                 ("Page views are counted with Cloudflare Web Analytics. Cloudflare states that it sets no cookies, "
                  "uses no local storage and does not fingerprint visitors. It sees your IP address when the counter "
                  "loads, as any web server would, and its "
@@ -105,15 +105,15 @@ def lead_skill(processed: Path = config.PROCESSED) -> dict | None:
 # key sit in spots.json for the page; the private key never leaves the Worker.
 PUSH_URL_ENV, PUSH_KEY_ENV = "DIPCAST_PUSH_URL", "DIPCAST_VAPID_PUBLIC_KEY"
 # With alerts on, the privacy notice's sentences that say nothing leaves the device, and that
-# Dipspot holds no personal data, would be untrue: each is swapped for one that is not. A test
+# SwimSignal holds no personal data, would be untrue: each is swapped for one that is not. A test
 # checks that every one is still in the notice, so a rewrite cannot leave one behind unswapped.
 PUSH_SWAPS = [
     ("<li>Your saved spots and your location stay on your device.</li>",
      "<li>Your location stays on your device. So do your saved spots, unless you turn on alerts.</li>"),
-    ("It stays on your device: it is not sent to Dipspot or to anyone else.",
-     "It stays on your device: it is not sent to Dipspot or to anyone else, unless you turn on alerts (below)."),
-    ("Dipspot holds none, as described above;",
-     "Dipspot holds none except, if you turn on alerts, the record described under Alerts, which turning them off deletes;"),
+    ("It stays on your device: it is not sent to SwimSignal or to anyone else.",
+     "It stays on your device: it is not sent to SwimSignal or to anyone else, unless you turn on alerts (below)."),
+    ("SwimSignal holds none, as described above;",
+     "SwimSignal holds none except, if you turn on alerts, the record described under Alerts, which turning them off deletes;"),
     ('at the bottom of the home page. Clearing this site\'s data removes it too.',
      'at the bottom of the home page. Alerts need it, so turning it off turns them off too. Clearing this site\'s data removes it too.'),
 ]
@@ -140,9 +140,9 @@ def with_push(html: str, on: bool) -> str:
 
 
 PUSH_PRIVACY = (
-    "<h2>Alerts</h2>\n<p>If you turn on alerts on the Saved page, your browser gives Dipspot a push address: a "
+    "<h2>Alerts</h2>\n<p>If you turn on alerts on the Saved page, your browser gives SwimSignal a push address: a "
     "long random web address, run by your browser's maker (Google, Apple, Mozilla or Microsoft), that delivers "
-    "notifications to this browser. Dipspot's alert service stores that address, with the identifiers of your "
+    "notifications to this browser. SwimSignal's alert service stores that address, with the identifiers of your "
     "saved spots, and nothing else: no name, email address or location. It uses them only to send a notification "
     "when one of those spots' forecast turns high. Each notification passes through your browser maker's push "
     "service, encrypted so that the push service cannot read it; that company is responsible for its own service. "
@@ -281,8 +281,8 @@ def data_credits(root: str) -> dict:
             "database right, OGL v3.0. Contains OS data © Crown copyright and database right 2026. Weather data by "
             "Open-Meteo.com, CC BY 4.0, from Met Office forecasts © Crown copyright, CC BY-SA 4.0: rainfall figures "
             "stay under CC BY-SA 4.0."),
-        "modified": ("Combined, filtered and modelled by Dipspot. The forecasts, levels and scores are Dipspot's own "
-                     "estimates, not the data providers'. None of the providers endorses Dipspot."),
+        "modified": ("Combined, filtered and modelled by SwimSignal. The forecasts, levels and scores are SwimSignal's own "
+                     "estimates, not the data providers'. None of the providers endorses SwimSignal."),
         "licences": LICENCES,
         "full": f"{root}terms.html#data",
     }
@@ -315,6 +315,7 @@ def copy_app_files(site: Path) -> None:
     icon, a name and a full-screen window."""
     shutil.copy(TEMPLATE.parent / "manifest.webmanifest", site / "manifest.webmanifest")
     shutil.copy(TEMPLATE.parent / "sw.js", site / "sw.js")   # the offline copy; see the file
+    shutil.copy(TEMPLATE.parent / "experience.js", site / "experience.js")
     shutil.copy(TEMPLATE.parent / "levels.js", site / "levels.js")   # the level rules, which the page loads
     shutil.copytree(TEMPLATE.parent / "icons", site / "icons", dirs_exist_ok=True)
 
@@ -417,7 +418,7 @@ def write_pages(site: Path, results: list[dict], token: str | None = None, root:
     template = TEMPLATE.read_text()
     if not (PAGE_META.search(template) and LOADING in template):
         raise ValueError("index.html has lost its page-meta block or its loading placeholder")
-    for name in ["about.html", "verification.html", "terms.html", "privacy.html"]:
+    for name in ["about.html", "verification.html", "terms.html", "privacy.html", "feedback.html"]:
         s = (STATIC / name).read_text()
         for a, b in REWRITES:
             s = s.replace(a, b)

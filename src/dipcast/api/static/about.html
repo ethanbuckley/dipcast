@@ -1,14 +1,14 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dipspot · About</title>
-<meta name="description" content="Dipspot is a free five-day forecast of sewage-overflow risk at river and lake swim spots in England: how it works, what it cannot see, who runs it and how to get in touch.">
+<title>SwimSignal · About</title>
+<meta name="description" content="SwimSignal is a free five-day forecast of sewage-overflow risk at river and lake swim spots in England: how it works, what it cannot see, who runs it and how to get in touch.">
 <link rel="stylesheet" href="/static/page.css"></head><body><main>
-<nav><a href="/" class="brand">Dipspot</a><a href="/">Map</a><a href="/verification">Accuracy</a><a href="/about">About</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a></nav>
-<h1>About Dipspot</h1>
+<nav><a href="/" class="brand">SwimSignal</a><a href="/">Map</a><a href="/verification">Accuracy</a><a href="/about">About</a><a href="/terms">Terms</a><a href="/privacy">Privacy</a></nav>
+<h1>About SwimSignal</h1>
 <!-- The two counts are this build's: scripts/build_site.py (with_counts) rewrites them. -->
-<p class="lead">Dipspot is a free five-day forecast of sewage-overflow risk at river and lake swim spots in England. It covers <span id="n-spots">89</span> spots, <span id="n-bw">38</span> of them designated bathing waters. It uses the water companies' live storm-overflow data, rainfall forecasts and the river network. It is a forecast, not a water test.</p>
+<p class="lead">SwimSignal is a free five-day forecast of sewage-overflow risk at river and lake swim spots in England. It covers <span id="n-spots">89</span> spots, <span id="n-bw">38</span> of them designated bathing waters. It uses the water companies' live storm-overflow data, rainfall forecasts and the river network. It is a forecast, not a water test.</p>
 
 <h2>How it works</h2>
-<p>For each spot, Dipspot traces the river network upstream and finds every monitored storm overflow whose water can reach it. It takes what those overflows are doing now from the water companies' live feeds. It forecasts how likely each one is to spill on each of the five days, from the rain forecast and the overflow's own spill record. It then allows for how long sewage takes to travel downstream, how fast bacteria die off and how much the river dilutes it, so an overflow 2 km upstream counts for more than one 40 km up a tributary. On rivers it also estimates the chance that a water sample would fail the E. coli limit for bathing water, and at designated bathing waters it adds the Environment Agency's rating and its sampler's latest algae check.</p>
+<p>For each spot, SwimSignal traces the river network upstream and finds every monitored storm overflow whose water can reach it. It takes what those overflows are doing now from the water companies' live feeds. It forecasts how likely each one is to spill on each of the five days, from the rain forecast and the overflow's own spill record. It then allows for how long sewage takes to travel downstream, how fast bacteria die off and how much the river dilutes it, so an overflow 2 km upstream counts for more than one 40 km up a tributary. On rivers it also estimates the chance that a water sample would fail the E. coli limit for bathing water, and at designated bathing waters it adds the Environment Agency's rating and its sampler's latest algae check.</p>
 
 <h2>What it cannot see</h2>
 <ul>
@@ -23,10 +23,10 @@
 <p>Forecasts are scored afterwards against what the overflows actually did and against the Environment Agency's water samples. The results are published on the <a href="/verification">accuracy page</a>, including where the forecast was wrong. The water-quality estimate is tested on rivers in the May to September sampling season only. Please take any figures from the accuracy page: they change as new results come in.</p>
 
 <h2>Who runs it</h2>
-<p>Dipspot is a free, non-commercial project run by one person, not a company. It is not run by, connected with or endorsed by the Environment Agency, any water company, Water UK or the Met Office. The <a href="https://github.com/ethanbuckley/dipcast">code</a> is open source under the MIT licence. See the <a href="/terms">terms of use</a>.</p>
+<p>SwimSignal is a free, non-commercial project run by one person, not a company. It is not run by, connected with or endorsed by the Environment Agency, any water company, Water UK or the Met Office. The <a href="https://github.com/ethanbuckley/dipcast">code</a> is open source under the MIT licence. See the <a href="/terms">terms of use</a>.</p>
 
 <h2>Contact</h2>
-<p>Email <a href="mailto:ethan@ethanbuckley.me.uk">ethan@ethanbuckley.me.uk</a>. To report a problem or ask for a spot to be added, you can also use the <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=feedback.yml">feedback form</a> or the <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">spot request form</a>. Those need a GitHub account, and what you write there is public.</p>
+<p>Email <a href="mailto:ethan@ethanbuckley.me.uk">ethan@ethanbuckley.me.uk</a>. To report a problem or ask for a spot to be added, you can also use the <a href="/feedback">feedback form</a> or the <a href="/feedback?type=spot">spot request form</a>. These prepare a private email for you to review and send; no GitHub account is needed.</p>
 
 <h2>Data</h2>
 <p>Storm overflow data from the water companies via the National Storm Overflow Hub, and data from the Environment Agency, Ordnance Survey, Open-Meteo, the Met Office and OpenStreetMap. <a href="/terms#data">Sources, credits and licences</a>.</p>

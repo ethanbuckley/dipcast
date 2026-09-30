@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <title>Dipspot</title>
+  <title>SwimSignal</title>
   <!-- A river, an overflow on its bank upstream (orange) and a swim spot downstream (white ring).
        Full bleed so iOS can round the corners; the dot and ring sit inside the central
        circle of radius 205 that Android keeps for maskable icons. -->

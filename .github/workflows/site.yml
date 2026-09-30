@@ -90,7 +90,7 @@ jobs:
           done
           # The files republish the water companies' feeds (CC BY 4.0) and EA samples (OGL v3), so the
           # notes carry the credits, and are rewritten on every publish.
-          notes="Live polls, forecast log and live scores, replaced twice a day by the site workflow. Contains storm overflow status from the English water companies via the National Storm Overflow Hub (CC BY 4.0) and Environment Agency data (© Environment Agency copyright and/or database right, OGL v3.0), combined by Dipspot. Full credits and licences: the site's terms page, section Data sources and credits."
+          notes="Live polls, forecast log and live scores, replaced twice a day by the site workflow. Contains storm overflow status from the English water companies via the National Storm Overflow Hub (CC BY 4.0) and Environment Agency data (© Environment Agency copyright and/or database right, OGL v3.0), combined by SwimSignal. Full credits and licences: the site's terms page, section Data sources and credits."
           if ! assets=$(gh release view state --json assets); then
             gh release create state --title "Rolling state" --notes "$notes" --latest=false
             assets='{"assets":[]}'

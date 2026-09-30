@@ -1,5 +1,5 @@
 name: Request a swim spot
-description: Ask for a river or lake spot to be added to Dipspot's forecasts
+description: Ask for a river or lake spot to be added to SwimSignal's forecasts
 title: "Spot request: "
 labels: [spot-request]
 body:

@@ -1,6 +1,6 @@
-# Dipspot push alerts
+# SwimSignal push alerts
 
-This is a Cloudflare Worker that sends Web Push notifications for Dipspot. A visitor turns on alerts on the Saved page, and their browser registers with the Worker along with the ids of their saved spots. Every 2 minutes the Worker reads the site's `data/alerts.json` and either revalidates a pending batch or identifies newly high spots. When a saved spot has just become high or very high, it queues one notification for each visitor who saved it, and at most one for each spot in 20 hours: the site is rebuilt several times a day, and a spot near the line can cross it more than once. It has no npm dependencies. The encryption (RFC 8291) and sender signature (RFC 8292) use the Web Crypto API built into Workers.
+This is a Cloudflare Worker that sends Web Push notifications for SwimSignal. A visitor turns on alerts on the Saved page, and their browser registers with the Worker along with the ids of their saved spots. Every 2 minutes the Worker reads the site's `data/alerts.json` and either revalidates a pending batch or identifies newly high spots. When a saved spot has just become high or very high, it queues one notification for each visitor who saved it, and at most one for each spot in 20 hours: the site is rebuilt several times a day, and a spot near the line can cross it more than once. It has no npm dependencies. The encryption (RFC 8291) and sender signature (RFC 8292) use the Web Crypto API built into Workers.
 
 ## What it stores
 

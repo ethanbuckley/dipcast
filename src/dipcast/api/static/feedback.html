@@ -1,0 +1,40 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Feedback · SwimSignal</title><link rel="stylesheet" href="/static/page.css">
+<style>
+label {display:block;font-weight:650;margin:18px 0 6px} input,select,textarea {font:inherit;font-size:16px;width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;color:var(--ink);background:white} textarea {min-height:140px;resize:vertical} button,.button {display:inline-block;font:inherit;min-height:44px;padding:10px 16px;border:1px solid var(--accent);border-radius:10px;cursor:pointer;background:var(--accent);color:white;text-decoration:none;margin:12px 8px 0 0} :focus-visible {outline:3px solid var(--accent-2);outline-offset:3px} .hint {font-size:14px;color:var(--muted);margin:6px 0} #prepared {margin-top:24px;padding:18px;border:1px solid var(--line);border-radius:14px;background:#f1f7f5} [hidden] {display:none}
+</style></head><body><main>
+<nav><a href="/" class="brand">SwimSignal</a><a href="/">Explore</a><a href="/about">About</a><a href="/privacy">Privacy</a></nav>
+<h1>Help shape SwimSignal</h1><p class="lead">Tell Ethan what worked, what was confusing, or which spot is missing. No account needed.</p>
+<p>This form prepares an email to <a href="mailto:ethan@ethanbuckley.me.uk">ethan@ethanbuckley.me.uk</a>. You review and send it from your email app. Nothing you type is submitted to a server or saved by this form.</p>
+<form id="feedback-form">
+<label for="kind">What would you like to share?</label><select id="kind"><option value="feedback">Feedback about the app</option><option value="spot">Request a swim spot</option><option value="problem">Report a data or display problem</option></select>
+<label for="spot">Spot or area (optional)</label><input id="spot" maxlength="160" autocomplete="off" placeholder="River, lake, nearest town or spot name">
+<label for="decision">Did the forecast change your plans? (optional)</label><select id="decision"><option value="">Prefer not to say / not used yet</option><option>Changed where I would swim</option><option>Changed when I would swim</option><option>Decided not to swim</option><option>Checked it, but kept my plans</option><option>Could not understand the forecast</option></select>
+<label for="message">Your message</label><textarea id="message" required maxlength="1500" aria-describedby="message-hint" placeholder="What were you trying to do, and what would make it easier?"></textarea><p class="hint" id="message-hint">For a new spot, describe where it is. Please leave out health details or other sensitive information. Maximum 1,500 characters.</p>
+<button type="submit">Prepare email</button></form>
+<section id="prepared" hidden aria-labelledby="prepared-title"><h2 id="prepared-title" tabindex="-1">Review your email</h2><p>It has not been sent. Choose “Open email app”, then send it there. If that does not work, copy the text and email Ethan directly.</p><label for="email-preview">Email text</label><textarea id="email-preview" readonly></textarea><a class="button" id="email-link">Open email app</a><button type="button" id="copy">Copy email text</button><p id="copy-status" role="status"></p></section>
+<footer>For immediate pollution concerns, use the relevant official reporting service and local advice. This feedback inbox is not an emergency service. <a href="/privacy">How feedback is handled</a>.</footer>
+<script>
+const $ = id => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+if (['feedback','spot','problem'].includes(params.get('type'))) $('kind').value = params.get('type');
+$('spot').value = (params.get('spot') || '').slice(0,160);
+function prepareEmail(kind, spot, decision, message) {
+  const types = {feedback:'Feedback',spot:'Spot request',problem:'Data or display problem'};
+  const subject = 'SwimSignal · ' + (types[kind] || types.feedback);
+  const body = [spot ? 'Spot / area: ' + spot : '', decision ? 'Effect on my plans: ' + decision : '', message].filter(Boolean).join('\n\n');
+  return {text: subject + '\n\n' + body, href:'mailto:ethan@ethanbuckley.me.uk?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body)};
+}
+$('feedback-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const draft = prepareEmail($('kind').value,$('spot').value.trim(),$('decision').value,$('message').value.trim());
+  if (!$('message').value.trim()) { $('message').setCustomValidity('Please add a message.'); $('message').reportValidity(); return; }
+  $('email-preview').value = draft.text; $('email-link').href = draft.href; $('prepared').hidden = false; $('copy-status').textContent = ''; $('prepared-title').focus();
+});
+$('message').addEventListener('input', () => $('message').setCustomValidity(''));
+$('feedback-form').addEventListener('input', () => { $('prepared').hidden = true; });
+$('copy').addEventListener('click', async () => {
+  try { await navigator.clipboard.writeText($('email-preview').value); $('copy-status').textContent = 'Copied. Paste it into an email to ethan@ethanbuckley.me.uk.'; }
+  catch { $('email-preview').focus(); $('email-preview').select(); $('copy-status').textContent = 'Select and copy the text above, then email Ethan directly.'; }
+});
+</script></main></body></html>

@@ -11,7 +11,7 @@
 // installed worker running on visitors' devices.
 const CACHE = 'dipcast-v1';
 const TIMEOUT_MS = 4000;
-const SHELL = ['./', 'levels.js', 'data/spots.json', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png',
+const SHELL = ['./', 'levels.js', 'experience.js', 'feedback.html', 'data/spots.json', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
 
 self.addEventListener('install', e => {
@@ -81,12 +81,12 @@ self.addEventListener('push', e => {
   // pollution claim as current, and instead invite the swimmer to check the latest forecast.
   const expiry = Date.parse(d.expires_at);
   if (d.expires_at !== undefined && (!Number.isFinite(expiry) || expiry <= Date.now())) {
-    d = { title: 'Dipspot forecast update', body: 'This alert has expired. Open Dipspot to check the latest forecast.', tag: d.tag, url: d.url };
+    d = { title: 'SwimSignal forecast update', body: 'This alert has expired. Open SwimSignal to check the latest forecast.', tag: d.tag, url: d.url };
   } else if (d.issued_at && Number.isFinite(Date.parse(d.issued_at))) {
     const when = new Date(d.issued_at).toLocaleString('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
     d.body = `${d.body || ''} Forecast issued ${when} (UK time).`;
   }
-  e.waitUntil(self.registration.showNotification(d.title || 'Dipspot', {
+  e.waitUntil(self.registration.showNotification(d.title || 'SwimSignal', {
     body: d.body || '', tag: d.tag, data: { url: d.url }, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png' }));
 });
 

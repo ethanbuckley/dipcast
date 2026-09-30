@@ -39,7 +39,7 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     assert '<base href="../../">' in head   # relative: the site works at any address
     assert '<link rel="canonical" href="https://example.org/swim/spot/wharfe-ilkley/">' in head
     assert '<meta property="og:image" content="https://example.org/swim/icons/og.png">' in head
-    assert "<title>Wharfe at &quot;Cromwheel&quot; &amp; Ilkley: sewage-spill forecast · Dipspot</title>" in head
+    assert "<title>Wharfe at &quot;Cromwheel&quot; &amp; Ilkley: sewage-spill forecast · SwimSignal</title>" in head
     assert "from the 15 monitored storm overflows upstream" in head
     assert "very high" not in head.lower().replace("veryhigh", "")
     assert head.count("<title>") == 1 and "page-meta" not in page
@@ -59,7 +59,7 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     saved = (tmp_path / "saved" / "index.html").read_text()
     head = saved.split("</head>")[0]
     assert '<base href="../">' in head and '<meta name="robots" content="noindex">' in head
-    assert '<link rel="canonical" href="https://example.org/swim/saved/">' in head and "<title>Saved spots · Dipspot</title>" in head
+    assert '<link rel="canonical" href="https://example.org/swim/saved/">' in head and "<title>Saved spots · SwimSignal</title>" in head
     assert "saved/" not in sm and "noindex" not in home
 
 
@@ -75,7 +75,7 @@ def test_about_page_counts_this_builds_spots_and_links_work_on_the_static_site(t
         assert 'href="about.html">About</a>' in page, name
         assert 'href="/' not in page, name
     home = (tmp_path / "index.html").read_text()
-    assert '<a href="about.html">About Dipspot</a>' in home and '<a href="about.html" class="desk-only">About</a>' in home
+    assert '<a href="about.html">About SwimSignal</a>' in home and '<a href="about.html" class="desk-only">About</a>' in home
 
 
 def test_the_page_view_counter_reaches_spot_pages_and_a_dropped_spot_loses_its_page(tmp_path):
@@ -152,7 +152,7 @@ def test_the_credits_travel_with_the_data_and_the_terms_link_every_licence(tmp_p
     assert '"credits": credits, "spots": results' in src
     assert '{**overflows_geojson(limit=20000), "credits": credits}' in src and '{**load_verification(), "credits": credits}' in src
     page = (ROOT / "src" / "dipcast" / "site" / "index.html").read_text()
-    assert "None of these bodies endorses Dipspot" in page and 'href="terms.html#data"' in page
+    assert "None of these bodies endorses SwimSignal" in page and 'href="terms.html#data"' in page
     # With the counter on, only the privacy notice changes; the terms keep their own date.
     bs.write_pages(tmp_path, SPOTS[:1], token="abcdefghij0123456789", root="https://example.org/")
     assert "(page-view counter)" in (tmp_path / "privacy.html").read_text()
@@ -217,7 +217,7 @@ def test_the_privacy_notice_describes_alerts_only_when_they_are_on(tmp_path):
 @pytest.mark.skipif(shutil.which("node") is None, reason="needs Node")
 def test_the_offline_copy_rules():
     # sw.js runs in a browser, so its tests are JavaScript; here so that the build's test step runs them.
-    r = subprocess.run(["node", "--test", str(ROOT / "tests" / "site_cache.test.cjs")], capture_output=True, text=True, timeout=60, check=False)
+    r = subprocess.run(["node", "--test", str(ROOT / "tests" / "site_cache.test.cjs"), str(ROOT / "tests" / "site_planner.test.cjs")], capture_output=True, text=True, timeout=60, check=False)
     assert r.returncode == 0, r.stdout + r.stderr
 
 
@@ -236,3 +236,20 @@ def test_the_alerts_file_uses_the_page_rules(tmp_path):
     assert out["spots"]["a"] == {"name": "A river", "rank": 2, "level": "high", "headline": "High today: sewage spills",
                                  "url": "https://example.org/swim/spot/a/"}
     assert out["spots"]["tarn"]["rank"] == -1 and out["spots"]["tarn"]["level"] == "not covered"
+
+
+def test_feedback_and_experience_are_built_for_nested_github_pages(tmp_path):
+    bs = _build_site()
+    bs.write_pages(tmp_path, SPOTS[:1], root="https://example.org/dipcast/")
+    feedback = (tmp_path / "feedback.html").read_text()
+    assert 'href="page.css"' in feedback and 'href="index.html"' in feedback
+    assert 'href="/' not in feedback
+    assert "ethan@ethanbuckley.me.uk" in feedback and "Prepare email" in feedback
+    home = (tmp_path / "index.html").read_text()
+    assert '<script src="experience.js">' in home
+    assert (tmp_path / "experience.js").exists()
+    assert 'feedback.html' in (tmp_path / "sw.js").read_text()
+    assert 'SwimSignal' in (tmp_path / "manifest.webmanifest").read_text()
+    # Rebranding preserves the installed application's URL and saved-spot storage.
+    assert '"start_url": "./"' in (tmp_path / "manifest.webmanifest").read_text()
+    assert "dipcast-v1" in (tmp_path / "sw.js").read_text()

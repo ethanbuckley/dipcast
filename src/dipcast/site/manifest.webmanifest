@@ -1,6 +1,6 @@
 {
-  "name": "Dipspot",
-  "short_name": "Dipspot",
+  "name": "SwimSignal",
+  "short_name": "SwimSignal",
   "description": "Sewage-pollution risk forecasts for river and lake swim spots in England.",
   "start_url": "./",
   "scope": "./",
