@@ -43,7 +43,9 @@ const key = req => { const u = new URL(req.url); if (req.mode === 'navigate') u.
 
 async function networkFirst(req) {
   const cache = await caches.open(CACHE), k = key(req);
-  const net = fetch(req).then(res => { if (res.ok) cache.put(k, res.clone()); return res; });
+  // no-cache: ask the server every time. GitHub Pages sends max-age=600, so without it a reload
+  // within 10 minutes of the last one could get the browser's older copy of the forecast.
+  const net = fetch(req, { cache: 'no-cache' }).then(res => { if (res.ok) cache.put(k, res.clone()); return res; });
   net.catch(() => {});   // when the stored copy answers, a later network failure is expected
   try {
     return await Promise.race([net, new Promise((_, no) => setTimeout(() => no(new Error('slow')), TIMEOUT_MS))]);

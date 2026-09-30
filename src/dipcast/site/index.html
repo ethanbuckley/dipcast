@@ -204,6 +204,7 @@
   .ov-stats { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:13.5px; margin-top:2px; }
   .btn { display:inline-flex; align-items:center; justify-content:center; font-size:16px; font-weight:650; padding:10px 16px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
   .btn.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
+  .btn[hidden] { display:none; }   /* display:inline-flex would otherwise show it */
   .btn.quiet { margin-top:6px; padding:8px 14px; font-size:16px; }
   .actions { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 6px; }
   details.fold > summary { cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; }
@@ -256,6 +257,11 @@
   .about dl.levels dt { display:flex; align-items:center; gap:8px; }
   footer.fine { margin-top:20px; padding-top:14px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted); }
   footer.fine p { margin:0 0 8px; }
+  /* Keyboards: the first Tab shows a link past the header and the map to the forecasts. */
+  .skip { position:fixed; top:-100px; left:16px; z-index:3000; background:var(--card); padding:12px 16px; border-radius:12px; }
+  .skip:focus { top:8px; }
+  #panel:focus { outline:none; }
+  .bottom-nav { display:none; }
 
   /* Desktop: the map fills the left, the list or the spot scrolls on the right. */
   @media (min-width: 801px) {
@@ -270,12 +276,25 @@
   }
   /* Phones: the list first, the map one tap away; a spot's page carries its own small map. */
   @media (max-width: 800px) {
+    :root { --nav-h:calc(65px + env(safe-area-inset-bottom)); }
     .desk-only { display:none !important; }
     #map-wrap { display:none; }
-    body.map-mode #map-wrap { display:block; position:fixed; left:0; right:0; bottom:0; top:var(--header-h); z-index:1000; }
+    body.map-mode #map-wrap { display:block; position:fixed; left:0; right:0; bottom:var(--nav-h); top:var(--header-h); z-index:1000; }
     body.map-mode #panel { display:none; }
-    body.view-spot:not(.map-mode) #mapbtn { display:none; }   /* the full map from a spot: its way back */
-    #panel { padding:14px calc(16px + env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); }
+    /* Saved and Map are in the bar at the bottom. The header keeps Map only as the full map's way
+       back to the spot it was opened from, where it reads "Back". */
+    #savedbtn, body:not(.map-mode) #mapbtn, body:not(.view-spot) #mapbtn { display:none; }
+    #panel { padding:14px calc(16px + env(safe-area-inset-right)) calc(32px + var(--nav-h)) calc(16px + env(safe-area-inset-left)); }
+    /* The thumb's reach: Explore, Map and Saved on every page. */
+    .bottom-nav { position:fixed; z-index:1200; left:0; right:0; bottom:0; height:var(--nav-h); display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;
+      padding:8px max(16px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      background:var(--card); border-top:1px solid var(--line); }
+    .bottom-nav a, .bottom-nav button { display:flex; align-items:center; justify-content:center; gap:7px; min-height:48px; border:0; border-radius:12px;
+      font:inherit; font-size:14px; font-weight:600; background:none; color:var(--muted); text-decoration:none; cursor:pointer; }
+    .bottom-nav svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+    .bottom-nav [aria-current=page], .bottom-nav [aria-pressed=true] { background:var(--bg); color:var(--brand); }
+    .bottom-nav .n { min-width:20px; padding:0 6px; border-radius:999px; background:var(--brand); color:#fff; font-size:12.5px; line-height:20px; text-align:center; }
+    .bottom-nav .n[hidden] { display:none; }
     #spot-map .map-legend { display:none; }
     .map-legend { padding:5px 8px; line-height:1.5; } .map-legend .ttl, .map-legend .extra { display:none; }
     .map-legend .row { display:inline-block; margin-right:6px; }
@@ -294,9 +313,10 @@
 </style>
 </head>
 <body class="view-list">
+<a class="skip" href="#panel">Skip to forecasts</a>
 <header class="top" id="top">
   <a class="brand" href="./"><img src="icons/icon.svg" alt="" width="30" height="30">Dipspot</a>
-  <!-- A phone has room for two: Saved and Map. About is linked from the list's intro. -->
+  <!-- A phone shows none of these: Saved and Map are in the bar at the bottom, and About is linked from the list's intro. -->
   <nav aria-label="Site">
     <a href="saved/" class="hbtn" id="savedbtn" aria-label="Saved spots">Saved<span class="n" id="saved-n" hidden></span></a>
     <button type="button" class="hbtn phone-only" id="mapbtn" aria-pressed="false">Map</button>
@@ -307,7 +327,7 @@
 </header>
 <div id="app">
   <div id="map-wrap"><div id="map" role="region" aria-label="Map of swim spots"></div></div>
-  <main id="panel">
+  <main id="panel" tabindex="-1">
     <div id="result"><p class="muted">Loading forecasts…</p></div>
     <section class="about" id="about">
       <h2>About these forecasts</h2>
@@ -342,6 +362,16 @@
         <p class="small muted">Saved spots are kept in this browser, and sent nowhere unless you turn on alerts on the Saved page. After a first visit the page and the latest forecast are stored on your device, so the site opens without signal at the water's edge; it then says how old the forecast is. <a href="privacy.html">Privacy notice</a>.</p>
         <p class="small"><button type="button" class="linkbtn small" id="offline-btn" hidden>Turn off the offline copy</button> <span class="muted" id="offline-msg" aria-live="polite"></span></p>
       </details>
+      <details class="more" id="home-screen"><summary>Add Dipspot to your Home Screen</summary>
+        <p class="small muted">It then opens from its own icon, without the browser's bars. No account is needed.</p>
+        <p><button type="button" class="btn" id="install-btn" hidden>Add Dipspot</button></p>
+        <ul class="small">
+          <li><b>iPhone or iPad:</b> tap <b>Share</b>, then <b>Add to Home Screen</b>.</li>
+          <li><b>Android:</b> open the browser's menu and look for <b>Install app</b> or <b>Add to Home screen</b>.</li>
+        </ul>
+        <p class="small muted">On iPhone and iPad the Home Screen app keeps its own saved spots: spots saved in Safari do not carry over, so save them again in the app.</p>
+        <p class="small muted" id="install-msg" aria-live="polite"></p>
+      </details>
     </section>
     <footer class="fine">
       <p><a href="about.html">About Dipspot</a> · <a href="verification.html">How accurate is it?</a> · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=feedback.yml">Feedback</a> · <a href="https://github.com/ethanbuckley/dipcast/issues/new?template=spot-request.yml">Request a spot</a> · <a href="terms.html">Terms of use</a> · <a href="privacy.html">Privacy</a> · <a href="https://github.com/ethanbuckley/dipcast">Source code</a> (MIT)</p>
@@ -349,6 +379,11 @@
     </footer>
   </main>
 </div>
+<nav class="bottom-nav" aria-label="Main">
+  <a href="./" id="nav-list"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg>Explore</a>
+  <button type="button" id="nav-map" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></svg>Map</button>
+  <a href="saved/" id="nav-saved" aria-label="Saved spots"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>Saved<span class="n" id="nav-saved-n" hidden></span></a>
+</nav>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="levels.js"></script>   <!-- the levels and headlines: shared with the build and the alerts -->
 <script>
@@ -371,9 +406,9 @@ const plainClick = e => !(e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.
 
 // ------------------------------------------------------------------------------ the one map
 // On a desktop the map fills the left column. On a phone the list comes first: the map opens full
-// screen from the header's Map button, and a spot's page shows it in a card. The same Leaflet map
-// moves between those places (placeMap), and is parked in its column before the panel is redrawn,
-// or innerHTML would destroy it.
+// screen from Map in the bar at the bottom, and a spot's page shows it in a card. The same Leaflet
+// map moves between those places (placeMap), and is parked in its column before the panel is
+// redrawn, or innerHTML would destroy it.
 const PHONE = matchMedia('(max-width: 800px)');
 const mapEl = document.getElementById('map'), mapWrap = document.getElementById('map-wrap');
 // Touch screens: one finger scrolls the page and two move the map (Leaflet's pinch pans as well as
@@ -405,10 +440,28 @@ const setHeaderHeight = () => document.documentElement.style.setProperty('--head
 function setMapMode(on) {
   document.body.classList.toggle('map-mode', on);
   const b = document.getElementById('mapbtn'); b.setAttribute('aria-pressed', String(on)); b.textContent = on ? (current ? 'Back' : 'List') : 'Map';
-  setHeaderHeight(); placeMap();
+  syncNav(); setHeaderHeight(); placeMap();
   if (on && DATA) fitAll(); else if (!on) loadOverflows().catch(() => ovLayer.clearLayers());
 }
 document.getElementById('mapbtn').addEventListener('click', () => setMapMode(!mapMode()));
+// The phone's bar at the bottom. Explore and Saved add a history entry only when they change the
+// page, so Back is not pressed once for every tap on the tab already open.
+function syncNav() {
+  const on = mapMode(), view = ['list', 'saved', 'spot'].find(v => document.body.classList.contains('view-' + v));
+  document.getElementById('nav-map').setAttribute('aria-pressed', String(on));
+  for (const [id, v] of [['nav-list', 'list'], ['nav-saved', 'saved']]) {
+    const el = document.getElementById(id);
+    if (!on && view === v) el.setAttribute('aria-current', 'page'); else el.removeAttribute('aria-current');
+  }
+}
+function openList() {
+  if (mapMode()) setMapMode(false);
+  if (!document.body.classList.contains('view-list')) { history.pushState(null, '', ROOT.pathname); renderList(); }
+  scrollTop();
+}
+document.getElementById('nav-map').addEventListener('click', () => setMapMode(!mapMode()));
+document.getElementById('nav-list').addEventListener('click', e => { if (!DATA || !plainClick(e)) return; e.preventDefault(); openList(); });
+document.getElementById('nav-saved').addEventListener('click', e => { if (!DATA || !plainClick(e)) return; e.preventDefault(); openSaved(); });
 // A phone's spot page opens with a small map of where the spot is, under its name: the page's own
 // map is further down, fitted to the overflows upstream. A second map, still (one finger scrolls
 // the page past it), and a tap on it opens the full map at the spot.
@@ -474,9 +527,11 @@ window.addEventListener('storage', e => {
   if (DATA && document.body.classList.contains('view-saved')) renderSaved();
 });
 function savedBadge() {
-  const n = DATA ? DATA.spots.filter(s => SAVED.has(s.id)).length : SAVED.size, el = document.getElementById('saved-n');
-  el.textContent = n; el.hidden = !n;
-  document.getElementById('savedbtn').setAttribute('aria-label', n ? `Saved spots: ${n}` : 'Saved spots');
+  const n = DATA ? DATA.spots.filter(s => SAVED.has(s.id)).length : SAVED.size;
+  for (const [link, badge] of [['savedbtn', 'saved-n'], ['nav-saved', 'nav-saved-n']]) {
+    const el = document.getElementById(badge); el.textContent = n; el.hidden = !n;
+    document.getElementById(link).setAttribute('aria-label', n ? `Saved spots: ${n}` : 'Saved spots');
+  }
 }
 // A shared list (saved/#spots=a,b): offered, and saved only if asked, since someone else chose it.
 // After a #, so which spots are in it never reaches a server.
@@ -502,6 +557,7 @@ const spilling = (x, total) => { const e = x.expected_spilling_overflows; if (ni
 // saved spots' ids to the service, nothing else, and every change to the list is sent again.
 const PUSH_KEY = 'dipcast.push';   // what was last sent, so an unchanged list is not re-sent
 const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const STANDALONE = navigator.standalone || matchMedia('(display-mode: standalone)').matches;   // opened from the Home Screen
 const canPush = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 const b64 = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
 async function pushReg() {   // the service worker, or null if it is not running within 5 s
@@ -642,8 +698,12 @@ function standing(d) {
 }
 // Beside every reading: a forecast is not a test, and the signs at the water come first. A website
 // that, read as a whole, tells people to check for themselves owes them less (Patchett v SPATA [2009]).
-const check = d => `<p class="check">A forecast, not a water test: check the signs at the water before you swim.${d.source === 'designated' ? ''
-  : ' This is not a designated bathing water, so the Environment Agency does not test it for bathing.'}</p>`;
+// A bathing water's EA page is the one place with advice against bathing that starts mid-season
+// (after pollution, or algae), so it is linked here, beside the headline, as well as with the rating.
+const check = d => { const url = (d.classification || {}).url;
+  return `<p class="check">A forecast, not a water test: check the signs at the water before you swim.${d.source !== 'designated'
+    ? ' This is not a designated bathing water, so the Environment Agency does not test it for bathing.'
+    : url ? ` <a href="${esc(url)}">The EA's page</a> has any advice against bathing there today, which this forecast does not include.` : ''}</p>`; };
 // "; poor every year since 2021", or "; poor in 2024": the ratings before the latest.
 function ratingHistory(cl) {
   const h = (cl.history || []).filter(([y]) => y !== cl.year); if (!h.length) return '';
@@ -835,6 +895,19 @@ function freshness() {
   else if (b.today_rain_unavailable) h += `<p class="small muted">${b.today_rain_unavailable} spots have no rainfall data for today in this build.</p>`;
   return h;
 }
+// The notices, in a box redrawn when the connection drops or returns, or the forecast turns stale,
+// while the page stays open. Only then: the stale notice is an alert, and a screen reader reads an
+// alert out again each time it is redrawn, so a redraw every minute would repeat it every minute.
+let NOTICE = '';
+const noticeState = () => `${navigator.onLine} ${ageMin() > STALE_MIN}`;
+const notices = () => { NOTICE = noticeState(); return `<div data-notices>${freshness()}</div>`; };
+function refreshNotices() {
+  if (!DATA || noticeState() === NOTICE) return;
+  NOTICE = noticeState(); document.querySelectorAll('[data-notices]').forEach(el => { el.innerHTML = freshness(); });
+}
+window.addEventListener('offline', refreshNotices);
+window.addEventListener('online', refreshNotices);
+setInterval(refreshNotices, 60 * 1000);
 // Redraw the panel. The map is parked in its column first, or replacing the HTML would destroy it.
 function setPanel(h) { parkMap(); if (MINI) { MINI.remove(); MINI = null; } document.getElementById('result').innerHTML = h; }
 
@@ -864,6 +937,7 @@ function setView(v) {
   document.body.classList.remove('view-list', 'view-saved', 'view-spot'); document.body.classList.add('view-' + v);
   const b = document.getElementById('savedbtn');
   if (v === 'saved') b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
+  syncNav();
 }
 function renderList() {
   contribLayer.clearLayers(); selLayer.clearLayers(); current = null; shown = 'list';
@@ -871,16 +945,16 @@ function renderList() {
   document.title = `${BRAND} · sewage-spill forecasts for swim spots`;
   const saved = DATA.spots.filter(s => SAVED.has(s.id));
   const sorts = Object.entries(SORTS).filter(([k]) => k !== 'near' || 'geolocation' in navigator);
-  let h = `<section class="intro"><h1>Sewage and water quality at your swim spot</h1><p class="lede">Five-day forecasts for ${DATA.spots.length} river and lake spots in England, with the Environment Agency's rating where there is one. <a href="#about">How it works</a></p>`
+  let h = `<section class="intro"><h1>Sewage and water quality at your swim spot</h1><p class="lede">Five-day forecasts for ${DATA.spots.length} river and lake spots in England, with the Environment Agency's rating where there is one. <a href="#about">How it works</a>${STANDALONE ? '' : ' · <a href="#home-screen">Add to your Home Screen</a>'}</p>`
     + `<div class="search">${SEARCH_ICON}<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(VIEW.q)}"></div>`
     + `<div class="chips-row" role="group" aria-label="Show"><button type="button" class="chip-btn low" data-low aria-pressed="${VIEW.lowOnly}"><span class="dot" style="background:${colour('low')}"></span><span data-low-t>${lowLabel()}</span></button>`
     + `${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div>`
     + `<p class="small muted" id="low-note-list"${VIEW.lowOnly ? '' : ' hidden'}>${lowListNote()}</p></section>`;
-  h += freshness();
+  h += notices();
   if (saved.length) h += `<section class="group" aria-labelledby="saved-h"><h2 class="group-head" id="saved-h">Saved spots</h2><ul class="spots" id="saved-list">${saved.map(spotItem).join('')}</ul></section>`;
   h += `<section class="group" aria-labelledby="all-h"><div class="group-bar"><h2 class="group-head" id="all-h">All spots</h2>`
     + `<div class="sortseg" role="group" aria-label="Sort">${sorts.map(([k, t]) => `<button type="button" data-sort="${k}" aria-pressed="${VIEW.sort === k}">${t}</button>`).join('')}</div></div>`
-    + `<p class="overview">${overview()}</p><p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p><ul class="spots" id="spots"></ul><p class="count" id="count"></p></section>`;
+    + `<p class="overview">${overview()}</p><p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p><ul class="spots" id="spots"></ul><p class="count" id="count" role="status"></p></section>`;
   h += `<p class="small muted" style="margin-top:14px">Updated ${issued()} (${ago(ageMin())} ago), several times a day. The coloured bars are the next five days. <a href="#levels">What the levels mean</a>. ${saved.length ? '' : 'Open a spot and press Save to keep it at the top and on your Saved page. '}Missing your spot? <a href="${REPO}/issues/new?template=spot-request.yml">Request it</a>.</p>`;
   setPanel(h);
   if (saved.length) bindItems(document.getElementById('saved-list'));
@@ -907,16 +981,26 @@ function locate() {
     e => { setSort('risk'); msg(e.code === 1 ? 'Location permission was declined, so the list is sorted by risk.' : 'Your location is not available right now, so the list is sorted by risk.'); drawSpots(); },
     { maximumAge: 10 * 60 * 1000, timeout: 10000 });
 }
+// Search ignores case, accents, punctuation and word order, and looks in the river's name and the
+// spot's notes as well as its own name: "ilkley wharfe" finds "River Wharfe at Ilkley".
+const fold = t => String(t ?? '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+const searchText = s => fold([s.name, s.kind, s.notes, (s.location || {}).watercourse].join(' '));
 function drawSpots() {
-  const q = VIEW.q.trim().toLowerCase();
-  const keep = s => (!q || s.name.toLowerCase().includes(q)) && (VIEW.filter === 'all'
+  // A location can arrive after a spot or the Saved page has replaced the list.
+  const ul = document.getElementById('spots'); if (!ul) return;
+  const words = fold(VIEW.q).split(' ').filter(Boolean);
+  const found = s => { const t = searchText(s); return words.every(w => t.includes(w)); };
+  const keep = s => found(s) && (VIEW.filter === 'all'
     || (VIEW.filter === 'designated' ? s.source === 'designated' : s.kind === VIEW.filter)) && (!VIEW.lowOnly || mapLevel(s) === 'low');
   const rank = s => ORDER[level(s)] ?? -1;
   const items = DATA.spots.filter(keep).sort((a, b) => VIEW.sort === 'near' && VIEW.here ? dist(a) - dist(b)
     : VIEW.sort === 'risk' ? rank(b) - rank(a) || a.name.localeCompare(b.name) : a.name.localeCompare(b.name));
-  const ul = document.getElementById('spots');
-  ul.innerHTML = items.length ? items.map(spotItem).join('') : `<li class="empty">No spots match. Try another name, or show all spots.</li>`;
+  ul.innerHTML = items.length ? items.map(spotItem).join('')
+    : `<li class="empty"><p style="margin:0 0 10px">No spots match. Dipspot covers ${DATA.spots.length} river and lake spots in England. Missing yours? <a href="${REPO}/issues/new?template=spot-request.yml">Request it</a>.</p>`
+      + `<button type="button" class="btn" id="clear-filters">Clear search and filters</button></li>`;
   document.getElementById('count').textContent = items.length === DATA.spots.length ? `${items.length} spots.` : `Showing ${items.length} of ${DATA.spots.length} spots.`;
+  const clear = document.getElementById('clear-filters');
+  if (clear) clear.addEventListener('click', () => { VIEW.q = ''; VIEW.filter = 'all'; VIEW.lowOnly = false; styleMarkers(); renderList(); document.getElementById('q').focus(); });
   bindItems(ul);
 }
 
@@ -951,7 +1035,7 @@ function renderSaved() {
     + `<div class="actions" style="margin:0"><button type="button" class="btn primary" id="inc-save">Save ${offered.length === 1 ? 'it' : `all ${offered.length}`}</button><button type="button" class="btn" id="inc-skip">Not now</button></div></section>`;
   else if (INCOMING) h += `<p class="notice quiet" role="status">${INCOMING.length === 1 ? 'The spot in that link is' : 'The spots in that link are'} already saved here.</p>`;
   INCOMING = offered.length ? INCOMING : null;
-  h += freshness();
+  h += notices();
   if (spots.length) h += `<ul class="scards" id="scards">${spots.map(savedCard).join('')}</ul>`
     + `<p class="small muted" style="margin:10px 2px 0">Updated ${issued()} (${ago(ageMin())} ago). Tap a spot for its full forecast, or a day for that day. <a href="#levels">What the levels mean</a>. Forecasts, not water tests: check the signs at the water before you swim.${spots.some(anyUntested) ? ' ' + UNTESTED_NOTE : ''}</p>`;
   else h += `<div class="card empty-saved"><div class="big-star" aria-hidden="true">☆</div><h2 class="card-h">No saved spots yet</h2>`
@@ -1146,7 +1230,7 @@ function render(d) {
     setPanel(h); bindBack(); bindSave(d); bindShare(d); placeMap(); miniMap(d); return;
   }
   const now = d.now, isLake = loc.mode === 'lake', scope = d.ecoli_scope || {}, total = d.upstream_summary.overflows;
-  h += freshness();
+  h += notices();
   // Always say how old it is: the stored copy (sw.js) can answer when the network is slow.
   h += hero(`${strip(d)}<div id="day-view">${factors(d)}</div><p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p>${check(d)}`);
   if (total) {
@@ -1171,15 +1255,22 @@ function bindBack() { const b = document.getElementById('back'); if (b) b.addEve
   else { history.pushState(null, '', ROOT.pathname); renderList(); scrollTop(); } }); }   // a shared link: stay on the site
 
 // In-page links (#about, #levels) must not follow <base> off a spot's own page to the home page.
+// A target made focusable (the skip link's #panel) takes the focus as well, so the next Tab
+// starts there: cancelling the link cancels the browser's own move.
 document.addEventListener('click', e => { const a = e.target.closest('a[href^="#"]'); if (!a) return;
   const el = document.getElementById(a.getAttribute('href').slice(1)); if (!el) return;
   e.preventDefault(); if (mapMode()) setMapMode(false); const box = el.closest('details'); if (box) box.open = true;
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' }); });
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (el.hasAttribute('tabindex')) el.focus({ preventScroll: true }); });
 // A phone turned or a window resized across the breakpoint: put the map where that layout wants it.
 PHONE.addEventListener('change', () => { if (!PHONE.matches && mapMode()) setMapMode(false); setHeaderHeight(); placeMap(); });
 
 async function main() {
-  DATA = await (await fetch('data/spots.json')).json();
+  // no-cache: ask the server, not the browser's own copy, which GitHub Pages lets it use for 10
+  // minutes. With the offline copy on, sw.js asks the same way.
+  const res = await fetch('data/spots.json', { cache: 'no-cache' });
+  if (!res.ok) throw new Error(`the forecast file answered ${res.status}`);
+  DATA = await res.json();
   serverToday = DATA.generated_at.slice(0, 10);
   for (const s of DATA.spots) {
     MARKERS.set(s.id, L.circleMarker([s.lat, s.lon], { radius: 8 })
@@ -1203,6 +1294,17 @@ const LOADED = Date.now();
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - LOADED > 30 * 60 * 1000) location.reload(); });
 // Back online after opening the page offline: fetch the current forecast.
 if (!navigator.onLine) window.addEventListener('online', () => location.reload(), { once: true });
+// Add to Home Screen. Browsers that offer an install prompt (Chrome, Edge, Samsung Internet) get a
+// button, and the prompt only when it is pressed; Safari and Firefox have none, so the steps stay.
+let INSTALL = null;
+if (STANDALONE) document.getElementById('home-screen').hidden = true;
+window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); INSTALL = e; document.getElementById('install-btn').hidden = false; });
+document.getElementById('install-btn').addEventListener('click', async () => {
+  const p = INSTALL; INSTALL = null; document.getElementById('install-btn').hidden = true; if (!p) return;
+  try { await p.prompt(); } catch (e) { document.getElementById('install-msg').textContent = 'Use the browser menu instead, as below.'; }
+});
+window.addEventListener('appinstalled', () => { INSTALL = null; document.getElementById('install-btn').hidden = true;
+  document.getElementById('install-msg').textContent = 'Dipspot is on your Home Screen. Open it from there.'; });
 // The page and the latest forecast kept on the device, for the water's edge without signal (sw.js).
 // It can be turned off: since 5 Feb 2026 PECR (Schedule A1) allows storage the site works without
 // only with clear information (the privacy notice) and a free, simple way to object. The choice is
