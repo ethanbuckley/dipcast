@@ -85,6 +85,8 @@ def test_the_page_view_counter_reaches_spot_pages_and_a_dropped_spot_loses_its_p
     bs.write_pages(tmp_path, SPOTS[:1], root="https://example.org/")
     assert (tmp_path / "spot" / "wharfe-ilkley").exists() and not (tmp_path / "spot" / "tarn").exists()
     assert "cloudflareinsights" not in (tmp_path / "index.html").read_text()
+    template = (ROOT / "src" / "dipcast" / "site" / "index.html").read_text()
+    assert 'id="count-btn"' in template and "getElementById('page-counter')" in template   # the way to object
 
 
 def test_site_url_follows_the_repository_unless_set(monkeypatch):
@@ -217,7 +219,8 @@ def test_the_privacy_notice_describes_alerts_only_when_they_are_on(tmp_path):
 @pytest.mark.skipif(shutil.which("node") is None, reason="needs Node")
 def test_the_offline_copy_rules():
     # sw.js runs in a browser, so its tests are JavaScript; here so that the build's test step runs them.
-    r = subprocess.run(["node", "--test", str(ROOT / "tests" / "site_cache.test.cjs"), str(ROOT / "tests" / "site_planner.test.cjs")], capture_output=True, text=True, timeout=60, check=False)
+    r = subprocess.run(["node", "--test", str(ROOT / "tests" / "site_cache.test.cjs"), str(ROOT / "tests" / "site_planner.test.cjs"),
+                        str(ROOT / "tests" / "site_counter.test.cjs")], capture_output=True, text=True, timeout=60, check=False)
     assert r.returncode == 0, r.stdout + r.stderr
 
 

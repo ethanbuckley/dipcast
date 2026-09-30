@@ -65,17 +65,21 @@ LOADING = '<div id="result"><p class="muted">Loading forecasts…</p></div>'
 SITE_URL_ENV = "DIPCAST_SITE_URL"
 # Optional page-view counter (Cloudflare Web Analytics). Off unless the repository
 # variable is set; the token is public (it sits in the page), so it is a variable,
-# not a secret. Before setting it: since 5 Feb 2026 PECR (Schedule A1) lets a counter run
-# without consent only if visitors get clear information and a free, simple way to object,
-# and there is no way to object yet. The first string is the privacy notice's own lead,
-# so the terms page's date is not touched.
+# not a secret. Since 5 Feb 2026 PECR (Schedule A1) lets a counter run without consent only
+# if visitors get clear information and a free, simple way to object: counter.js loads it
+# only for a browser that has not objected, and the home page has the button. The first
+# string is the privacy notice's own lead, so the terms page's date is not touched.
 COUNTER_TOKEN_ENV = "DIPCAST_CF_BEACON_TOKEN"
+COUNTER_JS = TEMPLATE.parent / "counter.js"
 NO_COUNTER = ("and what it does not. Last updated 30 September 2026.", "There is no analytics script and no third-party tracking.")
 WITH_COUNTER = ("and what it does not. Last updated 30 September 2026 (page-view counter).",
                 ("Page views are counted with Cloudflare Web Analytics. Cloudflare states that it sets no cookies, "
                  "uses no local storage and does not fingerprint visitors. It sees your IP address when the counter "
                  "loads, as any web server would, and its "
                  '<a href="https://www.cloudflare.com/privacypolicy/">privacy policy</a> applies to that. '
+                 "Your visits are not counted if you choose \"Don't count my visits\" under \"Saved spots, "
+                 "offline use and your data\" at the bottom of the home page; the choice is kept in your browser. "
+                 "Nor are they if your browser sends Global Privacy Control or Do Not Track. "
                  "There is no other analytics or tracking."))
 
 
@@ -182,8 +186,7 @@ def with_counter(html: str, token: str | None) -> str:
     if not re.fullmatch(r"[A-Za-z0-9]{16,64}", token):
         log.warning("%s is not 16-64 letters and digits: page-view counter left off", COUNTER_TOKEN_ENV)
         return html
-    beacon = ('<script defer src="https://static.cloudflareinsights.com/beacon.min.js" '
-              "data-cf-beacon='" + json.dumps({"token": token}) + "'></script>")
+    beacon = '<script id="page-counter">' + COUNTER_JS.read_text().replace("__TOKEN__", token) + "</script>"
     html = html.replace("</head>", beacon + "</head>", 1)
     for a, b in zip(NO_COUNTER, WITH_COUNTER):
         html = html.replace(a, b)
