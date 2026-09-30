@@ -325,11 +325,11 @@ def site_url() -> str:
     domain sets DIPCAST_SITE_URL; otherwise it is this repository's GitHub Pages address, so a
     fork or a renamed repository gets its own."""
     url = os.environ.get(SITE_URL_ENV, "").strip()
-    if url and not re.match(r"https?://[^/\s]+", url):   # "dipspot.co.uk" would make every preview link relative
+    if url and not re.match(r"https?://[^/\s]+", url):   # "swimsignal.co.uk" would make every preview link relative
         log.warning("%s=%r is not an http(s) address; using the Pages address", SITE_URL_ENV, url)
         url = ""
     if not url:
-        owner, _, repo = os.environ.get("GITHUB_REPOSITORY", "ethanbuckley/dipcast").partition("/")
+        owner, _, repo = os.environ.get("GITHUB_REPOSITORY", "ethanbuckley/swimsignal").partition("/")
         # A repository named <owner>.github.io is that account's own site, served at the root.
         home = f"{owner.lower()}.github.io"
         url = f"https://{home}/" if repo.lower() == home else f"https://{home}/{repo}/"

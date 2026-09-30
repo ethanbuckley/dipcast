@@ -89,7 +89,7 @@ EA_FLOOD_MONITORING = "https://environment.data.gov.uk/flood-monitoring"
 # Sent with every request to environment.data.gov.uk, so the Environment Agency
 # can tell whose traffic it is and where to get in touch. A fork should change it.
 USER_AGENT = os.environ.get("DIPCAST_USER_AGENT",
-                            f"dipcast/{__version__} (+https://github.com/ethanbuckley/dipcast)")
+                            f"dipcast/{__version__} (+https://github.com/ethanbuckley/swimsignal)")
 EA_HEADERS = {"User-Agent": USER_AGENT}
 
 # ---------------------------------------------------------------------------
