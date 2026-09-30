@@ -14,7 +14,7 @@ Evidence labels use the existing snapshot only. Individual bacterial sample resu
 
 ## Feedback delivery
 
-`feedback.html` works on static GitHub Pages and `/feedback` on FastAPI. It prepares an encoded mailto to ethan@ethanbuckley.me.uk and shows a copyable preview. Preparing a draft sends nothing. Actual sending requires an email client, or copying the draft into webmail. No new receiving service or credentials are required. Input is not stored by this form. Existing optional analytics settings are unchanged.
+`feedback.html` works on static GitHub Pages and `/feedback` on FastAPI. It prepares an encoded mailto to hello@swimsignal.co.uk and shows a copyable preview. Preparing a draft sends nothing. Actual sending requires an email client, or copying the draft into webmail. No new receiving service or credentials are required. Input is not stored by this form. Existing optional analytics settings are unchanged.
 
 ## Suggested review checks
 

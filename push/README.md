@@ -52,7 +52,7 @@ Run every command from the `push/` folder: `cd push`.
 2. Create the KV namespace: `npx wrangler kv namespace create PUSH`. It prints an `id`. Paste it into `wrangler.toml` in place of `REPLACE_WITH_KV_NAMESPACE_ID`.
 3. Make the key pair: `node scripts/vapid-keys.mjs`. It prints two lines, `VAPID_PUBLIC_KEY=...` and `VAPID_PRIVATE_KEY=...`. It writes nothing to disk. Keep the terminal open.
 4. Store the private key as a secret: `npx wrangler secret put VAPID_PRIVATE_KEY`. When asked, paste only the text after `VAPID_PRIVATE_KEY=`. If wrangler says the Worker does not exist yet and offers to create it, answer yes. Never commit this key.
-5. Edit `wrangler.toml`. Set `VAPID_PUBLIC_KEY` to the text after `VAPID_PUBLIC_KEY=`. Set `VAPID_SUBJECT` to a contact address such as `"mailto:you@example.com"`, removing the `REPLACE_WITH_` prefix. Push services use it to contact you if the Worker misbehaves.
+5. Edit `wrangler.toml`. Set `VAPID_PUBLIC_KEY` to the text after `VAPID_PUBLIC_KEY=`. `VAPID_SUBJECT` is already `"mailto:hello@swimsignal.co.uk"`. Push services use it to contact you if the Worker misbehaves, so change it only if that address stops working.
 6. Deploy: `npx wrangler deploy`. It prints the Worker's URL, `https://swimsignal-push.<account>.workers.dev`.
 7. In the GitHub repository, open Settings → Secrets and variables → Actions → Variables, and add two repository variables:
    - `DIPCAST_PUSH_URL` = the Worker's URL with a trailing slash, `https://swimsignal-push.<account>.workers.dev/`

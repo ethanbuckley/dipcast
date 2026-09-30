@@ -52,7 +52,7 @@ const context = vm.createContext({}); vm.runInContext(prepareSource,context);
 test('feedback encodes user content without changing the recipient or adding mail headers', () => {
   const r = context.prepareEmail('spot','A&B','', 'Line 1\n&bcc=other@example.org <script>');
   const url = new URL(r.href);
-  assert.equal(url.pathname,'ethan@ethanbuckley.me.uk');
+  assert.equal(url.pathname,'hello@swimsignal.co.uk');
   assert.equal(url.searchParams.get('bcc'),null);
   assert.match(url.searchParams.get('body'), /Line 1\n&bcc=/);
   assert.match(r.text,/Spot request/);
