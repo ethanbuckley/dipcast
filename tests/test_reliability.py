@@ -446,7 +446,7 @@ def test_ea_requests_send_a_contact_user_agent(monkeypatch):
     assert flows._nearest_level_station(54.2, -2.6) is None
     assert wqa.fetch_ecoli(["NE-49705000"], "2026-09-01") == []
     assert len(seen) == 3 and set(seen) == {config.USER_AGENT}
-    assert "github.com/ethanbuckley/dipcast" in config.USER_AGENT and "python-httpx" not in seen[0]
+    assert "github.com/ethanbuckley/swimsignal" in config.USER_AGENT and "python-httpx" not in seen[0]
 
 
 # ---------------------------------------------------------------- build guard

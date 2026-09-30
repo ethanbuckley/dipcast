@@ -1,11 +1,11 @@
 # SwimSignal
 
 Probabilistic sewage-pollution risk for river and lake swim spots in England.
-The code, the Python package (`dipcast`) and this repository keep the working name dipcast.
+The code and the Python package (`dipcast`) keep the working name dipcast.
 
-Live site: https://ethanbuckley.github.io/dipcast/ (forecasts for 88 named
+Live site: https://swimsignal.co.uk/ (forecasts for 88 named
 spots, rebuilt several times a day by a scheduled GitHub Actions job; free to
-run, never sleeps). Source: https://github.com/ethanbuckley/dipcast (MIT).
+run, never sleeps). Source: https://github.com/ethanbuckley/swimsignal (MIT).
 Every forecast issued is scored later and published on the site's
 verification page.
 
@@ -557,7 +557,7 @@ files (live polls, the overflow table, the forecast log, live scores) go to
 `DIPCAST_STATE` if set, else `data/processed`. All raw pulls are cached under
 `data/cache/` so re-running the ingestion is cheap. Requests to
 environment.data.gov.uk carry the User-Agent `dipcast/<version>
-(+https://github.com/ethanbuckley/dipcast)`; a fork should set its own with
+(+https://github.com/ethanbuckley/swimsignal)`; a fork should set its own with
 `DIPCAST_USER_AGENT`. `scripts/verify_leads.py
 2025` reproduces the lead-time table; `scripts/validate_ecoli.py` then
 `scripts/validate_ecoli_combined.py` reproduce the E. coli tables.

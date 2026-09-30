@@ -53,9 +53,9 @@ Run every command from the `push/` folder: `cd push`.
 3. Make the key pair: `node scripts/vapid-keys.mjs`. It prints two lines, `VAPID_PUBLIC_KEY=...` and `VAPID_PRIVATE_KEY=...`. It writes nothing to disk. Keep the terminal open.
 4. Store the private key as a secret: `npx wrangler secret put VAPID_PRIVATE_KEY`. When asked, paste only the text after `VAPID_PRIVATE_KEY=`. If wrangler says the Worker does not exist yet and offers to create it, answer yes. Never commit this key.
 5. Edit `wrangler.toml`. Set `VAPID_PUBLIC_KEY` to the text after `VAPID_PUBLIC_KEY=`. Set `VAPID_SUBJECT` to a contact address such as `"mailto:you@example.com"`, removing the `REPLACE_WITH_` prefix. Push services use it to contact you if the Worker misbehaves.
-6. Deploy: `npx wrangler deploy`. It prints the Worker's URL, `https://dipspot-push.<account>.workers.dev`.
+6. Deploy: `npx wrangler deploy`. It prints the Worker's URL, `https://swimsignal-push.<account>.workers.dev`.
 7. In the GitHub repository, open Settings → Secrets and variables → Actions → Variables, and add two repository variables:
-   - `DIPCAST_PUSH_URL` = the Worker's URL with a trailing slash, `https://dipspot-push.<account>.workers.dev/`
+   - `DIPCAST_PUSH_URL` = the Worker's URL with a trailing slash, `https://swimsignal-push.<account>.workers.dev/`
    - `DIPCAST_VAPID_PUBLIC_KEY` = the public key from step 3
 
    The site reads these when it builds, so they take effect at the next build.
