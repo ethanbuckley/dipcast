@@ -11,6 +11,7 @@ const FORECAST = SCOPE + 'data/spots.json';
 
 function worker(fetch, stored = {}) {
   const entries = new Map(Object.entries(stored));
+  const handlers = {}, notifications = [];
   const cache = {
     match: async key => entries.get(key)?.clone(),
     put: async (key, res) => { entries.set(key, res); },
@@ -18,11 +19,11 @@ function worker(fetch, stored = {}) {
   const context = vm.createContext({
     fetch, URL, Response, Request,
     caches: { open: async () => cache },
-    self: { registration: { scope: SCOPE }, location: new URL(SCOPE), addEventListener() {} },
+    self: { registration: { scope: SCOPE, showNotification: async (title, options) => notifications.push({ title, ...options }) }, location: new URL(SCOPE), addEventListener(type, handler) { handlers[type] = handler; } },
     setTimeout() {},   // every case here settles through the network, so the 4 s race never fires
   });
   vm.runInContext(readFileSync(join(__dirname, '../src/dipcast/site/sw.js'), 'utf8'), context);
-  return { context, entries };
+  return { context, entries, notifications, push: async data => { let pending; handlers.push({ data: { json: () => data }, waitUntil(p) { pending = p; } }); await pending; } };
 }
 
 test('a reload asks the server, past the browser cache, and replaces the stored forecast', async () => {
@@ -52,4 +53,35 @@ test('a spot page never opened before is the home page, with a <base> at the sco
 test('a first visit without a connection fails rather than invent a forecast', async () => {
   const { context } = worker(async () => { throw new Error('offline'); });
   await assert.rejects(context.networkFirst(new Request(FORECAST)), /offline/);
+});
+
+
+test('an expired delivered push displays a check-latest notice, not the old risk', async () => {
+  const w = worker(async () => {});
+  await w.push({ title: 'Very high today', body: 'Old pollution claim', expires_at: new Date(Date.now() - 1000).toISOString(), url: SCOPE + 'spot/a/' });
+  assert.equal(w.notifications[0].title, 'Dipspot forecast update');
+  assert.match(w.notifications[0].body, /expired/);
+  assert.equal(w.notifications[0].data.url, SCOPE + 'spot/a/');
+  assert.ok(!w.notifications[0].body.includes('Old pollution'));
+});
+
+test('a fresh push includes its UK forecast issue time', async () => {
+  const w = worker(async () => {});
+  await w.push({ title: 'Spot A', body: 'High today', issued_at: '2026-09-30T08:00:00Z', expires_at: new Date(Date.now() + 60000).toISOString() });
+  assert.equal(w.notifications[0].title, 'Spot A');
+  assert.match(w.notifications[0].body, /High today.*30 Sept.*09:00.*UK time/);
+});
+
+test('an invalid explicit expiry cannot show a current pollution claim', async () => {
+  const w = worker(async () => {});
+  await w.push({ title: 'High today', expires_at: 'not a date' });
+  assert.equal(w.notifications[0].title, 'Dipspot forecast update');
+});
+
+test('a legacy notification still works and a null payload cannot crash the handler', async () => {
+  const w = worker(async () => {});
+  await w.push({ title: 'Legacy', body: 'Message' });
+  await w.push(null);
+  assert.equal(w.notifications[0].title, 'Legacy');
+  assert.equal(w.notifications[1].title, 'Dipspot');
 });

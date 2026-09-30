@@ -98,10 +98,11 @@ export function vapidSigner({ VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
   };
 }
 
-export async function sendPush(subscription, payload, authorize, { fetch = globalThis.fetch, ttl = 43200, urgency = 'normal' } = {}) {
+export async function sendPush(subscription, payload, authorize, { fetch = globalThis.fetch, ttl = 43200, urgency = 'normal', signal = AbortSignal.timeout(15000) } = {}) {
   const body = await encrypt(te.encode(JSON.stringify(payload)), subscription.keys);
   return fetch(subscription.endpoint, {
     method: 'POST',
+    signal,
     headers: {
       'Content-Encoding': 'aes128gcm',
       'Content-Type': 'application/octet-stream',

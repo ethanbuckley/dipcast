@@ -152,30 +152,66 @@ async function unsubscribe(data, env) {
 // it on the Paid plan): about 450 an hour. KV can take a minute to show a write everywhere, and a
 // repeat of a batch is silent (a notification with the same tag replaces the last one).
 const SENDS_PER_RUN = 15;
+const MAX_FORECAST_AGE = 8 * 3600e3; // same freshness limit as the site's warning
+const MAX_QUEUE_AGE = 30 * 60e3;
+const MAX_ATTEMPTS = 4;
+const londonDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' });
+const londonOffset = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', timeZoneName: 'shortOffset' });
+
+export function forecastExpiry(issued) {
+  const at = Date.parse(issued);
+  if (!Number.isFinite(at)) return NaN;
+  const parts = Object.fromEntries(londonDate.formatToParts(at).map(p => [p.type, p.value]));
+  const midnight = Date.UTC(+parts.year, +parts.month - 1, +parts.day + 1);
+  // At 00:00 UTC the offset still matches the approaching local midnight on both DST changes.
+  const offset = londonOffset.formatToParts(midnight).find(p => p.type === 'timeZoneName').value === 'GMT+1' ? 3600e3 : 0;
+  return Math.min(at + MAX_FORECAST_AGE, midnight - offset);
+}
+
+function retryAfter(value, at) {
+  if (!value) return 0;
+  const seconds = Number(value);
+  const time = Number.isFinite(seconds) ? at + Math.max(0, seconds) * 1000 : Date.parse(value);
+  return Number.isFinite(time) ? time : 0;
+}
 
 export async function runCron(env, { fetch = globalThis.fetch, log = console.log, now = Date.now } = {}) {
   const authorize = vapidSigner(env); // fails on bad config every run, not only when a spot rises
-  const perRun = Number(env.SENDS_PER_RUN) > 0 ? Math.floor(Number(env.SENDS_PER_RUN)) : SENDS_PER_RUN;
+  const configured = Number(env.SENDS_PER_RUN);
+  const perRun = Number.isSafeInteger(configured) && configured > 0 ? configured : SENDS_PER_RUN;
   const tally = { sent: 0, removed: 0, failed: 0 };
   const queued = await env.PUSH.get('queue', 'json');
-  if (queued?.items?.length) {
-    // The queue is the recovery record if a run stopped before updating state. Do not send
-    // until that checkpoint succeeds, or the next forecast could rediscover the same rise.
-    if (queued.state) {
-      const state = await env.PUSH.get('state', 'json');
-      if (state?.generated_at !== queued.state.generated_at) await env.PUSH.put('state', JSON.stringify(queued.state));
-    }
-    return drain(env, queued, perRun, authorize, tally, { fetch, log });
-  }
-
-  // A new address each minute, so no cache on the way hands back an older copy. (fetch's 'cache'
-  // option needs a recent compatibility date in Workers; a query string needs nothing.)
-  const res = await fetch(`${env.SITE_URL}data/alerts.json?t=${Math.floor(now() / 60000)}`, { signal: AbortSignal.timeout(15000) });
+  const t = now();
+  // Revalidate even while draining: a queued warning must not outlive a newer lower forecast.
+  const res = await fetch(`${env.SITE_URL}data/alerts.json?t=${Math.floor(t / 60000)}`, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`alerts.json: HTTP ${res.status}`);
   const alerts = await res.json();
   if (typeof alerts?.generated_at !== 'string' || !isObject(alerts.spots)) throw new Error('alerts.json: unexpected shape');
+  const issued = Date.parse(alerts.generated_at), expires = forecastExpiry(alerts.generated_at);
+  if (!Number.isFinite(issued) || issued > t + 5 * 60e3) throw new Error('alerts.json: invalid or future issue time');
+  if (expires <= t) {
+    if (queued?.items?.length) await env.PUSH.delete('queue');
+    log('cron: forecast expired; no notifications sent');
+    return { risen: [], ...tally, queued: 0 };
+  }
+  if (queued?.items?.length) {
+    const queuedAt = queued.created_at ?? Date.parse(queued.state?.generated_at);
+    if (!Number.isFinite(queuedAt) || queuedAt + MAX_QUEUE_AGE <= t) {
+      await env.PUSH.delete('queue');
+      log('cron: expired or undated queue discarded');
+      return { risen: [], ...tally, queued: 0 };
+    }
+    const state = await env.PUSH.get('state', 'json');
+    const checkpointAt = Date.parse(queued.state?.generated_at);
+    if (issued < checkpointAt || issued < Date.parse(state?.generated_at)) throw new Error('alerts.json: issue time moved backwards');
+    if (queued.state && (!state || Date.parse(state.generated_at) < checkpointAt)) {
+      await env.PUSH.put('state', JSON.stringify(queued.state));
+    }
+    return drain(env, queued, perRun, authorize, tally, { fetch, log, now, alerts, expires: Math.min(expires, queuedAt + MAX_QUEUE_AGE) });
+  }
 
   const prev = await env.PUSH.get('state', 'json');
+  if (issued < Date.parse(prev?.generated_at)) throw new Error('alerts.json: issue time moved backwards');
   if (prev?.generated_at === alerts.generated_at) {
     log(`cron: alerts.json unchanged (${alerts.generated_at})`);
     return { risen: [], ...tally, queued: 0 };
@@ -183,7 +219,7 @@ export async function runCron(env, { fetch = globalThis.fetch, log = console.log
   const ranks = {};
   for (const [id, spot] of Object.entries(alerts.spots)) ranks[id] = Number.isInteger(spot?.rank) ? spot.rank : -1;
 
-  const t = now(), alerted = Object.fromEntries(Object.entries(prev?.alerted ?? {}).filter(([, at]) => t - Date.parse(at) < QUIET_MS));
+  const alerted = Object.fromEntries(Object.entries(prev?.alerted ?? {}).filter(([, at]) => t - Date.parse(at) < QUIET_MS));
   let risen = [], items = [];
   if (!prev) {
     // A first run has nothing to compare with; alerting now would alert everyone.
@@ -198,7 +234,7 @@ export async function runCron(env, { fetch = globalThis.fetch, log = console.log
   // Persist the complete queue BEFORE advancing the comparison state. If this write fails,
   // the previous ranks remain and the next run can discover the rise again. Sending begins
   // next run: putting and then checkpointing the same KV key within a second is rate-limited.
-  if (items.length) await env.PUSH.put('queue', JSON.stringify({ items, state }));
+  if (items.length) await env.PUSH.put('queue', JSON.stringify({ items, state, created_at: t }));
   await env.PUSH.put('state', JSON.stringify(state));
   if (!items.length) return { risen, ...tally, queued: 0 };
   return { risen, ...tally, queued: items.length };
@@ -238,57 +274,70 @@ async function queueFor(env, alerts, risen, tally, log) {
 }
 
 // Sends the first perRun alerts and keeps the rest in 'queue' for the next runs.
-async function drain(env, queued, perRun, authorize, tally, { fetch, log }) {
-  const { items } = queued;
-  const batch = items.slice(0, perRun), rest = items.slice(perRun);
-  await send(env, batch, authorize, tally, { fetch, log });
+async function drain(env, queued, perRun, authorize, tally, { fetch, log, now, alerts, expires }) {
+  const batch = [], rest = [], at = now();
+  for (const item of queued.items) {
+    if ((item.next_attempt ?? 0) <= at && batch.length < perRun) batch.push(item);
+    else rest.push(item);
+  }
+  const retry = await send(env, batch, authorize, tally, { fetch, log, now, alerts, expires });
+  rest.push(...retry); // retries do not block recipients who have not had an attempt yet
   if (rest.length) await env.PUSH.put('queue', JSON.stringify({ ...queued, items: rest }));
   else await env.PUSH.delete('queue');
   log(`cron: sent ${tally.sent}, removed ${tally.removed}, failed ${tally.failed}; ${rest.length} still queued`);
   return { risen: [], ...tally, queued: rest.length };
 }
 
-async function send(env, batch, authorize, tally, { fetch, log }) {
-  // Logs name a subscription by a slice of its key hash; the endpoint itself is a secret.
+async function send(env, batch, authorize, tally, { fetch, log, now, alerts, expires }) {
+  const retries = [];
   const fail = (key, why) => { tally.failed++; log(`push ${key.slice(4, 16)}: ${why}`); };
-  await eachLimit(batch, CONCURRENCY, async ({ key, spots, payload: legacyPayload }) => {
+  await eachLimit(batch, CONCURRENCY, async item => {
+    const { key, spots, payload: legacyPayload } = item;
+    const attempt = (item.attempts ?? 0) + 1;
+    const retry = (after = 0) => {
+      const next = Math.max(now() + 120000 * 2 ** (attempt - 1), after);
+      if (attempt < MAX_ATTEMPTS && next < expires) retries.push({ ...item, attempts: attempt, next_attempt: next });
+      else log(`push ${key.slice(4, 16)}: retry limit or expiry reached`);
+    };
     try {
-      const record = await env.PUSH.get(key, 'json');
-      if (!record) return; // turned off since it was queued
-      let payload;
-      if (spots) {
-        const ids = Object.keys(spots).filter(id => record.spots?.includes(id));
-        if (!ids.length) return; // these spots were removed while other batches were sending
-        payload = alertPayload(ids, spots, env.SITE_URL);
-      } else {
-        // Upgrade from the old queue: a single-spot tag identifies its spot. An old combined
-        // payload has no IDs, so discard it rather than guess whether it is still wanted.
-        const id = legacyPayload?.tag?.replace(/^dipspot-/, '');
-        if (!id || legacyPayload.tag === 'dipspot-saved' || !record.spots?.includes(id)) return;
-        payload = legacyPayload;
-      }
+      let record;
+      try { record = await env.PUSH.get(key, 'json'); }
+      catch { fail(key, 'subscription read unavailable'); retry(); return; }
+      if (!record) return;
+      const candidates = spots ? Object.keys(spots) : legacyPayload?.tag !== 'dipspot-saved' ? [legacyPayload?.tag?.replace(/^dipspot-/, '')] : [];
+      const ids = candidates.filter(id => id && record.spots?.includes(id) && alerts.spots[id]?.rank >= HIGH);
+      if (!ids.length) return;
       if (!isPushService(record.subscription?.endpoint)) {
-        await env.PUSH.delete(key);
-        tally.removed++;
-        log(`push ${key.slice(4, 16)}: removed, push service not allowed`);
-        return;
+        await env.PUSH.delete(key); tally.removed++; return;
       }
-      const res = await sendPush(record.subscription, payload, authorize, { fetch });
-      if (res.status === 404 || res.status === 410) {
-        await res.body?.cancel();
-        await env.PUSH.delete(key); // the browser has dropped this subscription
-        tally.removed++;
+      const ttl = Math.floor((expires - now()) / 1000);
+      if (ttl <= 0) return;
+      const payload = { ...alertPayload(ids, alerts.spots, env.SITE_URL), issued_at: alerts.generated_at, expires_at: new Date(expires).toISOString() };
+      // Retry only transient transport/service failures. A malformed subscription or encryption
+      // error is permanent and must not keep consuming delivery attempts.
+      let res;
+      try { res = await sendPush(record.subscription, payload, authorize, { fetch: async (...args) => {
+        try { return await fetch(...args); } catch { throw new TransportError(); }
+      }, ttl }); }
+      catch (err) { if (err instanceof TransportError) { fail(key, 'network failure'); retry(); return; } throw err; }
+      const status = res.status, after = retryAfter(res.headers.get('Retry-After'), now());
+      await res.body?.cancel();
+      if (status === 404 || status === 410) {
+        await env.PUSH.delete(key); tally.removed++;
       } else if (res.ok) {
-        await res.body?.cancel(); // release the connection; only the status matters
         tally.sent++;
       } else {
-        fail(key, `HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
+        fail(key, `HTTP ${status}`);
+        if (status === 408 || status === 429 || status >= 500) retry(after);
       }
-    } catch (err) {
-      fail(key, err.message);
+    } catch {
+      // Never log arbitrary error messages or service bodies: they may include the endpoint.
+      fail(key, 'subscription or storage failure');
     }
   });
+  return retries;
 }
+class TransportError extends Error {}
 
 async function eachLimit(items, limit, fn) {
   let next = 0;
