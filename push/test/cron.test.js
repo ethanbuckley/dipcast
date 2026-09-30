@@ -84,9 +84,10 @@ test('a spot rising from 1 to 2 pushes once to each of its subscribers and nobod
       url: `${SITE}spot/a/`,
       tag: 'dipspot-a',
     });
-    assert.equal(p.headers.TTL, '1800');
+    // Until the forecast expires: 8 hours after it was issued, here before UK midnight.
+    assert.equal(p.headers.TTL, String((Date.parse('2026-09-30T16:00:00Z') - t.now()) / 1000));
     assert.equal(p.rawPayload.issued_at, T2);
-    assert.equal(Date.parse(p.rawPayload.expires_at), t.now() + 1800e3);
+    assert.equal(p.rawPayload.expires_at, '2026-09-30T16:00:00.000Z');
     assert.equal(p.headers.Urgency, 'normal');
     assert.equal(p.headers['Content-Encoding'], 'aes128gcm');
     assert.equal(p.headers['Content-Type'], 'application/octet-stream');
@@ -314,22 +315,6 @@ test('staging and draining never write the queue twice in the same invocation', 
   assert.equal(t.pushes.length, 2);
 });
 
-test('legacy combined queued alerts are discarded when saved-spot membership cannot be checked', async () => {
-  const t = await setup({ users: { ann: ['b'] } });
-  await t.kv.put('queue', JSON.stringify({ created_at: t.now(), items: [{ key: await t.keyOf('ann'), payload: { title: '2 spots high', tag: 'dipspot-saved' } }] }));
-  await t.stage(alertsJson(T2, [spot('a', 2)]));
-  assert.equal(t.pushes.length, 0);
-  assert.equal(await t.kv.get('queue'), null);
-});
-
-test('legacy single-spot queued alerts are delivered only if still saved', async () => {
-  const t = await setup({ users: { ann: ['a'], bob: ['b'] } });
-  const payload = { title: 'Aston', tag: 'dipspot-a' };
-  await t.kv.put('queue', JSON.stringify({ created_at: t.now(), items: await Promise.all(['ann', 'bob'].map(async name => ({ key: await t.keyOf(name), payload }))) }));
-  await t.stage(alertsJson(T2, [spot('a', 2)]));
-  assert.deepEqual(t.pushes.map(p => p.to), ['ann']);
-});
-
 test('temporary push failures retry after backoff, without repeating successful recipients', async () => {
   let healthy = false;
   const t = await setup({ state: { generated_at: T1, ranks: { a: 0 } }, users: { ann: ['a'], bob: ['a'] }, status: name => name === 'ann' && !healthy ? 503 : 201 });
@@ -355,14 +340,24 @@ test('429 honours Retry-After seconds and HTTP dates', async () => {
   }
 });
 
-test('retries stop after four attempts and do not log endpoint-bearing exceptions', async () => {
-  const t = await setup({ state: { generated_at: T1, ranks: { a: 0 } }, users: { ann: ['a'] }, status: () => { throw new Error('https://fcm.googleapis.com/fcm/send/secret'); } });
+test('retries stop after four attempts, and a network error is logged without its endpoint', async () => {
+  const t = await setup({ state: { generated_at: T1, ranks: { a: 0 } }, users: { ann: ['a'] }, status: () => { throw new Error('connect ECONNRESET https://fcm.googleapis.com/fcm/send/ann'); } });
   const a = alertsJson(T2, [spot('a', 2)]);
   await t.run(a);
   for (const minutes of [2, 4, 8]) { t.advance(minutes * 60e3); await t.stage(a); }
   assert.equal(t.pushes.length, 4);
   assert.equal(await t.kv.get('queue'), null);
-  assert.ok(t.logs.every(line => !line.includes('secret') && !line.includes('fcm.googleapis.com')));
+  assert.ok(t.logs.some(line => line.includes('network failure: connect ECONNRESET <endpoint>')));
+  assert.ok(t.logs.some(line => line.includes('given up after 4 attempts')));
+  assert.ok(t.logs.every(line => !line.includes('fcm/send/ann')));
+});
+
+test('a refusal is logged with the push service\'s reason, and without the endpoint', async () => {
+  const t = await setup({ state: { generated_at: T1, ranks: { a: 0 } }, users: { ann: ['a'] },
+    status: () => new Response('{"reason":"VapidPkHashMismatch","for":"https://fcm.googleapis.com/fcm/send/ann"}', { status: 403 }) });
+  await t.run(alertsJson(T2, [spot('a', 2)]));
+  assert.ok(t.logs.some(line => line.includes('HTTP 403: {"reason":"VapidPkHashMismatch","for":"<endpoint>"}')), t.logs.join('\n'));
+  assert.ok(t.logs.every(line => !line.includes('fcm/send/ann')));
 });
 
 test('permanent 400 and 403 errors are not retried', async () => {
@@ -391,12 +386,28 @@ test('newer forecast headlines replace queued wording', async () => {
   assert.equal(t.pushes[0].rawPayload.issued_at, T3);
 });
 
-test('a queue expires after 30 minutes even if fresh forecasts stay high', async () => {
-  const t = await setup({ state: { generated_at: T1, ranks: { a: 0 } }, users: { ann: ['a'] } });
-  await t.stage(alertsJson(T2, [spot('a', 2)]));
-  t.advance(30 * 60e3);
-  await t.stage(alertsJson(T3, [spot('a', 3)]));
+test('a queue that takes longer than 30 minutes still reaches everyone', async () => {
+  const users = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`u${i}`, ['a']]));
+  const t = await setup({ state: { generated_at: T1, ranks: { a: 0 } }, users });
+  t.env.SENDS_PER_RUN = '1';
+  const a = alertsJson(T2, [spot('a', 2)]);
+  await t.stage(a);
+  for (let i = 0; i < 40; i++) { t.advance(120e3); await t.stage(a); }   // 80 minutes, one a run
+  assert.equal(new Set(t.pushes.map(p => p.to)).size, 40);
+  assert.equal(await t.kv.get('queue'), null);
+});
+
+test('an expired forecast pauses the queue, and the next forecast decides what goes out', async () => {
+  const t = await setup({ state: { generated_at: T1, ranks: { a: 0, b: 0 } }, users: { ann: ['a'], bob: ['b'] } });
+  t.env.SENDS_PER_RUN = '1';
+  await t.stage(alertsJson(T2, [spot('a', 2, 'Old words'), spot('b', 2)]));   // queued at 08:10
+  t.advance(8 * 3600e3);   // 16:10: T2 expired at 16:00, with both alerts still queued
+  assert.deepEqual(await t.stage(alertsJson(T2, [spot('a', 2, 'Old words'), spot('b', 2)])), { risen: [], sent: 0, removed: 0, failed: 0, queued: 2 });
   assert.equal(t.pushes.length, 0);
+  const T7 = '2026-09-30T16:20:00.000Z';   // the next build: a still high, b back to low
+  t.advance(12 * 60e3);
+  for (let i = 0; i < 2; i++) { await t.stage(alertsJson(T7, [spot('a', 3, 'New words'), spot('b', 0)])); t.advance(120e3); }
+  assert.deepEqual(t.pushes.map(p => [p.to, p.payload.title, p.rawPayload.issued_at]), [['ann', 'New words', T7]]);
   assert.equal(await t.kv.get('queue'), null);
 });
 
@@ -435,12 +446,12 @@ test('expiry is capped at London midnight, including DST transition dates', () =
   ]) assert.equal(forecastExpiry(issued), Date.parse(end));
 });
 
-test('the push TTL shrinks with the queue lifetime', async () => {
+test('the push TTL runs to the forecast\'s expiry, however long the alert was queued', async () => {
   const t = await setup({ state: { generated_at: T1, ranks: { a: 0 } }, users: { ann: ['a'] } });
   await t.stage(alertsJson(T2, [spot('a', 2)]));
   t.advance(29 * 60e3);
   await t.stage(alertsJson(T2, [spot('a', 2)]));
-  assert.equal(t.pushes[0].headers.TTL, '60');
+  assert.equal(t.pushes[0].headers.TTL, String((Date.parse('2026-09-30T16:00:00Z') - t.now()) / 1000));
 });
 
 test('a temporary subscription read failure retains the recipient for retry', async () => {
@@ -456,9 +467,10 @@ test('a temporary subscription read failure retains the recipient for retry', as
   assert.equal(t.pushes.length, 1);
 });
 
-test('Retry-After beyond expiry is dropped rather than sent too early', async () => {
-  const t = await setup({ state: { generated_at: T1, ranks: { a: 0 } }, users: { ann: ['a'] }, status: () => new Response(null, { status: 429, headers: { 'Retry-After': '3600' } }) });
+test('a Retry-After over an hour gives that alert up rather than send it early', async () => {
+  const t = await setup({ state: { generated_at: T1, ranks: { a: 0 } }, users: { ann: ['a'] }, status: () => new Response(null, { status: 429, headers: { 'Retry-After': '3700' } }) });
   await t.run(alertsJson(T2, [spot('a', 2)]));
   assert.equal(await t.kv.get('queue'), null);
   assert.equal(t.pushes.length, 1);
+  assert.ok(t.logs.some(line => line.includes('wait of over an hour')));
 });

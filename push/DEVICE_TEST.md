@@ -31,7 +31,7 @@ This performs one real outbound push to that subscription, clearly labelled as a
 
 ## Reviewer checks in the isolated test service
 
-Use fresh, dated fixtures for the test site's `data/alerts.json` and the test subscriber only. Check low → high, high → low before delivery, removal of one spot from a combined alert, and a queue reaching its 30-minute expiry. Do not alter the public forecast to test these transitions. HTTP 429/503 responses and network failures are simulated in the automated suite; do not deliberately overload Apple's service.
+Use fresh, dated fixtures for the test site's `data/alerts.json` and the test subscriber only. Check low → high, high → low before delivery, removal of one spot from a combined alert, and a queue that waits out an expired forecast and resumes with the next one. Do not alter the public forecast to test these transitions. HTTP 429/503 responses and network failures are simulated in the automated suite; do not deliberately overload Apple's service.
 
 For an offline phone, confirm that an accepted push does not later display an expired risk claim. The push TTL is capped by expiry; if a message reaches the service worker late, it displays a neutral invitation to check the latest forecast. Already-visible notifications are not remotely withdrawn.
 

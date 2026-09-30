@@ -145,16 +145,18 @@ async function unsubscribe(data, env) {
 }
 
 // ---- Cron ----
-// Every 2 minutes. A run either sends the next batch of queued alerts or, with nothing queued,
-// reads alerts.json and queues one alert for each subscriber of the spots that have just turned
-// high. On the free plan a run gets 50 outgoing requests and 10 ms of CPU, and one notification
-// took about 0.3 ms of CPU in Node, so a run sends at most SENDS_PER_RUN (15, or the env's; raise
-// it on the Paid plan): about 450 an hour. KV can take a minute to show a write everywhere, and a
+// Every 2 minutes. A run reads alerts.json, then either sends the next batch of queued alerts,
+// each checked against that forecast, or, with nothing queued, queues one alert for each
+// subscriber of the spots that have just turned high. On the free plan a run gets 50 outgoing
+// requests and 10 ms of CPU, and one notification took about 0.3 ms of CPU in Node, so a run
+// sends at most SENDS_PER_RUN (15, or the env's; raise it on the Paid plan): about 450 an hour. KV can take a minute to show a write everywhere, and a
 // repeat of a batch is silent (a notification with the same tag replaces the last one).
 const SENDS_PER_RUN = 15;
 const MAX_FORECAST_AGE = 8 * 3600e3; // same freshness limit as the site's warning
-const MAX_QUEUE_AGE = 30 * 60e3;
 const MAX_ATTEMPTS = 4;
+// A push service's Retry-After longer than this gives that alert up: while anything is queued, no
+// new rise is looked for, so one slow recipient must not hold everyone else's next alert.
+const MAX_RETRY_WAIT = 3600e3;
 const londonDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London', year: 'numeric', month: '2-digit', day: '2-digit' });
 const londonOffset = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', timeZoneName: 'shortOffset' });
 
@@ -166,6 +168,17 @@ export function forecastExpiry(issued) {
   // At 00:00 UTC the offset still matches the approaching local midnight on both DST changes.
   const offset = londonOffset.formatToParts(midnight).find(p => p.type === 'timeZoneName').value === 'GMT+1' ? 3600e3 : 0;
   return Math.min(at + MAX_FORECAST_AGE, midnight - offset);
+}
+
+// Logs name a subscription by part of its key hash. Its endpoint is enough, with the VAPID key, to
+// push to that browser, so it is cut out of any message logged: a push service's reason for
+// refusing (a VAPID key mismatch, say) is kept, since without it a failure cannot be diagnosed.
+export function redact(text, endpoint) {
+  let out = String(text ?? '');
+  const parts = [endpoint];
+  try { const u = new URL(endpoint); parts.push(u.pathname + u.search, ...u.pathname.split('/'), ...u.searchParams.values()); } catch { /* not a URL */ }
+  for (const part of parts.filter((x) => typeof x === 'string' && x.length >= 8).sort((a, b) => b.length - a.length)) out = out.split(part).join('<endpoint>');
+  return out.replace(/\s+/g, ' ').trim().slice(0, 200);   // after cutting, so a cut cannot leave half an endpoint
 }
 
 function retryAfter(value, at) {
@@ -189,25 +202,25 @@ export async function runCron(env, { fetch = globalThis.fetch, log = console.log
   if (typeof alerts?.generated_at !== 'string' || !isObject(alerts.spots)) throw new Error('alerts.json: unexpected shape');
   const issued = Date.parse(alerts.generated_at), expires = forecastExpiry(alerts.generated_at);
   if (!Number.isFinite(issued) || issued > t + 5 * 60e3) throw new Error('alerts.json: invalid or future issue time');
-  if (expires <= t) {
-    if (queued?.items?.length) await env.PUSH.delete('queue');
-    log('cron: forecast expired; no notifications sent');
-    return { risen: [], ...tally, queued: 0 };
-  }
   if (queued?.items?.length) {
-    const queuedAt = queued.created_at ?? Date.parse(queued.state?.generated_at);
-    if (!Number.isFinite(queuedAt) || queuedAt + MAX_QUEUE_AGE <= t) {
-      await env.PUSH.delete('queue');
-      log('cron: expired or undated queue discarded');
-      return { risen: [], ...tally, queued: 0 };
-    }
     const state = await env.PUSH.get('state', 'json');
     const checkpointAt = Date.parse(queued.state?.generated_at);
     if (issued < checkpointAt || issued < Date.parse(state?.generated_at)) throw new Error('alerts.json: issue time moved backwards');
     if (queued.state && (!state || Date.parse(state.generated_at) < checkpointAt)) {
       await env.PUSH.put('state', JSON.stringify(queued.state));
     }
-    return drain(env, queued, perRun, authorize, tally, { fetch, log, now, alerts, expires: Math.min(expires, queuedAt + MAX_QUEUE_AGE) });
+    // An expired forecast (8 hours old, or past UK midnight, when "today" in its wording has
+    // passed) pauses the queue rather than ending it: every alert is checked against the forecast
+    // of the run that sends it, so the next fresh forecast decides what still goes out, in its words.
+    if (expires <= t) {
+      log(`cron: forecast expired; ${queued.items.length} alerts wait for the next one`);
+      return { risen: [], ...tally, queued: queued.items.length };
+    }
+    return drain(env, queued, perRun, authorize, tally, { fetch, log, now, alerts, expires });
+  }
+  if (expires <= t) {
+    log('cron: forecast expired; nothing compared or sent');
+    return { risen: [], ...tally, queued: 0 };
   }
 
   const prev = await env.PUSH.get('state', 'json');
@@ -234,7 +247,7 @@ export async function runCron(env, { fetch = globalThis.fetch, log = console.log
   // Persist the complete queue BEFORE advancing the comparison state. If this write fails,
   // the previous ranks remain and the next run can discover the rise again. Sending begins
   // next run: putting and then checkpointing the same KV key within a second is rate-limited.
-  if (items.length) await env.PUSH.put('queue', JSON.stringify({ items, state, created_at: t }));
+  if (items.length) await env.PUSH.put('queue', JSON.stringify({ items, state }));
   await env.PUSH.put('state', JSON.stringify(state));
   if (!items.length) return { risen, ...tally, queued: 0 };
   return { risen, ...tally, queued: items.length };
@@ -280,62 +293,66 @@ async function drain(env, queued, perRun, authorize, tally, { fetch, log, now, a
     if ((item.next_attempt ?? 0) <= at && batch.length < perRun) batch.push(item);
     else rest.push(item);
   }
-  const retry = await send(env, batch, authorize, tally, { fetch, log, now, alerts, expires });
-  rest.push(...retry); // retries do not block recipients who have not had an attempt yet
+  const kept = await send(env, batch, authorize, tally, { fetch, log, now, alerts, expires });
+  rest.push(...kept); // retries do not block recipients who have not had an attempt yet
   if (rest.length) await env.PUSH.put('queue', JSON.stringify({ ...queued, items: rest }));
   else await env.PUSH.delete('queue');
   log(`cron: sent ${tally.sent}, removed ${tally.removed}, failed ${tally.failed}; ${rest.length} still queued`);
   return { risen: [], ...tally, queued: rest.length };
 }
 
+// Returns the alerts to keep in the queue: retries, and any the forecast expired under.
 async function send(env, batch, authorize, tally, { fetch, log, now, alerts, expires }) {
-  const retries = [];
+  const kept = [];
   const fail = (key, why) => { tally.failed++; log(`push ${key.slice(4, 16)}: ${why}`); };
   await eachLimit(batch, CONCURRENCY, async item => {
-    const { key, spots, payload: legacyPayload } = item;
+    const { key, spots } = item;
     const attempt = (item.attempts ?? 0) + 1;
     const retry = (after = 0) => {
-      const next = Math.max(now() + 120000 * 2 ** (attempt - 1), after);
-      if (attempt < MAX_ATTEMPTS && next < expires) retries.push({ ...item, attempts: attempt, next_attempt: next });
-      else log(`push ${key.slice(4, 16)}: retry limit or expiry reached`);
+      const at = now(), next = Math.max(at + 120000 * 2 ** (attempt - 1), after);
+      if (attempt >= MAX_ATTEMPTS) log(`push ${key.slice(4, 16)}: given up after ${attempt} attempts`);
+      else if (next - at > MAX_RETRY_WAIT) log(`push ${key.slice(4, 16)}: given up, the push service asked for a wait of over an hour`);
+      else kept.push({ ...item, attempts: attempt, next_attempt: next });
     };
+    let endpoint;
     try {
       let record;
       try { record = await env.PUSH.get(key, 'json'); }
       catch { fail(key, 'subscription read unavailable'); retry(); return; }
       if (!record) return;
-      const candidates = spots ? Object.keys(spots) : legacyPayload?.tag !== 'dipspot-saved' ? [legacyPayload?.tag?.replace(/^dipspot-/, '')] : [];
-      const ids = candidates.filter(id => id && record.spots?.includes(id) && alerts.spots[id]?.rank >= HIGH);
+      endpoint = record.subscription?.endpoint;
+      const ids = Object.keys(spots ?? {}).filter(id => record.spots?.includes(id) && alerts.spots[id]?.rank >= HIGH);
       if (!ids.length) return;
-      if (!isPushService(record.subscription?.endpoint)) {
+      if (!isPushService(endpoint)) {
         await env.PUSH.delete(key); tally.removed++; return;
       }
       const ttl = Math.floor((expires - now()) / 1000);
-      if (ttl <= 0) return;
+      if (ttl <= 0) { kept.push(item); return; }   // expired during this run: waits like the rest
       const payload = { ...alertPayload(ids, alerts.spots, env.SITE_URL), issued_at: alerts.generated_at, expires_at: new Date(expires).toISOString() };
       // Retry only transient transport/service failures. A malformed subscription or encryption
       // error is permanent and must not keep consuming delivery attempts.
       let res;
       try { res = await sendPush(record.subscription, payload, authorize, { fetch: async (...args) => {
-        try { return await fetch(...args); } catch { throw new TransportError(); }
+        try { return await fetch(...args); } catch (err) { throw new TransportError(err?.message); }
       }, ttl }); }
-      catch (err) { if (err instanceof TransportError) { fail(key, 'network failure'); retry(); return; } throw err; }
+      catch (err) { if (err instanceof TransportError) { fail(key, `network failure: ${redact(err.message, endpoint)}`); retry(); return; } throw err; }
       const status = res.status, after = retryAfter(res.headers.get('Retry-After'), now());
-      await res.body?.cancel();
       if (status === 404 || status === 410) {
+        await res.body?.cancel();
         await env.PUSH.delete(key); tally.removed++;
       } else if (res.ok) {
+        await res.body?.cancel();
         tally.sent++;
       } else {
-        fail(key, `HTTP ${status}`);
+        const why = redact(await res.text().catch(() => ''), endpoint);
+        fail(key, `HTTP ${status}${why ? `: ${why}` : ''}`);
         if (status === 408 || status === 429 || status >= 500) retry(after);
       }
-    } catch {
-      // Never log arbitrary error messages or service bodies: they may include the endpoint.
-      fail(key, 'subscription or storage failure');
+    } catch (err) {
+      fail(key, redact(err?.message || 'failed', endpoint));
     }
   });
-  return retries;
+  return kept;
 }
 class TransportError extends Error {}
 
