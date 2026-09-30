@@ -99,9 +99,6 @@
   h1, h2, h3 { letter-spacing:-.01em; }
 
   /* The list */
-  .evidence dl { margin:12px 0 0; }
-  .evidence dt { font-size:13px; font-weight:750; margin-top:12px; color:var(--brand); }
-  .evidence dd { margin:3px 0 0; font-size:14px; color:var(--muted); }
   .compare-fields { display:grid; gap:10px; margin:14px 0; }
   .compare-fields label { font-size:14px; font-weight:650; }
   .compare-fields select { display:block; width:100%; min-height:44px; margin-top:4px; padding:8px; font:inherit; background:white; border:1px solid var(--line); border-radius:8px; }
@@ -114,7 +111,6 @@
   .compare-table th[scope=row] { min-width:100px; }
   .comparison > summary { cursor:pointer; font-weight:750; font-size:18px; padding:6px 0; }
   .comparison[open] > summary { margin-bottom:10px; }
-  .evidence summary { cursor:pointer; font-weight:650; padding:8px 0; }
   .intro { padding:18px; border:1px solid var(--line); border-radius:20px; background:linear-gradient(135deg,#e5f3ef,#fff 75%); }
   .intro .eyebrow { margin:0 0 8px; color:var(--brand); font-size:12px; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
   .planner { margin:16px 0 12px; }
@@ -822,8 +818,6 @@ function showDay(d, iso) {
   if (addr !== location.pathname + location.search + location.hash) history.replaceState(history.state, '', addr);
   document.getElementById('day-view').innerHTML = x ? dayDetail(d, x) : factors(d);
   document.querySelectorAll('#day-strip [data-day]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.day === DAY)));
-  const evidence = document.getElementById('evidence-card');
-  if (evidence) evidence.outerHTML = evidenceCard(d, DAY);
   const close = document.getElementById('day-close');
   if (close) close.addEventListener('click', () => { showDay(d, null); document.querySelector(`#day-strip [data-day="${iso}"]`).focus(); });
 }
@@ -1111,10 +1105,6 @@ function bindComparison() {
   document.querySelectorAll('#compare-day, [data-compare]').forEach(el => el.addEventListener('change',drawComparison));
   drawComparison();
 }
-function evidenceCard(d, iso) {
-  const rows = evidenceRows(d,iso || today(),issued());
-  return `<section class="card evidence" id="evidence-card"><h2 class="card-h">What this is based on</h2><p class="sub">Forecasts, monitoring and official records are different kinds of evidence.</p><dl>${rows.slice(0,3).map(([label,text]) => `<dt>${label}</dt><dd>${esc(text)}</dd>`).join('')}</dl><details><summary>Samples, limits and local warnings</summary><dl>${rows.slice(3).map(([label,text]) => `<dt>${label}</dt><dd>${esc(text)}</dd>`).join('')}</dl>${d.classification?.url ? `<p><a href="${esc(d.classification.url)}">Check latest EA samples and advice</a></p>` : ''}</details></section>`;
-}
 function renderSaved() {
   contribLayer.clearLayers(); selLayer.clearLayers(); current = null; shown = 'saved';
   setView('saved');
@@ -1321,7 +1311,7 @@ function render(d) {
   if (d.error) {
     DAY = null;   // no days here: a day link opens the spot, and the address loses the day
     if (dayFromURL()) history.replaceState(history.state, '', location.pathname + location.search);
-    h += hero(factors(d) + check(d)) + evidenceCard(d, DAY);
+    h += hero(factors(d) + check(d));
     h += algae(d.algae) + `<section class="card phone-only"><h2 class="card-h">Where it is</h2><div id="spot-map"></div></section>` + actions(d);
     setPanel(h); bindBack(); bindSave(d); bindShare(d); placeMap(); miniMap(d); return;
   }
@@ -1329,10 +1319,9 @@ function render(d) {
   h += notices();
   // Always say how old it is: the stored copy (sw.js) can answer when the network is slow.
   h += hero(`${strip(d)}<div id="day-view">${factors(d)}</div><p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p>${check(d)}`);
-  h += evidenceCard(d, DAY);
   if (total) {
     h += `<section class="card"><h2 class="card-h">Right now</h2><div class="now-row"><span class="big${now.discharging_upstream ? ' hot' : ''}">${now.discharging_upstream}</span>`
-      + `<div>of ${total} upstream overflow${total === 1 ? '' : 's'} discharging now<div class="small muted">${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h · ${now.monitored_upstream} of ${total} report live</div></div></div></section>`;
+      + `<div>of ${total} upstream overflow${total === 1 ? '' : 's'} discharging now<div class="small muted">${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h · ${now.monitored_upstream} of ${total} report live${now.monitored_upstream < total ? `. ${total - now.monitored_upstream === 1 ? 'The one that does not' : `The ${total - now.monitored_upstream} that do not`} could be spilling unseen` : ''}</div></div></div></section>`;
   }
   h += algae(d.algae);
   h += `<section class="card phone-only"><h2 class="card-h">Upstream</h2><p class="sub">The spot (ringed) and the overflows that matter most; a bigger circle means more of a spill would reach here. Two fingers move the map.</p><div id="spot-map"></div>`
