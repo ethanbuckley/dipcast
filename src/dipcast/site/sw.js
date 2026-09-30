@@ -75,6 +75,17 @@ async function storedFirst(req) {
 self.addEventListener('push', e => {
   let d = {};
   try { d = e.data ? e.data.json() : {}; } catch (err) { d = {}; }
+  if (!d || typeof d !== 'object') d = {};
+  // Push services honour TTL, but also check on the device in case delivery was delayed.
+  // userVisibleOnly subscriptions still need a visible notification: never show an expired
+  // pollution claim as current, and instead invite the swimmer to check the latest forecast.
+  const expiry = Date.parse(d.expires_at);
+  if (d.expires_at !== undefined && (!Number.isFinite(expiry) || expiry <= Date.now())) {
+    d = { title: 'Dipspot forecast update', body: 'This alert has expired. Open Dipspot to check the latest forecast.', tag: d.tag, url: d.url };
+  } else if (d.issued_at && Number.isFinite(Date.parse(d.issued_at))) {
+    const when = new Date(d.issued_at).toLocaleString('en-GB', { timeZone: 'Europe/London', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    d.body = `${d.body || ''} Forecast issued ${when} (UK time).`;
+  }
   e.waitUntil(self.registration.showNotification(d.title || 'Dipspot', {
     body: d.body || '', tag: d.tag, data: { url: d.url }, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png' }));
 });

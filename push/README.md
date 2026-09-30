@@ -1,6 +1,6 @@
 # Dipspot push alerts
 
-This is a Cloudflare Worker that sends Web Push notifications for Dipspot. A visitor turns on alerts on the Saved page, and their browser registers with the Worker along with the ids of their saved spots. Every 2 minutes the Worker either sends the next batch of queued alerts or reads the site's `data/alerts.json`. When a saved spot has just become high or very high, it queues one notification for each visitor who saved it, and at most one for each spot in 20 hours: the site is rebuilt several times a day, and a spot near the line can cross it more than once. It has no npm dependencies. The encryption (RFC 8291) and sender signature (RFC 8292) use the Web Crypto API built into Workers.
+This is a Cloudflare Worker that sends Web Push notifications for Dipspot. A visitor turns on alerts on the Saved page, and their browser registers with the Worker along with the ids of their saved spots. Every 2 minutes the Worker reads the site's `data/alerts.json` and either revalidates a pending batch or identifies newly high spots. When a saved spot has just become high or very high, it queues one notification for each visitor who saved it, and at most one for each spot in 20 hours: the site is rebuilt several times a day, and a spot near the line can cross it more than once. It has no npm dependencies. The encryption (RFC 8291) and sender signature (RFC 8292) use the Web Crypto API built into Workers.
 
 ## What it stores
 
@@ -10,23 +10,39 @@ One Workers KV entry per browser, holding:
 - the list of saved spot ids;
 - the time of the last change.
 
-Nothing else. No names, no email addresses, no IP addresses. Cloudflare sees each request's IP address, as any host does, but the Worker does not store it. A second entry, `state`, holds the rank of every spot at the last run, so the next run can tell what has changed.
+No personal names, email addresses or IP addresses. Cloudflare sees each request's IP address, as any host does, but the Worker does not store it. A second entry, `state`, holds the rank of every spot at the last run, so the next run can tell what has changed. While alerts are pending, `queue` holds subscription key hashes, the affected spots' public forecast details, the comparison state needed to recover an interrupted run, and bounded retry counters/times.
 
 The endpoint and keys are enough to send that browser a notification, so treat the KV contents as private. Logs name a subscription by part of its hash, never by endpoint.
 
 ## Free-tier limits that matter
 
 - Workers: 100,000 requests a day. Each subscribe, unsubscribe or CORS preflight is one request.
-- KV (Cloudflare's KV limits page, read 29 Sep 2026): 100,000 reads and 1,000 writes a day, and 1,000 operations in one run. Each subscribe or change of saved spots is one write, so about 1,000 subscribes or changes a day. Each cron run that finds a newly high spot reads every subscription once, so one run can read at most about 1,000; the CPU limit below bites long before that.
+- KV (Cloudflare's KV limits page, read 29 Sep 2026): 100,000 reads and 1,000 writes a day, and 1,000 operations in one run. Each subscribe or change of saved spots is one write, so about 1,000 subscribes or changes a day. Finding affected subscribers lists metadata; subscriptions too large for metadata also need individual reads. Sending a batch reads its subscription records. Include queue/state writes and retries in the daily budget.
 - Cron triggers: free.
 
 ## How many alerts go out, and how fast
 
-Cloudflare's limits page (read 29 Sep 2026) gives the free plan 50 outgoing requests and 10 ms of CPU time per run, cron runs included, and 6 open connections at a time. Encrypting one notification took 0.28 ms of CPU in Node on a Mac, and signing once per push service 0.19 ms. So a run sends at most 15 (`SENDS_PER_RUN`) and keeps the rest in a queue for the next runs, 2 minutes apart: about 450 an hour. While a queue is being sent, `alerts.json` is not read.
+Cloudflare's limits page (read 29 Sep 2026) gives the free plan 50 outgoing requests and 10 ms of CPU time per run, cron runs included, and 6 open connections at a time. Encrypting one notification took 0.28 ms of CPU in Node on a Mac, and signing once per push service 0.19 ms. So a run sends at most 15 (`SENDS_PER_RUN`) and keeps the rest in a queue for the next runs, 2 minutes apart: an ideal ceiling of about 450 attempts an hour before retries or runtime overhead. Every batch rechecks `alerts.json`, so an alert that waits in the queue still goes out in the latest forecast's words, or not at all if its spot is no longer high.
 
 On the Workers Paid plan (about $5 a month) the limits are higher: set `SENDS_PER_RUN` in `wrangler.toml` to send more per run. `npx wrangler tail` shows each run's count, and a run cut short by a limit.
 
 Finding who to alert needs no reads of the records: each subscription's spots are also kept in its key's metadata (up to 1,024 bytes, about 40 spot ids), so a run lists keys and reads only the records it sends to. KV can take up to a minute to show a write in every location, so a batch can occasionally go out twice; the second copy replaces the first on the device without a sound, because both carry the same tag.
+
+### Queue recovery and changed saved spots
+
+The complete queue is saved before advancing the comparison state. The first batch is sent on the next scheduled run, normally about two minutes later. This avoids writing the same KV key twice in rapid succession: [KV permits one write per second to a key](https://developers.cloudflare.com/kv/platform/limits/). If the state write fails after the queue was stored, a later run restores that checkpoint before sending. An interrupted batch retains its unsent recipients, although already-sent notifications can repeat if its checkpoint fails.
+
+Before sending each queued notification, the Worker rereads the subscription and limits the notification to spots still saved in that record. A combined alert becomes a single-spot alert if only one affected spot remains. Removing all affected spots or deleting the subscription skips that notification. Updates are subject to [KV's eventual consistency](https://developers.cloudflare.com/kv/concepts/how-kv-works/): this is not an immediate-revocation or exactly-once guarantee, and these recovery steps do not serialize overlapping cron runs.
+
+### Retries and expiry
+
+Network errors, timeouts, HTTP 408/429/5xx and temporary subscription-read failures are retried, at most four attempts total. Delays start at two minutes, then four and eight; a later `Retry-After` (seconds or HTTP date) is respected, up to an hour; a longer one gives that alert up, since nothing new is looked for while the queue holds anything. Pending retries go behind unattempted recipients. HTTP 404/410 removes the subscription. Other failures are logged with the push service's reason (a VAPID key mismatch, say) and the endpoint cut out of it. Requests time out after 15 seconds.
+
+Each batch rechecks the latest forecast and uses its current wording. Spots that disappeared or are no longer high are skipped. Failed forecast refreshes leave the queue intact and send nothing. Invalid, future-dated and regressed issue times are refused. A forecast expires after eight hours or at the next UK midnight, whichever is sooner: its wording says "today" and "tomorrow". An expired forecast pauses the queue rather than ending it, and the next fresh one decides which alerts still go out. So a spot that turns high in a late-evening build reaches everyone who saved it: those not reached by midnight get the next build's wording, if the spot is still high.
+
+Push TTL is the forecast's remaining lifetime. Messages include an issue time and expiry; the device shows the UK issue time, or a neutral check-latest notice if delivery was delayed past expiry. It does not silently discard the push, because user-visible subscriptions require a visible result. Already-visible notifications cannot be withdrawn by this implementation. [Web Push TTL](https://www.rfc-editor.org/rfc/rfc8030#section-5.2), [visible push subscriptions](https://developer.mozilla.org/en-US/docs/Web/API/PushManager/subscribe).
+
+Newly rising spots are looked for once the current queue has drained. KV still does not serialize overlapping cron invocations, so duplicate processing remains possible. Real-device push delivery and runtime-limit tests remain necessary before promising dependable paid alerts. Follow [the iPhone test guide](DEVICE_TEST.md); no physical-device test has been claimed yet.
 
 ## Setup
 
