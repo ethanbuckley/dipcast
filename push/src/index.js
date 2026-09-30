@@ -1,4 +1,4 @@
-// Dipspot push alerts. The site's pages subscribe here; every 30 minutes the cron
+// Dipspot push alerts. The site's pages subscribe here; every 2 minutes the cron
 // compares the site's alerts.json with the last run and pushes to people whose saved
 // spots have just become high.
 
@@ -158,7 +158,15 @@ export async function runCron(env, { fetch = globalThis.fetch, log = console.log
   const perRun = Number(env.SENDS_PER_RUN) > 0 ? Math.floor(Number(env.SENDS_PER_RUN)) : SENDS_PER_RUN;
   const tally = { sent: 0, removed: 0, failed: 0 };
   const queued = await env.PUSH.get('queue', 'json');
-  if (queued?.items?.length) return drain(env, queued.items, true, perRun, authorize, tally, [], { fetch, log });
+  if (queued?.items?.length) {
+    // The queue is the recovery record if a run stopped before updating state. Do not send
+    // until that checkpoint succeeds, or the next forecast could rediscover the same rise.
+    if (queued.state) {
+      const state = await env.PUSH.get('state', 'json');
+      if (state?.generated_at !== queued.state.generated_at) await env.PUSH.put('state', JSON.stringify(queued.state));
+    }
+    return drain(env, queued, perRun, authorize, tally, { fetch, log });
+  }
 
   // A new address each minute, so no cache on the way hands back an older copy. (fetch's 'cache'
   // option needs a recent compatibility date in Workers; a query string needs nothing.)
@@ -186,9 +194,14 @@ export async function runCron(env, { fetch = globalThis.fetch, log = console.log
     if (risen.length) items = await queueFor(env, alerts, new Set(risen), tally, log);
     log(`cron: ${alerts.generated_at}: ${risen.length} spots rose to high, ${items.length} alerts to send`);
   }
-  await env.PUSH.put('state', JSON.stringify({ generated_at: alerts.generated_at, ranks, ...(Object.keys(alerted).length ? { alerted } : {}) }));
+  const state = { generated_at: alerts.generated_at, ranks, ...(Object.keys(alerted).length ? { alerted } : {}) };
+  // Persist the complete queue BEFORE advancing the comparison state. If this write fails,
+  // the previous ranks remain and the next run can discover the rise again. Sending begins
+  // next run: putting and then checkpointing the same KV key within a second is rate-limited.
+  if (items.length) await env.PUSH.put('queue', JSON.stringify({ items, state }));
+  await env.PUSH.put('state', JSON.stringify(state));
   if (!items.length) return { risen, ...tally, queued: 0 };
-  return drain(env, items, false, perRun, authorize, tally, risen, { fetch, log });
+  return { risen, ...tally, queued: items.length };
 }
 
 async function listKeys(kv, prefix) {
@@ -202,7 +215,7 @@ async function listKeys(kv, prefix) {
   return keys;
 }
 
-// One alert per subscriber of a risen spot: [{key, payload}]. The spots come from each key's
+// One alert per subscriber of a risen spot: [{key, spots}]. The spots come from each key's
 // metadata; a record without them (too many spots to fit) is read.
 async function queueFor(env, alerts, risen, tally, log) {
   const items = [];
@@ -219,28 +232,41 @@ async function queueFor(env, alerts, risen, tally, log) {
       spots = record?.spots ?? [];
     }
     const hits = spots.filter((id) => risen.has(id));
-    if (hits.length) items.push({ key, payload: alertPayload(hits, alerts.spots, env.SITE_URL) });
+    if (hits.length) items.push({ key, spots: Object.fromEntries(hits.map(id => [id, alerts.spots[id]])) });
   }
   return items;
 }
 
 // Sends the first perRun alerts and keeps the rest in 'queue' for the next runs.
-async function drain(env, items, fromQueue, perRun, authorize, tally, risen, { fetch, log }) {
+async function drain(env, queued, perRun, authorize, tally, { fetch, log }) {
+  const { items } = queued;
   const batch = items.slice(0, perRun), rest = items.slice(perRun);
   await send(env, batch, authorize, tally, { fetch, log });
-  if (rest.length) await env.PUSH.put('queue', JSON.stringify({ items: rest }));
-  else if (fromQueue) await env.PUSH.delete('queue');
+  if (rest.length) await env.PUSH.put('queue', JSON.stringify({ ...queued, items: rest }));
+  else await env.PUSH.delete('queue');
   log(`cron: sent ${tally.sent}, removed ${tally.removed}, failed ${tally.failed}; ${rest.length} still queued`);
-  return { risen, ...tally, queued: rest.length };
+  return { risen: [], ...tally, queued: rest.length };
 }
 
 async function send(env, batch, authorize, tally, { fetch, log }) {
   // Logs name a subscription by a slice of its key hash; the endpoint itself is a secret.
   const fail = (key, why) => { tally.failed++; log(`push ${key.slice(4, 16)}: ${why}`); };
-  await eachLimit(batch, CONCURRENCY, async ({ key, payload }) => {
+  await eachLimit(batch, CONCURRENCY, async ({ key, spots, payload: legacyPayload }) => {
     try {
       const record = await env.PUSH.get(key, 'json');
       if (!record) return; // turned off since it was queued
+      let payload;
+      if (spots) {
+        const ids = Object.keys(spots).filter(id => record.spots?.includes(id));
+        if (!ids.length) return; // these spots were removed while other batches were sending
+        payload = alertPayload(ids, spots, env.SITE_URL);
+      } else {
+        // Upgrade from the old queue: a single-spot tag identifies its spot. An old combined
+        // payload has no IDs, so discard it rather than guess whether it is still wanted.
+        const id = legacyPayload?.tag?.replace(/^dipspot-/, '');
+        if (!id || legacyPayload.tag === 'dipspot-saved' || !record.spots?.includes(id)) return;
+        payload = legacyPayload;
+      }
       if (!isPushService(record.subscription?.endpoint)) {
         await env.PUSH.delete(key);
         tally.removed++;

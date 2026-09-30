@@ -1,0 +1,24 @@
+name: Test push alerts
+
+on:
+  pull_request:
+    paths: ["push/**", ".github/workflows/push-tests.yml"]
+  push:
+    branches: [main]
+    paths: ["push/**", ".github/workflows/push-tests.yml"]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test encryption, subscription handling and queue recovery
+        run: node --test push/test/*.test.js

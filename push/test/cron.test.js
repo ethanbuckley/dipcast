@@ -33,8 +33,17 @@ async function setup({ state, users = {}, status = () => 201, meta = false }) {
   };
   const logs = [];
   const env = { PUSH: kv, SITE_URL: SITE, ...vapid };
-  const run = (a) => { alerts = a; return runCron(env, { fetch, log: (m) => logs.push(m) }); };
-  return { kv, env, run, pushes, logs, alertFetches, keyOf: (name) => subKey(`https://fcm.googleapis.com/fcm/send/${name}`) };
+  const stage = (a) => { alerts = a; return runCron(env, { fetch, log: (m) => logs.push(m) }); };
+  // Most cases describe delivery; advance through the new enqueue-only invocation first.
+  const run = async (a) => {
+    const first = await stage(a);
+    if (first.risen.length && first.queued) {
+      const delivered = await stage(a);
+      return { ...delivered, risen: first.risen, removed: first.removed + delivered.removed };
+    }
+    return first;
+  };
+  return { kv, env, run, stage, pushes, logs, alertFetches, keyOf: (name) => subKey(`https://fcm.googleapis.com/fcm/send/${name}`) };
 }
 
 test('first run saves state and sends nothing', async () => {
@@ -84,10 +93,12 @@ test('a spot that drops back and rises again within 20 hours alerts once', async
   let clock = Date.parse('2026-09-30T08:00:00Z');
   const run = (a) => runCron(t.env, { fetch: async (url, init) => url.includes('alerts.json') ? Response.json(a) : (t.pushes.push(url), new Response(null, { status: 201 })), log: () => {}, now: () => clock });
   await run(alertsJson('T2', [spot('a', 2)]));
+  await run(alertsJson('T2', [spot('a', 2)]));
   clock += 3 * 3600e3; await run(alertsJson('T3', [spot('a', 1)]));
   clock += 3 * 3600e3; await run(alertsJson('T4', [spot('a', 2)]));
   assert.equal(t.pushes.length, 1);
   clock += 21 * 3600e3; await run(alertsJson('T5', [spot('a', 1)]));
+  await run(alertsJson('T6', [spot('a', 3)]));
   await run(alertsJson('T6', [spot('a', 3)]));
   assert.equal(t.pushes.length, 2);
 });
@@ -193,5 +204,119 @@ test('with the spots in each key\'s metadata, only the records being sent to are
     users: { ann: ['a'], bob: ['b'], cat: ['c'], dan: ['d'], eve: ['e'] } });
   await t.run(alertsJson('T2', [spot('a', 2)]));
   assert.deepEqual(t.pushes.map((p) => p.to), ['ann']);
-  assert.equal(t.kv.gets, 3);   // 'queue', 'state' and ann's record: not bob's, cat's, dan's or eve's
+  assert.equal(t.kv.gets, 5);   // queue/state on staging and draining, then ann; no other subscribers
+});
+
+test('a failed queue write leaves the previous ranks available for rediscovery', async () => {
+  const t = await setup({ state: { generated_at: 'T1', ranks: { a: 0 } }, users: Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`u${i}`, ['a']])) });
+  const put = t.kv.put.bind(t.kv);
+  t.kv.put = async (key, ...args) => { if (key === 'queue') throw new Error('queue unavailable'); return put(key, ...args); };
+  const a = alertsJson('T2', [spot('a', 2)]);
+  await assert.rejects(t.stage(a), /queue unavailable/);
+  assert.equal((await t.kv.get('state', 'json')).generated_at, 'T1');
+  assert.equal(t.pushes.length, 0);
+  t.kv.put = put;
+  await t.run(a);
+  await t.stage(a);
+  assert.equal(t.pushes.length, 20);
+});
+
+test('a persisted queue recovers a failed state write before sending', async () => {
+  const t = await setup({ state: { generated_at: 'T1', ranks: { a: 0 } }, users: { ann: ['a'] } });
+  const put = t.kv.put.bind(t.kv);
+  t.kv.put = async (key, ...args) => { if (key === 'state') throw new Error('state unavailable'); return put(key, ...args); };
+  const a = alertsJson('T2', [spot('a', 2)]);
+  await assert.rejects(t.stage(a), /state unavailable/);
+  assert.equal((await t.kv.get('queue', 'json')).items.length, 1);
+  await assert.rejects(t.stage(a), /state unavailable/);
+  assert.equal(t.pushes.length, 0);
+  t.kv.put = put;
+  await t.stage(a);
+  assert.equal(t.pushes.length, 1);
+  assert.equal((await t.kv.get('state', 'json')).generated_at, 'T2');
+  await t.stage(a);
+  assert.equal(t.pushes.length, 1);
+});
+
+test('an interrupted delivery checkpoint retains every unsent recipient', async () => {
+  const users = Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`u${i}`, ['a']]));
+  const t = await setup({ state: { generated_at: 'T1', ranks: { a: 0 } }, users });
+  const a = alertsJson('T2', [spot('a', 2)]);
+  await t.stage(a);
+  const put = t.kv.put.bind(t.kv);
+  t.kv.put = async (key, ...args) => { if (key === 'queue') throw new Error('checkpoint interrupted'); return put(key, ...args); };
+  await assert.rejects(t.stage(a), /checkpoint interrupted/);
+  assert.equal((await t.kv.get('queue', 'json')).items.length, 20);
+  t.kv.put = put;
+  await t.stage(a);
+  await t.stage(a);
+  assert.equal(new Set(t.pushes.map(p => p.to)).size, 20);
+  // Some sends may repeat after a crash; this is recovery, not exactly-once delivery.
+  assert.equal(t.pushes.length, 35);
+});
+
+test('a queued spot removed from Saved is not delivered', async () => {
+  const t = await setup({ state: { generated_at: 'T1', ranks: { a: 0 } }, users: { ann: ['a', 'b'], bob: ['a', 'b'] } });
+  t.env.SENDS_PER_RUN = '1';
+  const a = alertsJson('T2', [spot('a', 2)]);
+  await t.stage(a);
+  const key = await t.keyOf('ann'), record = await t.kv.get(key, 'json');
+  await t.kv.put(key, JSON.stringify({ ...record, spots: ['b'] }));
+  await t.stage(a);
+  await t.stage(a);
+  assert.deepEqual(t.pushes.map(p => p.to), ['bob']);
+  assert.equal(await t.kv.get('queue'), null);
+});
+
+test('a combined queued alert is rebuilt for only the spots still saved', async () => {
+  const t = await setup({ state: { generated_at: 'T1', ranks: { a: 0, b: 0 } }, users: { ann: ['a', 'b'], bob: ['a', 'b'] } });
+  t.env.SENDS_PER_RUN = '1';
+  const a = alertsJson('T2', [spot('a', 2, 'Aston'), spot('b', 3, 'Bray')]);
+  await t.stage(a);
+  const key = await t.keyOf('ann'), record = await t.kv.get(key, 'json');
+  await t.kv.put(key, JSON.stringify({ ...record, spots: ['b', 'new'] }));
+  await t.stage(a);
+  await t.stage(a);
+  assert.deepEqual(t.pushes.find(p => p.to === 'ann').payload, { title: 'Bray', body: 'Bray headline', url: `${SITE}spot/b/`, tag: 'dipspot-b' });
+});
+
+test('turning alerts off while queued prevents delivery', async () => {
+  const t = await setup({ state: { generated_at: 'T1', ranks: { a: 0 } }, users: { ann: ['a'] } });
+  const a = alertsJson('T2', [spot('a', 2)]);
+  await t.stage(a);
+  await t.kv.delete(await t.keyOf('ann'));
+  await t.stage(a);
+  assert.equal(t.pushes.length, 0);
+});
+
+test('staging and draining never write the queue twice in the same invocation', async () => {
+  const t = await setup({ state: { generated_at: 'T1', ranks: { a: 0 } }, users: { ann: ['a'], bob: ['a'] } });
+  t.env.SENDS_PER_RUN = '1';
+  const put = t.kv.put.bind(t.kv), del = t.kv.delete.bind(t.kv);
+  let writes = new Set();
+  const check = key => { assert.ok(!writes.has(key), `repeat write to ${key}`); writes.add(key); };
+  t.kv.put = async (key, ...args) => { check(key); return put(key, ...args); };
+  t.kv.delete = async key => { check(key); return del(key); };
+  const a = alertsJson('T2', [spot('a', 2)]);
+  assert.deepEqual(await t.stage(a), { risen: ['a'], sent: 0, removed: 0, failed: 0, queued: 2 });
+  assert.equal(t.pushes.length, 0);
+  writes = new Set(); await t.stage(a);
+  writes = new Set(); await t.stage(a);
+  assert.equal(t.pushes.length, 2);
+});
+
+test('legacy combined queued alerts are discarded when saved-spot membership cannot be checked', async () => {
+  const t = await setup({ users: { ann: ['b'] } });
+  await t.kv.put('queue', JSON.stringify({ items: [{ key: await t.keyOf('ann'), payload: { title: '2 spots high', tag: 'dipspot-saved' } }] }));
+  await t.stage(null);
+  assert.equal(t.pushes.length, 0);
+  assert.equal(await t.kv.get('queue'), null);
+});
+
+test('legacy single-spot queued alerts are delivered only if still saved', async () => {
+  const t = await setup({ users: { ann: ['a'], bob: ['b'] } });
+  const payload = { title: 'Aston', tag: 'dipspot-a' };
+  await t.kv.put('queue', JSON.stringify({ items: await Promise.all(['ann', 'bob'].map(async name => ({ key: await t.keyOf(name), payload }))) }));
+  await t.stage(null);
+  assert.deepEqual(t.pushes.map(p => p.to), ['ann']);
 });

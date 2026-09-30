@@ -10,7 +10,7 @@ One Workers KV entry per browser, holding:
 - the list of saved spot ids;
 - the time of the last change.
 
-Nothing else. No names, no email addresses, no IP addresses. Cloudflare sees each request's IP address, as any host does, but the Worker does not store it. A second entry, `state`, holds the rank of every spot at the last run, so the next run can tell what has changed.
+No personal names, email addresses or IP addresses. Cloudflare sees each request's IP address, as any host does, but the Worker does not store it. A second entry, `state`, holds the rank of every spot at the last run, so the next run can tell what has changed. While alerts are pending, `queue` holds subscription key hashes, the affected spots' public forecast details, and the comparison state needed to recover an interrupted run.
 
 The endpoint and keys are enough to send that browser a notification, so treat the KV contents as private. Logs name a subscription by part of its hash, never by endpoint.
 
@@ -27,6 +27,16 @@ Cloudflare's limits page (read 29 Sep 2026) gives the free plan 50 outgoing requ
 On the Workers Paid plan (about $5 a month) the limits are higher: set `SENDS_PER_RUN` in `wrangler.toml` to send more per run. `npx wrangler tail` shows each run's count, and a run cut short by a limit.
 
 Finding who to alert needs no reads of the records: each subscription's spots are also kept in its key's metadata (up to 1,024 bytes, about 40 spot ids), so a run lists keys and reads only the records it sends to. KV can take up to a minute to show a write in every location, so a batch can occasionally go out twice; the second copy replaces the first on the device without a sound, because both carry the same tag.
+
+### Queue recovery and changed saved spots
+
+The complete queue is saved before advancing the comparison state. The first batch is sent on the next scheduled run, normally about two minutes later. This avoids writing the same KV key twice in rapid succession: [KV permits one write per second to a key](https://developers.cloudflare.com/kv/platform/limits/). If the state write fails after the queue was stored, a later run restores that checkpoint before sending. An interrupted batch retains its unsent recipients, although already-sent notifications can repeat if its checkpoint fails.
+
+Before sending each queued notification, the Worker rereads the subscription and limits the notification to spots still saved in that record. A combined alert becomes a single-spot alert if only one affected spot remains. Removing all affected spots or deleting the subscription skips that notification. Updates are subject to [KV's eventual consistency](https://developers.cloudflare.com/kv/concepts/how-kv-works/): this is not an immediate-revocation or exactly-once guarantee, and these recovery steps do not serialize overlapping cron runs.
+
+Upgrade from the older queue format: single-spot notifications are checked using their spot tag. Older combined notifications have no spot IDs and are discarded because their membership cannot be checked safely. Existing subscriptions are preserved.
+
+Push-service HTTP failures are currently logged, not retried; a queue can also delay checking newer forecasts while it drains. Real-device push delivery and runtime-limit tests remain necessary before promising dependable paid alerts.
 
 ## Setup
 
