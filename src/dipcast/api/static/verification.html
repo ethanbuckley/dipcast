@@ -5,13 +5,14 @@
 <link rel="stylesheet" href="/static/page.css">
 <style>
 /* This page only: the headline figures as tiles, a contents list, and bars in the reliability tables. */
-.stats { display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:12px; margin:0 0 20px; }
-.stat { border:1px solid var(--line); border-radius:var(--radius); background:var(--card); padding:14px 16px 12px; }
-.stat .v { font:600 34px/1.1 var(--font-display); font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
-.stat .l { font-size:15px; font-weight:600; margin:6px 0 2px; }
-.stat .d { font-size:14px; color:var(--muted); line-height:1.4; }
+.stats { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:24px 28px; margin:0 0 28px; padding:20px 0; border-top:1px solid var(--ink); border-bottom:1px solid var(--line); }
+.stat { min-width:0; display:flex; flex-direction:column; }
+.stat .v { order:-1; font:600 36px/1.1 var(--font-text); font-variant-numeric:tabular-nums lining-nums; letter-spacing:-.01em; margin:0 0 8px; }
+.stat .l { font-size:16px; font-weight:600; margin:0 0 4px; }
+.stat .d { font-size:14px; color:var(--muted); line-height:1.45; margin:0; }
+@media (max-width: 360px) { .stats { grid-template-columns:1fr; gap:20px; } }
 .toc { margin:20px 0 8px; }
-.toc h2 { font:600 15px/1.3 var(--font-text); color:var(--muted); margin:0 0 6px; }
+main.doc .toc h2 { font:600 15px/1.3 var(--font-text); color:var(--muted); margin:0 0 6px; }
 .toc ol { columns:2; column-gap:24px; margin:0; padding-left:20px; font-size:15px; }
 .toc li { margin:3px 0; break-inside:avoid; }
 @media (max-width: 480px) { .toc ol { columns:1; } }
@@ -21,10 +22,10 @@ h2 .k, h3 .k { color:var(--muted); font-weight:400; }
 /* Forecast against observed, as two bars in each reliability row. */
 td.bars { width:38%; min-width:140px; padding-top:10px; }
 .bar { display:block; height:6px; border-radius:3px; background:var(--line); position:relative; margin:0 0 4px; }
-.bar::after { content:""; position:absolute; inset:0; width:var(--w, 0%); border-radius:3px; background:var(--brand); }
+.bar::after { content:""; position:absolute; inset:0; width:var(--w, 0%); border-radius:3px; background:var(--link); }
 .bar.o::after { background:var(--high); }
 .bar-key { font-size:14px; color:var(--muted); margin:4px 0 0; }
-.bar-key i { display:inline-block; width:10px; height:6px; border-radius:3px; background:var(--brand); margin:0 4px 1px 0; }
+.bar-key i { display:inline-block; width:10px; height:6px; border-radius:3px; background:var(--link); margin:0 4px 1px 0; }
 .bar-key i.o { background:var(--high); margin-left:12px; }
 </style></head><body>
 <header class="top"><a class="brand" href="/"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#1a6871"/><path d="M430-20C330 110 470 230 300 290S110 380 190 540" fill="none" stroke="#5CC2B5" stroke-width="70" stroke-linecap="round"/><circle cx="318" cy="138" r="38" fill="#F08A4B"/><circle cx="165" cy="358" r="46" fill="none" stroke="#fff" stroke-width="22"/></svg>SwimSignal</a>
@@ -198,7 +199,7 @@ async function main() {
 function inShort(d) {
   const L = d.live || {}, ho = (d.holdout || [])[0], hi = (d.reliability || []).find(r => r.lo === 0.8), E = L.ecoli_live || {}, pts = [];
   const liveSkill = L.n_scored && L.overall ? Math.round(100 * (1 - L.overall.calibrated.brier / L.overall.climatology_brier)) : null;
-  const tile = (v, l, dd) => `<div class="stat"><div class="v">${v}</div><div class="l">${l}</div><div class="d">${dd}</div></div>`;
+  const tile = (v, l, dd) => `<div class="stat"><dt class="l">${l}</dt><dd class="v">${v}</dd><dd class="d">${dd}</dd></div>`;
   const tiles = [
     ho ? tile(`${Math.round(100 * ho.auc)}%`, 'Spill days ranked above dry days', `On a year the model never saw: ${ho.n.toLocaleString()} overflow-days, United Utilities, 2025.`) : '',
     ho ? tile(`${Math.round(100 * ho.brier_skill_vs_clim)}%`, 'Lower error than the long-run rate', 'Same test. The long-run rate is each overflow\'s own average spill rate.') : '',
@@ -211,7 +212,7 @@ function inShort(d) {
   else pts.push(`<b>Live, against what the overflows then did:</b> nothing scored yet${L.observations_from ? `: the observation records the scoring rule needs start on ${day(L.observations_from)}` : ''}. <a href="#live-scoring">Details</a>`);
   pts.push(`<b>E. coli chance, against new Environment Agency lab samples:</b> ${E.n_samples ? `${E.n_samples} sample${E.n_samples === 1 ? '' : 's'} at ${E.n_sites} site${E.n_sites === 1 ? '' : 's'} so far` : 'none scored yet'}. The sampling season ends in September, so the first full season to judge it is May to September 2027.`);
   pts.push(`<b>Not checked against water samples:</b> the die-off and dilution steps of the exposure index are physical estimates, which is why it is called an index and not a probability.`);
-  return `<div class="stats">${tiles}</div><section class="summary" aria-labelledby="short-h"><h2 id="short-h">In short</h2><ul>${pts.map(x => `<li>${x}</li>`).join('')}</ul></section>`;
+  return `<dl class="stats">${tiles}</dl><section class="summary" aria-labelledby="short-h"><h2 id="short-h">In short</h2><ul>${pts.map(x => `<li>${x}</li>`).join('')}</ul></section>`;
 }
 // The contents, from the sections the data produced.
 function contents() {
