@@ -355,7 +355,7 @@
         <p class="small muted">A day's level is the highest of these. A spot's page shows each one.</p>
         <dl>
           <dt>Sewage spills</dt><dd>The exposure index (0–100): the modelled chance that a spill from an overflow upstream reaches the spot. Low under 15, moderate 15 to 40, high 40 to 70, very high 70 or more.</dd>
-          <dt>Water quality</dt><dd>On rivers with overflows upstream: the chance a water sample would show E. coli over 900 per 100 ml, from any source, runoff after rain included. Low under 10%, moderate 10 to 25%, high 25 to 50%, very high over 50%. The minimum bathing-water standard lets about one sample in ten be over 900.</dd>
+          <dt>Water quality</dt><dd>On rivers with overflows upstream: the chance a water sample would show E. coli over 900 per 100 ml, from any source, runoff after rain included. Low under 10%, moderate 10 to 25%, high 25 to 50%, very high over 50%. The minimum bathing-water standard lets about one sample in ten be over 900. In the May to September season only: from October to April, when the EA takes no samples, the estimate is shown marked † but does not set the level.</dd>
           <dt>Environment Agency rating</dt><dd>At a designated bathing water, the EA's yearly rating from up to four seasons of lab samples. When it is poor, advice against bathing applies all season, so the level is at least high on every day. Where there is no daily forecast, the rating sets the level: excellent or good low, sufficient moderate, poor high.</dd>
           <dt>Algae</dt><dd>At a designated bathing water, the EA sampler's last look, if under two weeks old: enough algae to be objectionable makes the level at least high, some at intervals at least moderate.</dd>
           <dt>Not included</dt><dd>The EA's short-term advice against bathing after a pollution incident or an algal bloom. A bathing water's page links to the EA's page, which has it.</dd>
@@ -372,7 +372,7 @@
         <dl>
           <dt>Right now</dt><dd>Which upstream storm overflows are discharging now or finished within 48 hours, from the water companies' live feeds.</dd>
           <dt id="about-exposure">Exposure index (0–100)</dt><dd>The modelled chance that at least one upstream overflow spills and its discharge reaches the spot after travel time, die-off and dilution. The spill part is verified against what the overflows did; the die-off and dilution weights are physical estimates, not calibrated against water samples, so it is an index, not a probability. The colour levels (low to very high) come from it.</dd>
-          <dt id="about-ecoli">E. coli &gt; 900</dt><dd>The estimated probability that a midday water sample would exceed 900 E. coli cfu/100 ml, from rainfall at the spot, the exposure index, water-body type and season, fitted to Environment Agency samples at river and lake bathing waters and tested on years and sites it never saw. It counts bacteria from any source, so rain alone can raise it when the exposure index is low. 900 is the threshold used in the inland "sufficient" classification, which is a 90th-percentile calculation over four seasons, not a pass/fail test of one sample. It is validated on rivers in the May–September sampling season only; on lakes it has no demonstrated skill and is not shown. The EA takes no samples from October to April, so then nothing tests it: the figure still counts towards the level, so that a wet autumn day does not read as clean water, but it is marked †, and the date's own effect is held at its value at the nearer end of the season (30 September or 1 May) rather than carried on with nothing to check it.</dd>
+          <dt id="about-ecoli">E. coli &gt; 900</dt><dd>The estimated probability that a midday water sample would exceed 900 E. coli cfu/100 ml, from rainfall at the spot, the exposure index, water-body type and season, fitted to Environment Agency samples at river and lake bathing waters and tested on years and sites it never saw. It counts bacteria from any source, so rain alone can raise it when the exposure index is low. 900 is the threshold used in the inland "sufficient" classification, which is a 90th-percentile calculation over four seasons, not a pass/fail test of one sample. It is validated on rivers in the May–September sampling season only; on lakes it has no demonstrated skill and is not shown. The EA takes no samples from October to April, so then nothing tests it: the figure is still shown, marked †, but it does not set the level, and the date's own effect is held at its value at the nearer end of the season (30 September or 1 May) rather than carried on with nothing to check it.</dd>
           <dt>Algae</dt><dd>Designated bathing waters only: the Environment Agency sampler's latest look at the water, an observation, not a forecast. It does not tell blue-green algae from harmless kinds.</dd>
           <dt>What it does not know</dt><dd>Anything about a specific farm, road, outfall or algal bloom: only monitored storm overflows are modelled.</dd>
         </dl>
@@ -692,11 +692,13 @@ function factors(d) {
 // raise it when the spills are low. Rivers with overflows upstream only, the case it was tested on.
 function water(d, days) {
   if (ecoliTested(d)) {
-    const ds = days.filter(x => !nil(x.p_ecoli_gt900)), wq = ds.map(x => ecoliLevel(d, x)).reduce(higher, null);
-    const off = ds.some(x => x.in_validated_season === false);
-    return factorRow('Water quality', wq, wq ? cap(wq) : 'No data', !ds.length ? 'No rainfall forecast has arrived, so there is no estimate.'
+    // The row keeps the figure's own band in any month; out of season it is marked † and the
+    // sentence says it does not set the level (levels.js, ecoliLevel).
+    const ds = days.filter(x => !nil(x.p_ecoli_gt900)), wq = ds.map(x => ecoliBand(d, x)).reduce(higher, null);
+    const off = ds.some(ecoliUntested);
+    return factorRow('Water quality', wq, wq ? cap(wq) + (off ? '†' : '') : 'No data', !ds.length ? 'No rainfall forecast has arrived, so there is no estimate.'
       : `Chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml: ${ds.map(x => `<b>${Math.round(x.p_ecoli_gt900 * 100)}%</b> ${dayWord(x.date)}`).join(', ')}. `
-      + `The minimum bathing-water standard lets about one sample in ten be over 900.${off ? ' The EA takes no samples from October to April, so nothing tests this estimate at this time of year.' : ''} <a href="#about-ecoli">What this counts</a>`);
+      + `The minimum bathing-water standard lets about one sample in ten be over 900.${off ? ' † The EA takes no samples from October to April, so nothing tests this estimate now: it is shown, but it does not set the level above.' : ''} <a href="#about-ecoli">What this counts</a>`);
   }
   if (d.error) return '';
   return factorRow('Water quality', null, 'Not estimated', (d.location || {}).mode === 'lake'
@@ -746,9 +748,12 @@ const algae = a => { if (!a) return '';
 // (showDay), on a Saved card the spot on that day. A card's link already reaches the spot by
 // keyboard, so its days stay out of the tab order. A water-quality figure from October to April,
 // when nothing tests it, is marked †.
-const untested = x => x.in_validated_season === false && !nil(x.p_ecoli_gt900);
+const untested = x => ecoliUntested(x) && !nil(x.p_ecoli_gt900);
 const anyUntested = d => ecoliTested(d) && d.days.slice(0, 5).some(untested);
-const UNTESTED_NOTE = '† Untested outside May to September, when the EA takes no samples.';
+const UNTESTED_NOTE = '† Untested outside May to September, when the EA takes no samples, so it does not set the level.';
+// Out of season the water-quality figure is not in the level, so a list row names it, marked †.
+const waterEst = s => { if (!ecoliTested(s)) return ''; const x = VIEW.day ? s.days.find(y => y.date === VIEW.day) : s.days[0];
+  return x && untested(x) ? `water-quality estimate ${Math.round(x.p_ecoli_gt900 * 100)}%†` : ''; };
 const cells = (d, card = false) => { const on = daily(d), pct = ecoliTested(d), tag = on ? 'button' : 'div';
   return `<div class="days"${on && !card ? ' id="day-strip" role="group" aria-label="Pick a day"' : ''}>` + d.days.slice(0, 5).map(x => { const lv = on ? risk(d, x).level : null;
     const r = pct ? (nil(x.p_ecoli_gt900) ? '–' : Math.round(x.p_ecoli_gt900 * 100) + '%' + (untested(x) ? '†' : '')) : nil(x.rain_48h_mm) ? '–' : Math.round(x.rain_48h_mm) + ' mm';
@@ -961,7 +966,7 @@ const listPath = s => spotPath(s.id) + (VIEW.day && daily(s) ? '#day=' + VIEW.da
 const dist = s => VIEW.here ? km(VIEW.here, [s.lat, s.lon]) : null;
 function spotItem(s) {
   const d = dist(s);
-  const meta = [cap(s.kind), s.source === 'designated' ? 'bathing water' : null, d !== null ? `${d < 10 ? d.toFixed(1) : Math.round(d)} km away` : null].filter(Boolean).join(' · ');
+  const meta = [cap(s.kind), s.source === 'designated' ? 'bathing water' : null, d !== null ? `${d < 10 ? d.toFixed(1) : Math.round(d)} km away` : null, waterEst(s)].filter(Boolean).join(' · ');
   return `<li><a class="row" href="${esc(listPath(s))}" data-id="${esc(s.id)}"><span class="row-main"><span class="nm">${esc(s.name)}</span>`
     + `<span class="hl ${tone(mapLevel(s))}">${listHeadline(s)}</span><span class="k">${meta}</span></span>${week(s)}</a></li>`;
 }
@@ -992,7 +997,7 @@ function renderList() {
   if (saved.length) h += `<section class="group" id="saved-group" aria-labelledby="saved-h"><h2 class="group-head" id="saved-h">Saved spots</h2><ul class="spots" id="saved-list">${saved.map(spotItem).join('')}</ul></section>`;
   h += `<section class="group" aria-labelledby="all-h"><div class="group-bar"><h2 class="group-head" id="all-h">All spots</h2>`
     + `<div class="sortseg" role="group" aria-label="Sort">${sorts.map(([k, t]) => `<button type="button" data-sort="${k}" aria-pressed="${VIEW.sort === k}">${t}</button>`).join('')}</div></div>`
-    + `<p class="overview" id="overview"></p><p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p><ul class="spots" id="spots"></ul><p class="count" id="count" role="status"></p></section>`;
+    + `<p class="overview" id="overview"></p><p class="small muted" id="untested-note" hidden>${UNTESTED_NOTE}</p><p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p><ul class="spots" id="spots"></ul><p class="count" id="count" role="status"></p></section>`;
   h += `<p class="small muted" style="margin-top:14px">Updated ${issued()} (${ago(ageMin())} ago), several times a day. The coloured bars are the next five days. <a href="#levels">What the levels mean</a>. ${saved.length ? '' : 'Open a spot and press Save to keep it at the top and on your Saved page. '}${STANDALONE ? '' : '<a href="#home-screen">Add to your Home Screen</a>. '}Missing your spot? <a href="feedback.html?type=spot">Request it</a>.</p>`;
   setPanel(h);
   if (saved.length) bindItems(document.getElementById('saved-list'));
@@ -1043,6 +1048,7 @@ function drawSpots() {
   }
   document.getElementById('all-h').textContent = VIEW.q.trim() || VIEW.filter !== 'all' || VIEW.lowOnly ? 'Matching spots' : 'All spots';
   document.getElementById('overview').textContent = overview(items);
+  document.getElementById('untested-note').hidden = !items.some(waterEst);
   ul.innerHTML = items.length ? items.map(spotItem).join('')
     : `<li class="empty"><p style="margin:0 0 10px">No spots match. SwimSignal covers ${DATA.spots.length} river and lake spots in England. Missing yours? <a href="feedback.html?type=spot">Request it</a>.</p>`
       + `<button type="button" class="btn" id="clear-filters">Clear search and filters</button></li>`;

@@ -447,8 +447,12 @@ time contributes to today (it started at yesterday before, and did not).
   sampling season. On lakes it has no ranking skill and is not shown. The EA
   takes no samples from October to April (all 2,165 samples in
   `bwq_samples.parquet` fall in May-September), so then nothing tests it. It
-  still counts towards the level, so that a wet autumn day does not read as
-  clean water, and it is marked † on the page. Its day-of-year term is held at
+  is still shown then, marked † on the page, but since 1 Oct 2026 it does not
+  count towards the level out of season: on that day it alone had put 35 of 89
+  spots on high or very high while the spill forecast read low at 78 of 87,
+  which would have kept the list red all winter on an untested figure. The
+  spill forecast still answers to rain, so a wet autumn day still turns amber
+  where the overflows upstream are likely to spill. Its day-of-year term is held at
   30 September's value from October to January and 1 May's from February to
   April (`ecoli.season_day`): left to run, the fitted curve, with rain and
   exposure fixed, rose from 38% on 30 September to 48% in mid-December with
@@ -603,7 +607,8 @@ out by `src/dipcast/site/levels.js` (`risk()`), which the page loads and the
 build runs in Node for the alerts, so the two cannot disagree: the spill forecast's level; on
 rivers with overflows upstream, the E. coli column in bands of under 10%, 25%,
 50% and over (the minimum inland standard lets about one sample in ten be over
-900); the Environment Agency's rating, where "poor" (advice against bathing applies
+900), in the May-September season only (out of season the column is shown, marked
+†, but not counted: see Known limits); the Environment Agency's rating, where "poor" (advice against bathing applies
 all season; the local authority that controls the water issues it, not the EA)
 makes every day at least high; and the sampler's algae
 check if under two weeks old. On 29 Sep 2026 the spill forecast alone had all

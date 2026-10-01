@@ -20,6 +20,23 @@ test('standing poor advice survives a low daily prediction', () => {
   assert.equal(dayHeadline(poor,'2026-09-30'),'Rated poor: advice against bathing');
   assert.equal(dayLevel(poor,'2026-09-30'),'high');
 });
+test('out of season the water-quality estimate is shown but does not set the level', () => {
+  const {ecoliBand, ecoliLevel, level, headline} = require('../src/dipcast/site/levels.js');
+  const day = {date:'2026-09-30', label:'low', risk:0.05, p_ecoli_gt900:0.56, in_validated_season:false};
+  const winter = {upstream_summary:{overflows:2}, location:{mode:'river'}, now:{label:'low'}, days:[day, {...day, date:'2026-10-01'}]};
+  assert.equal(ecoliBand(winter, day), 'very high');   // its own row and cell keep the band
+  assert.equal(ecoliLevel(winter, day), null);          // but it is not in the level
+  assert.equal(dayLevel(winter, '2026-09-30'), 'low');
+  assert.equal(dayHeadline(winter, '2026-09-30'), 'Low forecast risk');
+  assert.equal(level(winter), 'low');
+  assert.equal(headline(winter), 'Low for the next five days');
+  const summer = {...winter, days: winter.days.map(x => ({...x, in_validated_season:true}))};
+  assert.equal(dayLevel(summer, '2026-09-30'), 'very high');
+  assert.equal(dayHeadline(summer, '2026-09-30'), 'Very high: very poor water quality');
+  assert.equal(headline(summer), 'Very high today: very poor water quality');
+  const unmarked = {...winter, days: winter.days.map(({in_validated_season, ...x}) => x)};   // forecasts built before the flag existed
+  assert.equal(dayLevel(unmarked, '2026-09-30'), 'very high');
+});
 test('standing ratings and missing coverage are not called daily forecasts', () => {
   assert.equal(dayHeadline({days:[],classification:{class:'excellent'}},'2026-10-01'),'Rated excellent by the EA');
   assert.equal(dayHeadline({days:[]},'2026-10-01'),'No monitored overflows upstream');
