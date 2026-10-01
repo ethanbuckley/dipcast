@@ -1,8 +1,15 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Accuracy · SwimSignal</title>
 <meta name="description" content="How good SwimSignal's forecasts are: every forecast is scored afterwards against what the storm overflows did and against Environment Agency water samples, beside the offline tests the model was built on.">
-<meta name="theme-color" content="#0f5a61">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#0f5a61">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b474d">
+<!-- Relative, unlike the other pages' /static/ links: this page ships in a pull request of its own, before the
+     build learns to rewrite those paths, and the static site serves icons/ and fonts/ beside it. -->
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/page.css">
+<link rel="preload" href="fonts/SourceSans3-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/SourceSerif4-latin.woff2" as="font" type="font/woff2" crossorigin>
 <style>
 /* This page only: the headline figures as tiles, a contents list, and bars in the reliability tables. */
 .stats { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:24px 28px; margin:0 0 28px; padding:20px 0; border-top:1px solid var(--ink); border-bottom:1px solid var(--line); }
@@ -13,15 +20,15 @@
 @media (max-width: 360px) { .stats { grid-template-columns:1fr; gap:20px; } }
 .toc { margin:20px 0 8px; }
 main.doc .toc h2 { font:600 15px/1.3 var(--font-text); color:var(--muted); margin:0 0 6px; }
-.toc ol { columns:2; column-gap:24px; margin:0; padding-left:20px; font-size:15px; }
+.toc ol { columns:2; column-gap:24px; margin:0; font-size:15px; }
 .toc li { margin:3px 0; break-inside:avoid; }
 @media (max-width: 480px) { .toc ol { columns:1; } }
-section { scroll-margin-top: 12px; }
-h2 .k, h3 .k { color:var(--muted); font-weight:400; }
 .mono { font:13px var(--font-mono); }
-/* Forecast against observed, as two bars in each reliability row. */
-td.bars { width:38%; min-width:140px; padding-top:10px; }
-.bar { display:block; height:6px; border-radius:3px; background:var(--line); position:relative; margin:0 0 4px; }
+/* Forecast against observed, as two bars in each reliability row. The bars hold the column's
+   minimum width, 110 px plus the cell's 10 px padding, because CSS 2.1 leaves min-width on a table
+   cell undefined: on a phone the table scrolls sideways instead of squeezing the bars. */
+td.bars { width:38%; padding-top:10px; }
+.bar { display:block; min-width:110px; height:6px; border-radius:3px; background:var(--line); position:relative; margin:0 0 4px; }
 .bar::after { content:""; position:absolute; inset:0; width:var(--w, 0%); border-radius:3px; background:var(--link); }
 .bar.o::after { background:var(--high); }
 .bar-key { font-size:14px; color:var(--muted); margin:4px 0 0; }
@@ -193,6 +200,8 @@ async function main() {
   }
   document.getElementById('offline').innerHTML = scrolling(o);
   document.getElementById('short').innerHTML = inShort(d) + contents();
+  // The sections exist only now, so a link to one (#reliability, the In short list's #live-scoring) scrolls here.
+  if (location.hash) { const el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView(); }
 }
 // The page's answer: the four figures that matter as tiles, then five plain lines, from the same
 // data as the tables below.
