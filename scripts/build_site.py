@@ -48,7 +48,7 @@ MIN_OK_SHARE = 0.8        # fewer spots with a forecast than this and the build 
 MAX_NO_DATA_SHARE = 0.5   # more of today's forecasts without rainfall data than this: fail
 # The pages were written for the FastAPI routes; rewrite them for flat files.
 REWRITES = [('href="/feedback"', 'href="feedback.html"'), ('href="/feedback?type=spot"', 'href="feedback.html?type=spot"'), ('href="/verification"', 'href="verification.html"'), ('href="/terms"', 'href="terms.html"'),
-            ('href="/about"', 'href="about.html"'),
+            ('href="/about"', 'href="about.html"'), ('href="/testing"', 'href="testing.html"'),
             ('href="/privacy"', 'href="privacy.html"'), ('href="/terms#data"', 'href="terms.html#data"'), ('href="/"', 'href="index.html"'),
             ('href="/static/page.css"', 'href="page.css"'), ("fetch('/api/verification')", "fetch('data/verification.json')")]
 BRAND = "SwimSignal"
@@ -408,7 +408,7 @@ def with_counts(html: str, results: list[dict]) -> str:
 
 
 def sitemap(root: str, spot_ids: list[str], day: str) -> str:
-    urls = [root, f"{root}about.html", f"{root}verification.html"] + [f"{root}spot/{i}/" for i in spot_ids]
+    urls = [root, f"{root}about.html", f"{root}verification.html", f"{root}testing.html"] + [f"{root}spot/{i}/" for i in spot_ids]
     body = "".join(f"<url><loc>{escape(u)}</loc><lastmod>{day}</lastmod></url>" for u in urls)
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{body}</urlset>\n'
 
@@ -421,7 +421,7 @@ def write_pages(site: Path, results: list[dict], token: str | None = None, root:
     template = TEMPLATE.read_text()
     if not (PAGE_META.search(template) and LOADING in template):
         raise ValueError("index.html has lost its page-meta block or its loading placeholder")
-    for name in ["about.html", "verification.html", "terms.html", "privacy.html", "feedback.html"]:
+    for name in ["about.html", "verification.html", "terms.html", "privacy.html", "feedback.html", "testing.html"]:
         s = (STATIC / name).read_text()
         for a, b in REWRITES:
             s = s.replace(a, b)
