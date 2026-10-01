@@ -71,8 +71,8 @@ SITE_URL_ENV = "DIPCAST_SITE_URL"
 # string is the privacy notice's own lead, so the terms page's date is not touched.
 COUNTER_TOKEN_ENV = "DIPCAST_CF_BEACON_TOKEN"
 COUNTER_JS = TEMPLATE.parent / "counter.js"
-NO_COUNTER = ("and what it does not. Last updated 30 September 2026.", "There is no analytics script and no third-party tracking.")
-WITH_COUNTER = ("and what it does not. Last updated 30 September 2026 (page-view counter).",
+NO_COUNTER = ("and what it does not. Last updated 1 October 2026.", "There is no analytics script and no third-party tracking.")
+WITH_COUNTER = ("and what it does not. Last updated 1 October 2026 (page-view counter).",
                 ("Page views are counted with Cloudflare Web Analytics. Cloudflare states that it sets no cookies, "
                  "uses no local storage and does not fingerprint visitors. It sees your IP address when the counter "
                  "loads, as any web server would, and its "
