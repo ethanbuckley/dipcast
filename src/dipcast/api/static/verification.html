@@ -17,6 +17,8 @@
 <script>
 const f = (x, d=4) => (x === null || x === undefined || Number.isNaN(x)) ? '–' : Number(x).toFixed(d);
 const pct = x => (x === null || x === undefined) ? '–' : (100*x).toFixed(1) + '%';
+// Some tables are wider than a phone: each scrolls sideways in its own box, so the page does not.
+const scrolling = html => html.replace(/<table/g, '<div class="tw" tabindex="0" role="region" aria-label="Table, scrolls sideways"><table').replace(/<\/table>/g, '</table></div>');
 async function main() {
   const d = await (await fetch('/api/verification')).json();
   let h = '<h2>Live scoring of issued forecasts</h2>';
@@ -81,7 +83,7 @@ async function main() {
   } else if (L && L.n_scored) {
     h += `<h2 id="ecoli-live">Live scoring: E. coli forecasts against new lab samples</h2>${via}${partial}<p class="muted">Forecasts of the "E. coli &gt; 900" column are logged from 15 September 2026 and scored against Environment Agency samples as they are published, usually within a week of sampling. Nothing to show yet.</p>`;
   }
-  document.getElementById('live').innerHTML = h;
+  document.getElementById('live').innerHTML = scrolling(h);
 
   let o = '<h2>Offline test: held-out year</h2><p class="small muted">Trained on United Utilities overflows 2023–2024, tested on 2025 (826,725 overflow-days, 7.45% with a discharge). Rainfall from reanalysis, so this excludes weather-forecast error.</p>';
   if (d.holdout) { o += `<table><tr><th>Model</th><th class="num">Brier</th><th class="num">Log loss</th><th class="num">AUC</th><th class="num">Skill</th></tr>`;
@@ -132,7 +134,7 @@ async function main() {
     if (m.reliability) { o += `<h3>Reliability</h3><table><tr><th>Forecast bin</th><th class="num">n</th><th class="num">Mean forecast</th><th class="num">Observed</th></tr>`;
       for (const r of m.reliability) o += `<tr><td>${f(r.lo,1)}–${f(r.hi,1)}</td><td class="num">${r.n}</td><td class="num">${pct(r.forecast)}</td><td class="num">${pct(r.observed)}</td></tr>`; o += '</table>'; }
   }
-  document.getElementById('offline').innerHTML = o;
+  document.getElementById('offline').innerHTML = scrolling(o);
   document.getElementById('short').innerHTML = inShort(d);
 }
 // The page's answer in five plain lines, from the same data as the tables below.

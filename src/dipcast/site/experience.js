@@ -1,4 +1,5 @@
 // Plain, testable evidence summaries. No invented measurements or confidence scores.
+const dayMonthYear = iso => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'});
 function evidenceRows(s, iso, issued) {
   const total = s.upstream_summary?.overflows || 0, monitored = s.now?.monitored_upstream;
   const day = (s.days || []).find(x => x.date === iso), cl = s.classification;
@@ -16,7 +17,7 @@ function evidenceRows(s, iso, issued) {
     ['Model limits', total && !s.error && s.location?.mode !== 'lake'
       ? (offSeason ? 'Outside May–September: the E. coli estimate is untested for this season.' : 'E. coli model tested on river bathing waters in May–September; it is not a test of this spot today.')
       : 'No validated daily E. coli estimate is shown here.'],
-    ['Algae observation', s.algae?.date ? `${s.algae.phrase || 'Visual check'} · ${s.algae.date}. A past visual observation, not a current algae warning.` : 'No algae observation in this update. This does not mean algae are absent.'],
+    ['Algae observation', s.algae?.date ? `${s.algae.phrase || 'Visual check'} · ${dayMonthYear(s.algae.date)}. A past visual observation, not a current algae warning.` : 'No algae observation in this update. This does not mean algae are absent.'],
     ['Local warnings', 'Short-term warnings are not fetched by this app. Check official advice and signs at the water.']
   ];
 }

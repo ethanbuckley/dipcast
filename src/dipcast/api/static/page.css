@@ -7,6 +7,7 @@ h2 { font-size:18px; margin:32px 0 8px; }
 p.lead { color:var(--muted); margin:0 0 20px; }
 a { color:var(--accent); }
 table { width:100%; border-collapse:collapse; font-size:14px; margin:8px 0 4px; }
+.tw { overflow-x:auto; }   /* a table wider than a phone scrolls on its own, not the page */
 th,td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
 th { color:var(--muted); font-weight:600; }
 td.num, th.num { text-align:right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
