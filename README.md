@@ -337,8 +337,9 @@ days with no forecast by 08:00 are missed deadlines: counted and listed on the
 verification page, not scored. An overflow-day counts as "no spill" only if the
 poller recorded that overflow with a known status at least six times that day,
 from a feed whose freshest `LastUpdated` was under 6 h old, with no unobserved
-stretch longer than 6 h (counting midnight to the first poll and the last poll
-to midnight), and once the next day. `live_coverage.parquet` holds one row per
+stretch longer than 8 h (6 h until 1 Oct 2026; see the correction below;
+counting midnight to the first poll and the last poll to midnight), and once
+the next day. `live_coverage.parquet` holds one row per
 overflow per day: known, unknown and stale poll counts and a 48-bit mask of the
 half-hour slots observed, from which the scorer derives first and last
 observation and the longest gap; a repeated poll in the same slot adds nothing.
@@ -349,7 +350,7 @@ West Water publishes no stamp). Before this, any polling at all on a day counted
 as coverage for every overflow, and the history file, which keeps one row per
 distinct status, could not say which overflows had actually been seen. Scores
 from before the rule change are withdrawn; the table restarts as coverage
-accumulates, and the page reports the same scores under a stricter 3 h gap rule
+accumulates, and the page reports the same scores under a stricter 6 h gap rule
 alongside. The withdrawn scores are kept in
 `data/processed/verification_live_oldrule_2026-09-28.json` (49,380
 overflow-days, 17-27 Sep 2026, a dry spell). They were not good: forecasts
@@ -371,6 +372,22 @@ day without a mask can never be scored, so the live table was empty on 29 Sep
 scored, if that day's polls meet the rule. The
 scorer now reports the first masked day (`observations_from`) and the
 verification page says why the table is empty.
+
+Correction (1 Oct 2026): the 6 h gap rule assumed the poller ran every 30
+minutes, as the workflow asks. GitHub starts the schedule when it can: on 29
+and 30 Sep it ran 4 and 5 times, with daytime gaps of 6.4-6.8 h (03:25, 09:48,
+16:15, 21:05 on the 29th), so every one of the roughly 14,000 masked
+overflow-days failed the gap test and nothing was scored (0 of 80,753
+candidates on 1 Oct; the other steps passed about 5,040 a day). Over 17-30 Sep
+the longest daily gap was under 6 h on 10 days of 14 and under 8 h on all 14,
+so at 6 h about a day in three would have been lost for good, and the first
+three masked days all were. From 1 Oct the limit is 8 h, which would have
+scored 4,893 overflow-days on 29 Sep and 4,936 on 30 Sep, and the stricter
+rule reported alongside is the old 6 h, so the effect of the change stays
+visible. The next-day rule still catches a single event that ends late; what
+8 h gives up is a second event that starts and ends unseen inside one stretch.
+Established by running the scorer's own functions on the `state` release of
+1 Oct 10:32 UTC.
 
 **Algae (an observation, not a forecast; 28 Sep 2026).** At every sampling visit to a
 bathing water the EA sampler records one of four levels of algae: none, a trace (1-2
