@@ -114,6 +114,11 @@ def feedback_page():
     return FileResponse(STATIC / "feedback.html", headers=NO_CACHE)
 
 
+@app.get("/testing")
+def testing_page():
+    return FileResponse(STATIC / "testing.html", headers=NO_CACHE)
+
+
 @app.get("/privacy")
 def privacy_page():
     return FileResponse(STATIC / "privacy.html", headers=NO_CACHE)
