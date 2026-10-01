@@ -1,26 +1,135 @@
-:root { color-scheme:light dark; --ink:#16202a; --muted:#5b6470; --line:#e3e6ea; --bg:#fff; --accent:#0f5a61; --accent-2:#5cc2b5;
-        --btn:#0f5a61; --panel:#f5f7f8; --field:#fff; --alert-bg:#fff7ed; --alert-line:#f59e0b; }
-/* Dark: the same pages, read at dawn. The button keeps its dark teal so white text stays readable on it. */
-@media (prefers-color-scheme: dark) { :root { --ink:#e6edf0; --muted:#a3b1b9; --line:#26343b; --bg:#0f181b; --accent:#7fd3c7;
-        --panel:#16232a; --field:#16232a; --alert-bg:#3a2a16; --alert-line:#b8862b; } }
-* { box-sizing:border-box; }
-body { margin:0; font:15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color:var(--ink); background:var(--bg); }
-main { max-width:760px; margin:0 auto; padding:32px 20px 64px; }
-h1 { font-size:26px; margin:0 0 6px; letter-spacing:-.01em; }
-h2 { font-size:18px; margin:32px 0 8px; }
-p.lead { color:var(--muted); margin:0 0 20px; }
-a { color:var(--accent); }
-table { width:100%; border-collapse:collapse; font-size:14px; margin:8px 0 4px; }
-.tw { overflow-x:auto; }   /* a table wider than a phone scrolls on its own, not the page */
-th,td { text-align:left; padding:7px 6px; border-bottom:1px solid var(--line); vertical-align:top; }
-th { color:var(--muted); font-weight:600; }
-td.num, th.num { text-align:right; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-.muted { color:var(--muted); } .small { font-size:13px; }
-.alert { border:1px solid var(--alert-line); background:var(--alert-bg); border-radius:6px; padding:10px 12px; margin:8px 0 12px; }
-nav { display:flex; flex-wrap:wrap; align-items:center; gap:4px 18px; font-size:14px; margin:0 0 28px; padding-bottom:12px; border-bottom:1px solid var(--line); }
-nav a { text-decoration:none; font-weight:550; } nav a:hover { text-decoration:underline; }
-nav a.brand { margin-right:auto; color:var(--ink); font-weight:700; font-size:18px; letter-spacing:-.015em; }
-a:focus-visible { outline:3px solid var(--accent-2); outline-offset:2px; border-radius:4px; }
-footer { margin-top:48px; padding-top:16px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
-.short { border:1px solid var(--line); border-left:4px solid var(--accent); border-radius:8px; padding:2px 18px 6px; background:var(--panel); margin:0 0 8px; }
-.short h2 { margin:14px 0 4px; } .short ul { margin:0; padding-left:18px; } .short li { margin:7px 0; }
+/* SwimSignal: the shared stylesheet for the site's prose pages (About, Accuracy, Terms, Privacy,
+   Testing, Feedback, 404). docs/DESIGN.md explains the system; the app page (src/dipcast/site/
+   index.html) repeats the tokens and the header so that it paints before any stylesheet arrives
+   and works offline on its own. Change a token here and there together.
+
+   Two typefaces, served from this site (fonts/, SIL Open Font License): Source Serif 4 for the
+   headings and the big numbers, Source Sans 3 for everything else. One corner radius. Hairline
+   borders, no shadows, no gradients. Labels in normal case. */
+
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400 700; font-display: swap;
+             src: url(fonts/SourceSans3-latin.woff2) format("woff2"); }
+@font-face { font-family: "Source Sans 3"; font-style: italic; font-weight: 400 700; font-display: swap;
+             src: url(fonts/SourceSans3-italic-latin.woff2) format("woff2"); }
+@font-face { font-family: "Source Serif 4"; font-style: normal; font-weight: 400 700; font-display: swap;
+             src: url(fonts/SourceSerif4-latin.woff2) format("woff2"); }
+
+:root {
+  color-scheme: light dark;
+  --font-text: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* Surfaces and text */
+  --bg: #f4f5f3; --card: #fff; --ink: #1b2328; --muted: #58636b; --faint: #8b949b; --line: #dfe3e1; --hair: rgba(27, 35, 40, .1);
+  --hover: #f7f8f6; --active: #eef1ee; --field: #fff;
+  /* Brand: the teal of the icon, and the lighter teal for focus rings and on dark backgrounds */
+  --brand: #0f5a61; --brand-deep: #0b474d; --brand-2: #5cc2b5; --brand-tint: #e4f1ef; --link: #0f5a61; --bar: #0f5a61;
+  /* Pollution levels. The plain colours mark the map and the day strips; the "k" shades are for
+     text, dark enough for 4.5:1 on white and on the card. */
+  --low: #2f8f58; --moderate: #d49a06; --high: #d6621a; --veryhigh: #bf2a2a; --unknown: #98a2aa; --clear: #4aa39a;
+  --k-low: #1e6a41; --k-moderate: #6f5300; --k-high: #93400f; --k-veryhigh: #961d1d; --k-na: #4f5a62; --k-clear: #0f5a61;
+  /* Notices */
+  --notice-bg: #fff6e8; --notice-line: #e5a53a;
+  --radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1517; --card: #161f23; --ink: #e6ecee; --muted: #a2afb6; --faint: #74828a; --line: #273237; --hair: rgba(230, 236, 238, .12);
+    --hover: #1b262b; --active: #203037; --field: #121b1f;
+    --brand-tint: #14302f; --link: #7fd3c7; --bar: #0b474d;
+    --unknown: #6b7780;
+    --k-low: #7ad9a2; --k-moderate: #ecd06a; --k-high: #f3a676; --k-veryhigh: #f08a8a; --k-na: #a2afb6; --k-clear: #7fd3c7;
+    --notice-bg: #3a2a16; --notice-line: #b8862b;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { margin: 0; font: 400 17px/1.55 var(--font-text); color: var(--ink); background: var(--bg); }
+a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--brand-2); outline-offset: 2px; border-radius: 4px; }
+b, strong { font-weight: 600; }
+code { font: 0.92em var(--font-mono); }
+
+/* The header every page shares: the mark, the wordmark and the main links on the brand bar. */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 10px 20px; background: var(--bar); color: #fff; }
+.brand { display: inline-flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font: 600 21px/1 var(--font-display); letter-spacing: -.005em; }
+.brand svg { display: block; width: 28px; height: 28px; border-radius: 7px; }
+.top nav { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; margin-left: auto; }
+.top nav a { color: rgba(255, 255, 255, .86); text-decoration: none; font-size: 15px; font-weight: 600; line-height: 1.2; padding: 8px 10px; border-radius: 6px; }
+.top nav a:hover { color: #fff; background: rgba(255, 255, 255, .12); }
+.top nav a[aria-current=page] { color: #fff; box-shadow: inset 0 -2px 0 #fff; border-radius: 0; }
+.top :focus-visible { outline-color: #fff; }
+
+/* Prose pages */
+main.doc { max-width: 720px; margin: 0 auto; padding: 36px 20px 56px; }
+main.doc h1 { font: 600 34px/1.15 var(--font-display); letter-spacing: -.01em; margin: 0 0 10px; }
+main.doc h2 { font: 600 23px/1.25 var(--font-display); margin: 40px 0 10px; }
+main.doc h3 { font: 600 19px/1.3 var(--font-display); margin: 28px 0 8px; }
+main.doc h4 { font: 600 16px/1.4 var(--font-text); margin: 22px 0 6px; color: var(--muted); }
+main.doc h2 + p, main.doc h3 + p { margin-top: 0; }
+main.doc p, main.doc ul, main.doc ol { margin: 0 0 14px; }
+main.doc li { margin: 6px 0; }
+main.doc ul ul { margin: 6px 0 0; }
+p.lead { font-size: 19px; line-height: 1.5; color: var(--muted); margin: 0 0 24px; }
+.muted { color: var(--muted); }
+.small { font-size: 15px; }
+.dateline { font-size: 15px; color: var(--muted); margin: -8px 0 20px; }
+
+/* A summary box, for a page's answer in a few lines. */
+.summary { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); padding: 16px 20px 6px; margin: 0 0 8px; }
+.summary h2 { font-size: 20px; margin: 0 0 10px; }
+.summary ul { margin: 0 0 10px; padding-left: 20px; }
+.summary li { margin: 8px 0; }
+
+/* Notices: something to read before the rest. */
+.notice { border: 1px solid var(--notice-line); background: var(--notice-bg); border-radius: var(--radius); padding: 12px 16px; margin: 12px 0 16px; font-size: 16px; }
+.notice.quiet { border-color: var(--line); background: var(--card); }
+
+/* Tables: a rule under the header and between rows, numbers right-aligned and in tabular figures. */
+table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 10px 0 6px; }
+.tw { overflow-x: auto; margin: 10px 0 6px; }   /* a table wider than a phone scrolls on its own, not the page */
+.tw table { margin: 0; }
+th, td { text-align: left; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { color: var(--muted); font-weight: 600; font-size: 14px; }
+thead th, tr:first-child th { border-bottom-color: var(--ink); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+caption { text-align: left; font-size: 15px; color: var(--muted); padding: 0 0 8px; }
+
+/* Folded detail: a chevron, not a text marker. */
+details.fold { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 16px 0; }
+details.fold + details.fold { border-top: 0; margin-top: -16px; }
+details.fold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; font-weight: 600; }
+details.fold > summary::-webkit-details-marker { display: none; }
+details.fold > summary::after { content: ""; flex: none; width: 9px; height: 9px; margin-right: 4px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; }
+details.fold[open] > summary::after { transform: rotate(-135deg); }
+details.fold > :not(summary) { margin-bottom: 14px; }
+
+/* Forms (the feedback page) and buttons */
+label { display: block; font-weight: 600; font-size: 16px; margin: 20px 0 6px; }
+input, select, textarea { font: inherit; font-size: 17px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); background: var(--field); }
+select { -webkit-appearance: none; appearance: none; padding-right: 36px;
+         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2358636b' stroke-width='2'/%3E%3C/svg%3E");
+         background-repeat: no-repeat; background-position: right 12px center; }
+textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
+.hint { font-size: 15px; color: var(--muted); margin: 6px 0 0; }
+.btn, button.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 9px 16px; font: 600 16px/1.2 var(--font-text);
+       color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; cursor: pointer; }
+.btn:hover { background: var(--hover); }
+.btn.primary { color: #fff; background: var(--brand); border-color: var(--brand); }
+.btn.primary:hover { background: var(--brand-deep); border-color: var(--brand-deep); }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; }
+.panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); padding: 16px 20px; margin: 24px 0 0; }
+.panel h2 { margin-top: 0; }
+.panel label:first-of-type { margin-top: 12px; }
+[hidden] { display: none !important; }
+
+/* The foot of every prose page: the one line about what the site is, and the small links. */
+.site-foot { max-width: 720px; margin: 0 auto; padding: 0 20px 48px; font-size: 14px; line-height: 1.5; color: var(--muted); }
+.site-foot .rule { border-top: 1px solid var(--line); padding-top: 16px; }
+.site-foot p { margin: 0 0 8px; }
+.site-foot a { color: var(--muted); }
+.site-foot a:hover { color: var(--link); }
+.note { font-size: 15px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; margin-top: 36px; }

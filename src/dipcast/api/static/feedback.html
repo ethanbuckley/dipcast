@@ -1,9 +1,11 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Feedback · SwimSignal</title><link rel="stylesheet" href="/static/page.css">
-<style>
-label {display:block;font-weight:650;margin:18px 0 6px} input,select,textarea {font:inherit;font-size:16px;width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;color:var(--ink);background:var(--field)} textarea {min-height:140px;resize:vertical} button,.button {display:inline-block;font:inherit;min-height:44px;padding:10px 16px;border:1px solid var(--btn);border-radius:10px;cursor:pointer;background:var(--btn);color:white;text-decoration:none;margin:12px 8px 0 0} :focus-visible {outline:3px solid var(--accent-2);outline-offset:3px} .hint {font-size:14px;color:var(--muted);margin:6px 0} #prepared {margin-top:24px;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--panel)} [hidden] {display:none}
-</style></head><body><main>
-<nav><a href="/" class="brand">SwimSignal</a><a href="/">Explore</a><a href="/about">About</a><a href="/privacy">Privacy</a></nav>
+<title>Feedback · SwimSignal</title>
+<meta name="description" content="Tell SwimSignal what worked, what was confusing, or which swim spot is missing. The form prepares a private email for you to send; no account needed.">
+<meta name="theme-color" content="#0f5a61">
+<link rel="stylesheet" href="/static/page.css"></head><body>
+<header class="top"><a class="brand" href="/"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#1a6871"/><path d="M430-20C330 110 470 230 300 290S110 380 190 540" fill="none" stroke="#5CC2B5" stroke-width="70" stroke-linecap="round"/><circle cx="318" cy="138" r="38" fill="#F08A4B"/><circle cx="165" cy="358" r="46" fill="none" stroke="#fff" stroke-width="22"/></svg>SwimSignal</a>
+<nav aria-label="Site"><a href="/">Explore</a><a href="/verification">Accuracy</a><a href="/about">About</a><a aria-current="page" href="/feedback">Feedback</a></nav></header>
+<main class="doc">
 <h1>Help shape SwimSignal</h1><p class="lead">Tell Ethan what worked, what was confusing, or which spot is missing. No account needed.</p>
 <p>This form prepares an email to <a href="mailto:hello@swimsignal.co.uk">hello@swimsignal.co.uk</a>. You review and send it from your email app. Nothing you type is submitted to a server or saved by this form. Taking part in the winter test? <a href="/testing">What we are looking for</a>.</p>
 <form id="feedback-form">
@@ -11,9 +13,12 @@ label {display:block;font-weight:650;margin:18px 0 6px} input,select,textarea {f
 <label for="spot">Spot or area (optional)</label><input id="spot" maxlength="160" autocomplete="off" placeholder="River, lake, nearest town or spot name">
 <label for="decision">Did the forecast change your plans? (optional)</label><select id="decision"><option value="">Prefer not to say / not used yet</option><option>Changed where I would swim</option><option>Changed when I would swim</option><option>Decided not to swim</option><option>Checked it, but kept my plans</option><option>Could not understand the forecast</option></select>
 <label for="message">Your message</label><textarea id="message" required maxlength="1500" aria-describedby="message-hint" placeholder="What were you trying to do, and what would make it easier?"></textarea><p class="hint" id="message-hint">For a new spot, describe where it is. Please leave out health details or other sensitive information. Maximum 1,500 characters.</p>
-<button type="submit">Prepare email</button></form>
-<section id="prepared" hidden aria-labelledby="prepared-title"><h2 id="prepared-title" tabindex="-1">Review your email</h2><p>It has not been sent. Choose “Open email app”, then send it there. If that does not work, copy the text and email Ethan directly.</p><label for="email-preview">Email text</label><textarea id="email-preview" readonly></textarea><a class="button" id="email-link">Open email app</a><button type="button" id="copy">Copy email text</button><p id="copy-status" role="status"></p></section>
-<footer>For immediate pollution concerns, use the relevant official reporting service and local advice. This feedback inbox is not an emergency service. <a href="/privacy">How feedback is handled</a>.</footer>
+<div class="actions"><button type="submit" class="btn primary">Prepare email</button></div></form>
+<section id="prepared" class="panel" hidden aria-labelledby="prepared-title"><h2 id="prepared-title" tabindex="-1">Review your email</h2><p>It has not been sent. Choose “Open email app”, then send it there. If that does not work, copy the text and email Ethan directly.</p><label for="email-preview">Email text</label><textarea id="email-preview" readonly></textarea><div class="actions"><a class="btn primary" id="email-link">Open email app</a><button type="button" class="btn" id="copy">Copy email text</button></div><p class="hint" id="copy-status" role="status"></p></section>
+<p class="note">For immediate pollution concerns, use the relevant official reporting service and local advice. This feedback inbox is not an emergency service. <a href="/privacy">How feedback is handled</a>.</p>
+</main>
+<footer class="site-foot"><div class="rule"><p>SwimSignal is a free, non-commercial forecast of sewage-overflow risk at river and lake swim spots in England, run by Ethan Buckley. A forecast, not a water test: check the signs at the water before you swim.</p>
+<p><a href="/terms">Terms of use</a> · <a href="/privacy">Privacy</a> · <a href="/feedback">Feedback</a> · <a href="/terms#data">Data credits</a> · <a href="https://github.com/ethanbuckley/swimsignal">Source code</a> (MIT)</p></div></footer>
 <script>
 const $ = id => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -37,4 +42,4 @@ $('copy').addEventListener('click', async () => {
   try { await navigator.clipboard.writeText($('email-preview').value); $('copy-status').textContent = 'Copied. Paste it into an email to hello@swimsignal.co.uk.'; }
   catch { $('email-preview').focus(); $('email-preview').select(); $('copy-status').textContent = 'Select and copy the text above, then email Ethan directly.'; }
 });
-</script></main></body></html>
+</script></body></html>
