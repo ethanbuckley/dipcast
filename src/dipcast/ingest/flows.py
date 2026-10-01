@@ -48,6 +48,7 @@ class RiverState:
     typical_low: float | None
     typical_high: float | None
     observed_at: str | None
+    rloi: str | None = None   # the station's id on check-for-flooding.service.gov.uk, for a link
 
     @property
     def index(self) -> float | None:
@@ -73,14 +74,14 @@ class RiverState:
         return "very high"
 
 
-def nearest_level_station(lat: float, lon: float, dist_km: int = 15) -> RiverState | None:
+def nearest_level_station(lat: float, lon: float, dist_km: int = 15, river: str | None = None) -> RiverState | None:
     import time
-    key = (round(lat, 2), round(lon, 2))
+    key = (round(lat, 2), round(lon, 2), _river_words(river))
     hit = _STATION_CACHE.get(key)
     if hit and time.time() - hit[0] < _STATION_TTL_S:
         return hit[1]
     try:
-        st = _nearest_level_station(lat, lon, dist_km)
+        st = _nearest_level_station(lat, lon, dist_km, river)
     except Exception as e:  # noqa: BLE001 - enrichment only; a forecast must never fail on it
         log.warning("river state lookup failed: %s", e)
         st = None
@@ -88,7 +89,15 @@ def nearest_level_station(lat: float, lon: float, dist_km: int = 15) -> RiverSta
     return st
 
 
-def _nearest_level_station(lat: float, lon: float, dist_km: int = 15) -> RiverState | None:
+_GENERIC = {"river", "beck", "brook", "water", "the", "stream", "burn", "canal", "lake", "mere", "tarn", "reservoir"}
+
+
+def _river_words(name: str | None) -> frozenset[str]:
+    """The distinctive words of a watercourse name: "River Wharfe" and "Wharfe" both give {wharfe}."""
+    return frozenset(w for w in (name or "").lower().replace("-", " ").split() if w.isalpha() and w not in _GENERIC)
+
+
+def _nearest_level_station(lat: float, lon: float, dist_km: int = 15, river: str | None = None) -> RiverState | None:
     try:
         r = httpx.get(f"{config.EA_FLOOD_MONITORING}/id/stations",
                       params={"lat": lat, "long": lon, "dist": dist_km, "parameter": "level",
@@ -100,14 +109,19 @@ def _nearest_level_station(lat: float, lon: float, dist_km: int = 15) -> RiverSt
         return None
     if not items:
         return None
-    # Pick the closest with a stage scale.
+    # The closest station with a stage scale on the spot's own river, if its name is known and any
+    # station carries it; else the closest with a scale. Without this, Burnsall on the Wharfe got
+    # Hebden Beck, a tributary 3 km away, over Netherside Hall on the Wharfe 6 km up (1 Oct 2026).
+    want = _river_words(river)
     best = None
     for s in items:
         if not s.get("stageScale"):
             continue  # accept dict or URL; both are resolved below
+        same = bool(want) and bool(want & _river_words(s.get("riverName")))
         d = (float(s["lat"]) - lat) ** 2 + (float(s["long"]) - lon) ** 2
-        if best is None or d < best[0]:
-            best = (d, s)
+        rank = (0 if same else 1, d)
+        if best is None or rank < best[0]:
+            best = (rank, s)
     if best is None:
         return None
     s = best[1]
@@ -148,11 +162,12 @@ def _nearest_level_station(lat: float, lon: float, dist_km: int = 15) -> RiverSt
         except (TypeError, ValueError):
             return None
 
+    rloi = s.get("RLOIid")
     return RiverState(
         station=s.get("label", ref), river=s.get("riverName"), lat=float(s["lat"]),
         lon=float(s["long"]), level_m=level,
         typical_low=_num(scale.get("typicalRangeLow")), typical_high=_num(scale.get("typicalRangeHigh")),
-        observed_at=observed,
+        observed_at=observed, rloi=str(rloi) if rloi not in (None, "") else None,
     )
 
 
