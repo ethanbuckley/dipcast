@@ -242,6 +242,14 @@
   .now-row { display:flex; align-items:center; gap:14px; }
   .now-row .big { font-size:40px; line-height:1; font-weight:800; color:var(--ink); min-width:34px; text-align:center; }
   .now-row .big.hot { color:var(--b-veryhigh); }
+  .now-row .big.level { font-size:34px; min-width:auto; } .now-row .big small { font-size:16px; font-weight:600; color:var(--muted); margin-left:3px; }
+  .best-day b { color:var(--k-low); }
+  /* The swim log on the Saved page: a row per swim, newest first. */
+  ul.swims { list-style:none; margin:0; padding:0; }
+  ul.swims li { display:flex; gap:10px; align-items:baseline; padding:8px 0; border-top:1px solid var(--line); }
+  ul.swims li:first-child { border-top:0; }
+  .swim-when { flex:none; width:96px; font-size:13px; color:var(--muted); } .swim-what { flex:1; min-width:0; overflow-wrap:anywhere; }
+  ul.swims .badge { vertical-align:1px; margin-left:4px; }
   /* A phone's spot page: where the spot is, at a glance, under its name. */
   .loc { position:relative; height:140px; margin:0 0 12px; border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); background:var(--map-bg); }
   #loc-map { position:absolute; inset:0; z-index:0; background:var(--map-bg); cursor:pointer; }
@@ -415,7 +423,7 @@
         </dl>
       </details>
       <details class="more" id="your-data"><summary>Saved spots, offline use and your data</summary>
-        <p class="small muted">Saved spots are kept in this browser, and sent nowhere unless you turn on alerts on the Saved page. After a first visit the page and the latest forecast are stored on your device, so the site opens without signal at the water's edge; it then says how old the forecast is. <a href="privacy.html">Privacy notice</a>.</p>
+        <p class="small muted">Saved spots and your swim log are kept in this browser, and sent nowhere unless you turn on alerts on the Saved page (alerts send the list of saved spots, not the log). After a first visit the page and the latest forecast are stored on your device, so the site opens without signal at the water's edge; it then says how old the forecast is. <a href="privacy.html">Privacy notice</a>.</p>
         <p class="small"><button type="button" class="linkbtn small" id="offline-btn" hidden>Turn off the offline copy</button> <span class="muted" id="offline-msg" aria-live="polite"></span></p>
         <p class="small" id="count-row" hidden><span class="muted">Page views are counted, without cookies.</span> <button type="button" class="linkbtn small" id="count-btn">Don't count my visits</button> <span class="muted" id="count-msg" aria-live="polite"></span></p>
       </details>
@@ -432,7 +440,7 @@
     </section>
     <footer class="fine">
       <p><a href="about.html">About SwimSignal</a> · <a href="verification.html">How accurate is it?</a> · <a href="feedback.html">Feedback</a> · <a href="feedback.html?type=spot">Request a spot</a> · <a href="terms.html">Terms of use</a> · <a href="privacy.html">Privacy</a> · <a href="https://github.com/ethanbuckley/swimsignal">Source code</a> (MIT)</p>
-      <p>Data: storm overflow status from Anglian, Northumbrian, Severn Trent, South West, Southern, Thames, United Utilities, Wessex and Yorkshire Water via the National Storm Overflow Hub (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>; combined and modelled by SwimSignal) · Environment Agency data © Environment Agency copyright and/or database right (<a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">OGL v3.0</a>) · Contains OS data © Crown copyright and database right 2026 · <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a> (CC BY 4.0), from Met Office forecasts © Crown copyright (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>) · Map © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors. None of these bodies endorses SwimSignal. <a href="terms.html#data">All credits and licences</a>.</p>
+      <p>Data: storm overflow status from Anglian, Northumbrian, Severn Trent, South West, Southern, Thames, United Utilities, Wessex and Yorkshire Water via the National Storm Overflow Hub (<a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>; combined and modelled by SwimSignal) · Environment Agency data © Environment Agency copyright and/or database right (<a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">OGL v3.0</a>); river levels: this uses Environment Agency flood and river level data from the real-time data API (Beta) · Contains OS data © Crown copyright and database right 2026 · <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a> (CC BY 4.0), from Met Office forecasts © Crown copyright (<a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>) · Map © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors. None of these bodies endorses SwimSignal. <a href="terms.html#data">All credits and licences</a>.</p>
     </footer>
   </main>
 </div>
@@ -818,6 +826,134 @@ const week = s => {
 const rainMeta = s => { if (daily(s) || !s.days || !s.days.length) return '';
   const x = (VIEW.day && s.days.find(y => y.date === VIEW.day)) || s.days[0];
   return x && !nil(x.rain_48h_mm) ? `${Math.round(x.rain_48h_mm)} mm of rain in 48 h` : ''; };
+// ------------------------------------------------------------------------------ beside the forecast
+// The EA's nearest level gauge, an observation beside the forecast (build_site.attach_river_levels).
+// Not part of the pollution level: it answers the swimmer's other question, is the river up.
+function riverCard(d) {
+  const rs = d.river_state; if (!rs || nil(rs.level_m)) return '';
+  const word = { low: 'Low', normal: 'Normal', high: 'High', 'very high': 'Very high' }[rs.label];
+  const hot = rs.label === 'high' || rs.label === 'very high';
+  const when = rs.observed_at ? new Date(rs.observed_at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  const range = !nil(rs.typical_low_m) && !nil(rs.typical_high_m) ? ` Its usual range is ${fmt(rs.typical_low_m, 2)} to ${fmt(rs.typical_high_m, 2)} m.` : '';
+  const where = `${esc(rs.station)}${rs.river ? ` on the ${esc(rs.river)}` : ''}, ${rs.distance_km} km away${rs.same_river === false ? ', on a different watercourse' : ''}`;
+  const link = rs.rloi ? ` <a href="https://check-for-flooding.service.gov.uk/station/${encodeURIComponent(rs.rloi)}">The EA's page for this gauge</a> has the last five days.` : '';
+  return `<section class="card" aria-labelledby="river-h"><h2 class="card-h" id="river-h">River level</h2><p class="sub">Environment Agency gauge at ${where}</p>`
+    + `<div class="now-row"><span class="big level${hot ? ' hot' : ''}">${fmt(rs.level_m, 2)}<small>m</small></span><div><b>${word || 'Level'}</b>${rs.label === 'very high' ? ', above its usual range' : rs.label === 'low' ? ', near the bottom of its usual range' : ''}`
+    + `<div class="small muted">${when ? `Observed ${when}.` : ''}${range}</div></div></div>`
+    + `<p class="small muted" style="margin:8px 0 0">Not part of the pollution level. A high river runs faster and colder, and after rain it can rise quickly.${link}</p></section>`;
+}
+// Today's high and daylight, from Open-Meteo (build_site.attach_weather), under the day strip, and
+// a row in a day's detail: context, as a weather app gives it, not an input to the forecast.
+const weatherOn = (d, iso) => ((d.weather || {}).days || []).find(w => w.date === iso) || null;
+const weatherLine = d => { const w = weatherOn(d, today()); if (!w) return '';
+  return `<p class="strip-note">${!nil(w.tmax) ? `Today's high about <b>${w.tmax}°</b> · ` : ''}sunrise ${esc(w.sunrise)}, sunset ${esc(w.sunset)}. <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a></p>`; };
+const weatherRow = (d, iso) => { const w = weatherOn(d, iso); if (!w) return '';
+  return factorRow('Weather', null, nil(w.tmax) ? '–' : `${w.tmax}°`, `${nil(w.tmax) ? '' : `Daytime high about ${w.tmax}°C. `}Sunrise ${esc(w.sunrise)}, sunset ${esc(w.sunset)}. <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a>.`); };
+// "Lowest pollution risk this week": the day with the most low spots (levels.js, bestDay), a tap away.
+function bestDayNote(spots, yours = false) {
+  const b = bestDay(spots, [0, 1, 2, 3, 4].map(k => addDays(today(), k)));
+  if (!b || (yours && b.known < 2)) return '';
+  const who = yours ? `${b.low} of your ${b.known} spots are` : `${b.low} of the ${b.known} spots with a daily forecast are`;
+  return `<p class="planner-note best-day">Lowest pollution risk this week: <b>${dateLabel(b.date)}</b>, when ${who} low.`
+    + `${VIEW.day === b.date ? '' : ` <button type="button" class="linkbtn small" data-pick-day="${b.date}">Show ${dateLabel(b.date)}</button>`}</p>`;
+}
+const bindBestDay = () => document.querySelectorAll('[data-pick-day]').forEach(b => b.addEventListener('click', () => { setMapDay(b.dataset.pickDay); b.hidden = true; }));
+
+// ------------------------------------------------------------------------------ swim log
+// "I swam here today": the spot, the date and the day's level, kept in this browser only. A diary
+// for the swimmer, and the way to say later how the water really was (the feedback link carries
+// the spot and the day).
+const SWIM_KEY = 'dipcast.swims';
+const swims = () => { try { return JSON.parse(localStorage.getItem(SWIM_KEY) || '[]'); } catch (e) { return []; } };
+const storeSwims = list => { try { localStorage.setItem(SWIM_KEY, JSON.stringify(list.slice(-200))); return true; } catch (e) { return false; } };
+const swamOn = (id, iso) => swims().some(x => x.id === id && x.date === iso);
+function logSwim(d) { const l = dayLevel(d, today()), list = swims().filter(x => !(x.id === d.id && x.date === today()));
+  list.push({ id: d.id, date: today(), level: ORDER[l] !== undefined ? l : null }); return storeSwims(list); }
+const unlogSwim = (id, iso) => storeSwims(swims().filter(x => !(x.id === id && x.date === iso)));
+const swimLabel = on => on ? '✓ Swam here today' : 'I swam here today';
+const swimFeedback = (name, iso) => `${esc(FEEDBACK)}&amp;spot=${encodeURIComponent(`${name}, ${dateLabel(iso)} ${iso}`)}`;
+function bindSwim(d) {
+  const b = document.getElementById('swam'), m = document.getElementById('swam-msg'); if (!b) return;
+  b.addEventListener('click', () => {
+    const on = !swamOn(d.id, today()), kept = on ? logSwim(d) : unlogSwim(d.id, today());
+    b.setAttribute('aria-pressed', String(on)); b.textContent = swimLabel(on);
+    m.innerHTML = !kept ? 'This browser is not keeping site data, so this lasts only for this visit.'
+      : on ? `Logged on this device, with today's level; your swims are on the Saved page. <a href="${swimFeedback(d.name, today())}">Tell us how the water was</a>.` : 'Removed from your swim log.';
+  });
+}
+function swimsCard() {
+  const list = swims().slice().reverse().slice(0, 12); if (!list.length) return '';
+  const rows = list.map(x => { const s = DATA.spots.find(y => y.id === x.id), name = s ? s.name : x.id;
+    return `<li><span class="swim-when">${new Date(x.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>`
+      + `<span class="swim-what">${s ? `<a href="${esc(spotPath(x.id))}" data-swim-spot="${esc(x.id)}">${esc(name)}</a>` : esc(name)}${x.level ? ` <span class="badge ${cls(x.level)}">${cap(x.level)}</span>` : ''}`
+      + ` <a class="small" href="${swimFeedback(name, x.date)}">How was it?</a></span>`
+      + `<button type="button" class="linkbtn small" data-unswim="${esc(x.id)}" data-date="${x.date}" aria-label="Remove ${esc(name)} on ${x.date} from your swim log">Remove</button></li>`; }).join('');
+  return `<section class="card" aria-labelledby="swims-h"><h2 class="card-h" id="swims-h">Your swims</h2><p class="sub">Logged from a spot's page with "I swam here today", with the forecast level that day. Kept on this device only.</p><ul class="swims" id="swims">${rows}</ul>`
+    + `<p class="small muted" style="margin:8px 0 0"><button type="button" class="linkbtn small" id="clear-swims">Clear the log</button></p></section>`;
+}
+function bindSwims() {
+  const ul = document.getElementById('swims'); if (!ul) return;
+  ul.addEventListener('click', e => {
+    const a = e.target.closest('[data-swim-spot]'), un = e.target.closest('[data-unswim]');
+    if (a && plainClick(e)) { e.preventDefault(); select(a.dataset.swimSpot, true); }
+    else if (un) { unlogSwim(un.dataset.unswim, un.dataset.date); renderSaved(); }
+  });
+  document.getElementById('clear-swims').addEventListener('click', () => { if (confirm('Clear your whole swim log on this device?')) { storeSwims([]); renderSaved(); } });
+}
+
+// ------------------------------------------------------------------------------ a picture to share
+// The forecast drawn into an image on the device, for a swim group's chat: the spot, the headline,
+// the five days, when it was issued and the address. Nothing leaves the device until the share
+// sheet; without one (a desktop browser) the picture is saved instead.
+function wrapText(g, text, x, y, maxW, lh) {
+  let line = '';
+  for (const w of String(text).split(' ')) { const t = line ? `${line} ${w}` : w;
+    if (line && g.measureText(t).width > maxW) { g.fillText(line, x, y); y += lh; line = w; } else line = t; }
+  if (line) { g.fillText(line, x, y); y += lh; }
+  return y;
+}
+function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+async function shareImage(d) {
+  const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
+  const g = c.getContext('2d'), F = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  const v = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  g.fillStyle = v('--bg'); g.fillRect(0, 0, W, H);
+  g.fillStyle = v('--bar'); g.fillRect(0, 0, W, 150);
+  g.fillStyle = '#fff'; g.font = `750 56px ${F}`; g.fillText(BRAND, 60, 96);
+  g.font = `600 30px ${F}`; g.textAlign = 'right'; g.fillText(location.host, W - 60, 96); g.textAlign = 'left';
+  g.fillStyle = v('--ink'); g.font = `800 66px ${F}`; let y = wrapText(g, d.name, 60, 270, W - 120, 78);
+  const iso = DAY, [head, why] = iso ? [dayHeadline(d, iso), dateLabel(iso)] : headParts(d);
+  const lv = iso ? dayLevel(d, iso) : level(d);
+  g.fillStyle = v(`--k-${tone(lv)}`) || v('--ink'); g.font = `800 60px ${F}`; y = wrapText(g, head, 60, y + 40, W - 120, 70);
+  if (why) { g.fillStyle = v('--muted'); g.font = `600 36px ${F}`; y = wrapText(g, cap(why), 60, y + 6, W - 120, 46); }
+  const days = d.days.slice(0, 5), on = daily(d), pct = ecoliTested(d), cw = (W - 120 - 4 * 18) / 5; y += 30;
+  days.forEach((x, i) => { const lx = 60 + i * (cw + 18), dl = on ? risk(d, x).level : null;
+    g.fillStyle = v('--card'); roundRect(g, lx, y, cw, 190, 18); g.fill();
+    g.fillStyle = dl ? colour(dl) : v('--unknown'); roundRect(g, lx, y, cw, 14, 7); g.fill();
+    g.textAlign = 'center'; g.fillStyle = v('--muted'); g.font = `600 30px ${F}`; g.fillText(shortDay(x.date), lx + cw / 2, y + 62);
+    g.fillStyle = dl ? v(`--k-${tone(dl)}`) : v('--muted'); g.font = `800 32px ${F}`; g.fillText(!on ? '–' : dl ? cap(dl) : 'No data', lx + cw / 2, y + 112);
+    const r = pct ? (nil(x.p_ecoli_gt900) ? '–' : Math.round(x.p_ecoli_gt900 * 100) + '%' + (untested(x) ? '†' : '')) : nil(x.rain_48h_mm) ? '–' : Math.round(x.rain_48h_mm) + ' mm';
+    g.fillStyle = v('--muted'); g.font = `600 28px ${F}`; g.fillText(r, lx + cw / 2, y + 160); g.textAlign = 'left'; });
+  if (days.length) y += 190 + 40;
+  g.fillStyle = v('--muted'); g.font = `500 28px ${F}`;
+  if (days.length) y = wrapText(g, (pct ? 'The level each day, and the chance a water sample would show E. coli over 900 per 100 ml' : on ? 'The level each day, and rain in the previous 48 h' : 'Rain in the previous 48 h')
+    + (anyUntested(d) ? '. † Untested outside May to September, so it does not set the level.' : '.'), 60, y, W - 120, 38);
+  y = wrapText(g, `Forecast issued ${new Date(DATA.generated_at).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. A forecast of sewage-overflow risk, not a water test: check the signs at the water.`, 60, y + 16, W - 120, 38);
+  // Cut the canvas to its content, then the address along the bottom.
+  const out = document.createElement('canvas'); out.width = W; out.height = Math.min(H, Math.max(900, Math.round(y + 120)));
+  const o = out.getContext('2d'); o.drawImage(c, 0, 0);
+  o.fillStyle = v('--link'); o.font = `700 30px ${F}`; o.fillText(new URL(spotPath(d.id), location.origin).href.replace(/^https?:\/\//, ''), 60, out.height - 50);
+  const blob = await new Promise(res => out.toBlob(res, 'image/png'));
+  const file = new File([blob], `swimsignal-${d.id}.png`, { type: 'image/png' }), m = document.getElementById('share-msg');
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], title: `${d.name} · ${BRAND}` }); }
+    catch (e) { if (e.name !== 'AbortError') { download(blob, file.name); m.textContent = 'The share sheet would not open, so the picture was saved instead.'; } }
+  } else { download(blob, file.name); m.textContent = 'The picture has been saved to your downloads.'; }
+}
+const bindShareImage = d => { const b = document.getElementById('share-img');
+  if (b) b.addEventListener('click', () => shareImage(d).catch(e => { document.getElementById('share-msg').textContent = `Could not make the picture: ${e.message}.`; })); };
+
 // ------------------------------------------------------------------------------ one day
 // A day picked in a spot's strip, as a weather app opens a day: its level and what set it, then
 // the spills, the water and the rain that day, then the algae and the rating, which hold on every
@@ -854,6 +990,7 @@ function dayDetail(d, x) {
       + dayOverflows(d, j))); }
   rows.push(water(d, [x]));
   if (!nil(x.rain_48h_mm)) rows.push(factorRow('Rain here', null, `${Math.round(x.rain_48h_mm)} mm`, 'In the 48 hours to midday.'));
+  rows.push(weatherRow(d, x.date));
   rows.push(howSure(d, j));
   return `<div class="dd-head"><h2 class="dd-t">${when}</h2><button type="button" class="linkbtn" id="day-close">Close</button></div>`
     + `<p class="dd-l ${r.level ? tone(r.level) : 'na'}">${r.level ? cap(r.level) + (rank(r.level) > 0 ? ': ' + because(r) : '') : 'No level'}</p>`
@@ -1042,7 +1179,7 @@ function renderList() {
   const sorts = Object.entries(SORTS).filter(([k]) => k !== 'near' || 'geolocation' in navigator);
   let h = `<section class="intro"><p class="eyebrow">Plan your next swim</p><h1>Check the water before you go</h1><p class="lede">Five-day pollution forecasts for ${DATA.spots.length} spots in England. <a href="#about">How it works</a></p>`
     + `<div class="search">${SEARCH_ICON}<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(VIEW.q)}"></div>`
-    + `<div class="planner"><label for="listday">When are you swimming?</label><select id="listday"><option value="">Today and tomorrow · overview</option>${[0,1,2,3,4].map(k => addDays(today(), k)).map(iso => `<option value="${iso}"${VIEW.day === iso ? ' selected' : ''}>${dateLabel(iso)}</option>`).join('')}</select><p class="planner-note">Forecasts, not water tests. Check local advice.</p></div>`
+    + `<div class="planner"><label for="listday">When are you swimming?</label><select id="listday"><option value="">Today and tomorrow · overview</option>${[0,1,2,3,4].map(k => addDays(today(), k)).map(iso => `<option value="${iso}"${VIEW.day === iso ? ' selected' : ''}>${dateLabel(iso)}</option>`).join('')}</select><p class="planner-note">Forecasts, not water tests. Check local advice.</p>${bestDayNote(DATA.spots)}</div>`
     + `<div class="chips-row" role="group" aria-label="Show"><button type="button" class="chip-btn low" data-low aria-pressed="${VIEW.lowOnly}"><span class="dot" style="background:${colour('low')}"></span><span data-low-t>${lowLabel()}</span></button>`
     + `${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div>`
     + `<p class="small muted" id="low-note-list"${VIEW.lowOnly ? '' : ' hidden'}>${lowListNote()}</p>`
@@ -1056,6 +1193,7 @@ function renderList() {
   setPanel(h);
   if (saved.length) bindItems(document.getElementById('saved-list'));
   document.getElementById('listday').addEventListener('change', e => setMapDay(e.target.value));
+  bindBestDay();
   // Only the list redraws as you type; redrawing the box itself dropped the focus after one letter.
   document.getElementById('q').addEventListener('input', e => { VIEW.q = e.target.value; drawSpots(); });
   // The keyboard's Search key: there is no form to submit, so close the keyboard to show the results.
@@ -1184,6 +1322,7 @@ function renderSaved() {
   INCOMING = offered.length ? INCOMING : null;
   h += notices();
   h += `<div id="compare-host">${compareSection(spots)}</div>`;
+  if (spots.length) h += bestDayNote(spots, true);
   if (spots.length) h += `<ul class="scards" id="scards">${spots.map(savedCard).join('')}</ul>`
     + `<p class="small muted" style="margin:10px 2px 0">Updated ${issued()} (${ago(ageMin())} ago). Tap a spot for its full forecast, or a day for that day. <a href="#levels">What the levels mean</a>. Forecasts, not water tests: check the signs at the water before you swim.${spots.some(anyUntested) ? ' ' + UNTESTED_NOTE : ''}</p>`;
   else h += `<div class="card empty-saved"><div class="big-star" aria-hidden="true">☆</div><h2 class="card-h">No saved spots yet</h2>`
@@ -1194,8 +1333,9 @@ function renderSaved() {
   if (spots.length) h += alertsCard();
   if (spots.length) h += `<section class="card"><h2 class="card-h">Share this list</h2><p class="sub">A link that opens ${spots.length === 1 ? 'this spot' : `these ${spots.length} spots`} on another phone or browser, or for a friend. It holds which spots they are and nothing else.</p>`
     + `<button type="button" class="btn" id="share-list">Share this list</button><p class="small muted" id="share-list-msg" aria-live="polite" style="margin:8px 0 0"></p></section>`;
+  h += swimsCard();
   setPanel(h);
-  bindBack(); bindSavedPage(spots, offered); bindAlerts(); bindComparison();
+  bindBack(); bindSavedPage(spots, offered); bindAlerts(); bindComparison(); bindBestDay(); bindSwims();
   for (const s of spots) L.circleMarker([s.lat, s.lon], { radius: 13, color: RING(), weight: 2.5, fill: false, interactive: false }).addTo(selLayer);
   if (spots.length && !PHONE.matches) map.fitBounds(L.latLngBounds(spots.map(s => [s.lat, s.lon])), { padding: [60, 60], maxZoom: 11 });
   placeMap();
@@ -1286,9 +1426,12 @@ function bindSave(d) {
   });
 }
 function actions(d) {
+  const swam = swamOn(d.id, today());
   return `<div class="actions"><button type="button" class="btn primary" id="share">Copy link to this spot</button>`
+    + `<button type="button" class="btn" id="share-img">Share as a picture</button>`
+    + `<button type="button" class="btn" id="swam" aria-pressed="${swam}">${swimLabel(swam)}</button>`
     + `<a class="btn" href="${esc(FEEDBACK)}&amp;spot=${encodeURIComponent(d.name)}">Tell us how you used this</a></div>`
-    + `<p class="small muted" id="share-msg" aria-live="polite" style="margin:0 0 6px"></p>`
+    + `<p class="small muted" id="share-msg" aria-live="polite" style="margin:0 0 6px"></p><p class="small muted" id="swam-msg" aria-live="polite" style="margin:0 0 6px"></p>`
     + `<p class="small muted" style="margin:0 0 6px">Did the forecast change where or when you swam? That is what decides whether this site is worth building on. Prepare a private email to Ethan. No GitHub account needed.</p>`;
 }
 function bindShare(d) {
@@ -1377,25 +1520,25 @@ function render(d) {
     DAY = null;   // no days here: a day link opens the spot, and the address loses the day
     if (dayFromURL()) history.replaceState(history.state, '', location.pathname + location.search);
     h += hero(factors(d) + check(d)) + where;
-    h += algae(d.algae) + `<section class="card phone-only"><h2 class="card-h">Where it is</h2><div id="spot-map"></div></section>` + actions(d);
-    setPanel(h); bindBack(); bindSave(d); bindShare(d); placeMap(); miniMap(d); return;
+    h += riverCard(d) + algae(d.algae) + `<section class="card phone-only"><h2 class="card-h">Where it is</h2><div id="spot-map"></div></section>` + actions(d);
+    setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); placeMap(); miniMap(d); return;
   }
   const now = d.now, isLake = loc.mode === 'lake', scope = d.ecoli_scope || {}, total = d.upstream_summary.overflows;
   h += notices();
   // Always say how old it is: the stored copy (sw.js) can answer when the network is slow.
-  h += hero(`${strip(d)}<div id="day-view">${factors(d)}</div><p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p>${check(d)}`) + where;
+  h += hero(`${strip(d)}${weatherLine(d)}<div id="day-view">${factors(d)}</div><p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p>${check(d)}`) + where;
   if (total) {
     h += `<section class="card"><h2 class="card-h">Right now</h2><div class="now-row"><span class="big${now.discharging_upstream ? ' hot' : ''}">${now.discharging_upstream}</span>`
       + `<div>of ${total} upstream overflow${total === 1 ? '' : 's'} discharging now<div class="small muted">${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h · ${now.monitored_upstream} of ${total} report live${now.monitored_upstream < total ? `. ${total - now.monitored_upstream === 1 ? 'The one that does not' : `The ${total - now.monitored_upstream} that do not`} could be spilling unseen` : ''}</div></div></div></section>`;
   }
-  h += algae(d.algae);
+  h += riverCard(d) + algae(d.algae);
   h += `<section class="card phone-only"><h2 class="card-h">Upstream</h2><p class="sub">The spot (ringed) and the overflows that matter most; a bigger circle means more of a spill would reach here. Two fingers move the map.</p><div id="spot-map"></div>`
     + `<p class="small muted" style="margin:0"><span class="dot sm" style="background:#c81e1e;margin-left:0"></span>discharging<span class="dot sm" style="background:#5b6470"></span>not discharging<span class="dot sm" style="background:#b3bac2"></span>offline or no feed</p></section>`;
   h += d.contributors.length ? overflowCard(d, total)
     : `<section class="card"><h2 class="card-h">No monitored overflows upstream</h2><p class="small muted" style="margin:0">None within ${d.assumptions.max_upstream_km} km upstream. Risk from farms, wildlife and unmonitored sources is not modelled.</p></section>`;
   h += dayTable(d, total, isLake, scope);
   h += actions(d) + tech(d);
-  setPanel(h); bindBack(); bindSave(d); bindShare(d); bindDays(d); miniMap(d);
+  setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); bindDays(d); miniMap(d);
   const more = document.getElementById('more-contrib');
   if (more) more.addEventListener('click', () => { const t = document.getElementById('contrib'), all = t.classList.toggle('all');
     more.setAttribute('aria-expanded', String(all)); more.textContent = all ? `Show the top 3` : `Show all ${d.contributors.length}`; });

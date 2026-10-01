@@ -281,7 +281,8 @@ def data_credits(root: str) -> dict:
             "Storm overflow status from Anglian Water Services, Northumbrian Water, Severn Trent Water, South West Water, "
             "Southern Water (© 2026), Thames Water, United Utilities, Wessex Water (© 2024) and Yorkshire Water, via the "
             "National Storm Overflow Hub, CC BY 4.0. Environment Agency data © Environment Agency copyright and/or "
-            "database right, OGL v3.0. Contains OS data © Crown copyright and database right 2026. Weather data by "
+            "database right, OGL v3.0; river levels: this uses Environment Agency flood and river level data from the "
+            "real-time data API (Beta). Contains OS data © Crown copyright and database right 2026. Weather data by "
             "Open-Meteo.com, CC BY 4.0, from Met Office forecasts © Crown copyright, CC BY-SA 4.0: rainfall figures "
             "stay under CC BY-SA 4.0."),
         "modified": ("Combined, filtered and modelled by SwimSignal. The forecasts, levels and scores are SwimSignal's own "
@@ -310,6 +311,83 @@ def attach_classifications(results: list[dict], path: Path = CLASSIFICATIONS) ->
         if c:
             r["classification"] = {k: c[k] for k in ("class", "year", "history", "url") if k in c}
             n += "class" in c
+    return n
+
+
+def _km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    import math
+    r = math.pi / 180
+    h = math.sin((lat2 - lat1) * r / 2) ** 2 + math.cos(lat1 * r) * math.cos(lat2 * r) * math.sin((lon2 - lon1) * r / 2) ** 2
+    return 12742 * math.asin(math.sqrt(h))
+
+
+def attach_river_levels(results: list[dict], lookup=None, workers: int = 8) -> int:
+    """The Environment Agency's nearest level gauge, on the spot's own river where it has one, as
+    an observation beside the forecast: the latest level, the gauge's usual range and a word for
+    where the level sits. The forecast itself is unchanged (forecast_point runs with gauge=False):
+    the API version scales travel speed by the level; the site only shows it. Returns how many
+    spots got one; a failure leaves a spot without, and nothing here can stop a build."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from dipcast.ingest.flows import _river_words, nearest_level_station
+    lookup = lookup or nearest_level_station
+
+    def one(r: dict) -> dict | None:
+        if r.get("error") and str(r["error"]).startswith("forecast failed"):
+            return None
+        river = (r.get("location") or {}).get("watercourse")
+        try:
+            st = lookup(r["lat"], r["lon"], 15, river)
+        except Exception as e:  # noqa: BLE001 - an observation beside the forecast must not sink the build
+            log.warning("river level for %s: %s", r["name"], e)
+            return None
+        if st is None or st.level_m is None:
+            return None
+        return {"station": st.station, "river": st.river, "level_m": st.level_m, "typical_low_m": st.typical_low,
+                "typical_high_m": st.typical_high, "index": None if st.index is None else round(st.index, 2),
+                "label": st.label, "observed_at": st.observed_at, "rloi": st.rloi,
+                "distance_km": round(_km(r["lat"], r["lon"], st.lat, st.lon), 1),
+                "same_river": bool(_river_words(river) & _river_words(st.river)) if river else None}
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        states = list(pool.map(one, results))
+    n = 0
+    for r, s in zip(results, states, strict=True):
+        r["river_state"] = s
+        n += s is not None
+    return n
+
+
+WEATHER_CREDIT = "Weather data by Open-Meteo.com"
+
+
+def attach_weather(results: list[dict], request=None, batch: int = 50) -> int:
+    """Each spot's daytime high, sunrise and sunset for the forecast's days, from Open-Meteo in a
+    few calls for all spots (three daily variables over five days weigh one call per location).
+    Context beside the forecast, not an input to it; a failed call leaves the spots without."""
+    from dipcast.ingest.rainfall import _request
+    request = request or _request
+    spots = [r for r in results if not (r.get("error") and str(r["error"]).startswith("forecast failed"))]
+    n = 0
+    for i in range(0, len(spots), batch):
+        chunk = spots[i:i + batch]
+        try:
+            res = request(config.OPEN_METEO_FORECAST, {
+                "latitude": ",".join(f"{r['lat']:.3f}" for r in chunk), "longitude": ",".join(f"{r['lon']:.3f}" for r in chunk),
+                "daily": "temperature_2m_max,sunrise,sunset", "forecast_days": config.FORECAST_DAYS, "timezone": "Europe/London"}, timeout=30)
+        except Exception as e:  # noqa: BLE001 - context beside the forecast must not sink the build
+            log.warning("weather: %s", e)
+            return n
+        for r, w in zip(chunk, res if isinstance(res, list) else [res], strict=False):
+            d = (w or {}).get("daily") or {}
+            try:
+                days = [{"date": t, "tmax": None if x is None else round(float(x)), "sunrise": str(sr)[11:16], "sunset": str(ss)[11:16]}
+                        for t, x, sr, ss in zip(d["time"], d["temperature_2m_max"], d["sunrise"], d["sunset"], strict=True)]
+            except (KeyError, TypeError, ValueError) as e:
+                log.warning("weather for %s: %s", r["name"], e)
+                continue
+            r["weather"] = {"days": days, "credit": WEATHER_CREDIT}
+            n += 1
     return n
 
 
@@ -497,9 +575,12 @@ def build(refresh: bool = True) -> dict:
                         "lat": float(r.lat), "lon": float(r.lon), **f})
     n_algae = attach_algae(results, fetch=refresh)
     n_classified = attach_classifications(results)
+    n_levels = attach_river_levels(results) if refresh else 0   # observations beside the forecast, network only
+    n_weather = attach_weather(results) if refresh else 0
     generated = pd.Timestamp.now(tz="Europe/London")
     health = build_health(results, samples_status())   # raises before anything is written if the build is bad
     health["algae_checks"], health["classifications"] = n_algae, n_classified
+    health["river_levels"], health["weather"] = n_levels, n_weather
     for w in health["warnings"]:
         announce(w)
     (SITE / "data").mkdir(parents=True, exist_ok=True)

@@ -37,6 +37,16 @@ test('out of season the water-quality estimate is shown but does not set the lev
   const unmarked = {...winter, days: winter.days.map(({in_validated_season, ...x}) => x)};   // forecasts built before the flag existed
   assert.equal(dayLevel(unmarked, '2026-09-30'), 'very high');
 });
+test('the lowest-risk day counts low days among spots with a daily forecast, ties to the earlier day', () => {
+  const {bestDay} = require('../src/dipcast/site/levels.js');
+  const mk = labels => ({upstream_summary:{overflows:1}, location:{mode:'lake'}, now:{label:'low'},
+    days: labels.map((l, i) => ({date: ['2026-09-30','2026-10-01','2026-10-02'][i], label: l, risk: l === 'low' ? 0.01 : 0.5}))});
+  const spots = [mk(['low','high','low']), mk(['high','low','low']), {days:[], classification:{class:'excellent'}}];
+  assert.deepEqual(bestDay(spots, ['2026-09-30','2026-10-01','2026-10-02']), {date:'2026-10-02', low:2, known:2});
+  assert.deepEqual(bestDay(spots, ['2026-09-30','2026-10-01']), {date:'2026-09-30', low:1, known:2});
+  assert.equal(bestDay([{days:[]}], ['2026-09-30']), null);
+  assert.equal(bestDay(spots, ['2026-10-09']), null);   // no spot has a level that day
+});
 test('standing ratings and missing coverage are not called daily forecasts', () => {
   assert.equal(dayHeadline({days:[],classification:{class:'excellent'}},'2026-10-01'),'Rated excellent by the EA');
   assert.equal(dayHeadline({days:[]},'2026-10-01'),'No monitored overflows upstream');

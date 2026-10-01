@@ -130,7 +130,22 @@ function dayHeadline(s, iso) {
   return `${cap(r.level)}${rank(r.level) > 0 ? ': ' + because(r) : ' forecast risk'}`;
 }
 
+// The day with the most spots at low, among those with a forecast that changes from day to day:
+// "lowest pollution risk this week" on the list and the Saved page. Null without such a spot.
+// Ties go to the earlier day. A day with no level anywhere (no rain data) is skipped.
+function bestDay(spots, dates) {
+  const scored = spots.filter(daily);
+  let best = null;
+  for (const iso of dates) {
+    const known = scored.filter(s => ORDER[dayLevel(s, iso)] !== undefined).length;
+    if (!known) continue;
+    const low = scored.filter(s => dayLevel(s, iso) === 'low').length;
+    if (!best || low > best.low) best = { date: iso, low, known };
+  }
+  return best;
+}
+
 if (typeof module === 'object' && module.exports) {
   module.exports = { ORDER, NOT_COVERED, NO_FORECAST, NO_OVERFLOWS, setToday, today, rank, risk, level, dayLevel,
-    headParts, headline, dayHeadline, daily, ecoliBand, ecoliLevel, ecoliUntested };
+    headParts, headline, dayHeadline, daily, ecoliBand, ecoliLevel, ecoliUntested, bestDay };
 }

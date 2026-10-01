@@ -641,6 +641,27 @@ card opens the spot on that day. The map has a day picker too, which colours
 the spots, and the "Low risk only" switch, by one day. On a phone a spot's page
 starts with a small map of where it is; a tap opens the full map there.
 
+**Beside the forecast (1 Oct 2026).** Each spot's page also carries, as
+observations and context rather than inputs to the level: the Environment
+Agency's nearest level gauge, preferring one on the spot's own river
+(`flows.nearest_level_station` with a river-name preference; without it
+Burnsall on the Wharfe got Hebden Beck, a tributary 3 km away, over Netherside
+Hall on the Wharfe 6 km up), with the latest level, the gauge's usual range, a
+word for where the level sits and a link to the EA's page for it; on 1 Oct 62
+of 89 spots had one, 31 on the same river. The EA's API is OGL and asks for the
+line "this uses Environment Agency flood and river level data from the
+real-time data API (Beta)", which the footer, the terms and the data credits
+carry. Open-Meteo's daily high, sunrise and sunset (three daily variables over
+five days weigh one call per spot per build). Both are fetched by
+`build_site.attach_river_levels` and `attach_weather` after the forecasts, in
+the refresh step only, and a failure leaves a spot without them. The list and
+the Saved page say which day this week has the most spots at low (`bestDay` in
+`levels.js`). A spot's page can draw its forecast into a picture for a swim
+group's chat (a canvas on the device; nothing is uploaded until the share
+sheet) and log "I swam here today", kept in the browser with the day's level
+and listed on the Saved page, where each entry links to the feedback form with
+the spot and the day filled in.
+
 **Alerts** (`push/`, set up by hand: `push/README.md`). A Cloudflare Worker
 keeps, for each browser that turns alerts on from the Saved page, its push
 address and the ids of its saved spots, and nothing else. Each build writes

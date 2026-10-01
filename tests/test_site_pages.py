@@ -260,3 +260,61 @@ def test_feedback_and_experience_are_built_for_nested_github_pages(tmp_path):
     # Rebranding preserves the installed application's URL and saved-spot storage.
     assert '"start_url": "./"' in (tmp_path / "manifest.webmanifest").read_text()
     assert "dipcast-v1" in (tmp_path / "sw.js").read_text()
+
+
+def test_river_levels_are_an_observation_beside_the_forecast():
+    """The nearest gauge on the spot's own river, as a dict the page can show; a lookup that fails
+    or finds nothing leaves the spot without, and a failed forecast is not looked up at all."""
+    from dipcast.ingest.flows import RiverState
+    bs = _build_site()
+    calls = []
+
+    def lookup(lat, lon, dist, river):
+        calls.append((lat, lon, dist, river))
+        if river == "River Wharfe":
+            return RiverState(station="Netherside Hall", river="River Wharfe", lat=lat + 0.05, lon=lon, level_m=0.433,
+                              typical_low=0.3, typical_high=2.2, observed_at="2026-10-01T12:15:00Z", rloi="8276")
+        if river == "Hebden Beck":
+            raise RuntimeError("EA timed out")
+        return None
+
+    spots = [{"id": "a", "name": "Burnsall", "lat": 54.047, "lon": -1.953, "location": {"watercourse": "River Wharfe"}},
+             {"id": "b", "name": "Hebden", "lat": 54.0, "lon": -2.0, "location": {"watercourse": "Hebden Beck"}},
+             {"id": "c", "name": "Tarn", "lat": 54.4, "lon": -3.0, "location": {"watercourse": None}},
+             {"id": "d", "name": "Broken", "lat": 54.5, "lon": -3.1, "error": "forecast failed: boom"}]
+    assert bs.attach_river_levels(spots, lookup=lookup, workers=2) == 1
+    rs = spots[0]["river_state"]
+    assert rs["station"] == "Netherside Hall" and rs["level_m"] == 0.433 and rs["label"] == "low" and rs["rloi"] == "8276"
+    assert rs["same_river"] is True and 5 < rs["distance_km"] < 6 and rs["index"] == 0.07
+    assert spots[1]["river_state"] is None and spots[2]["river_state"] is None and spots[3]["river_state"] is None
+    assert len(calls) == 3 and all(c[2] == 15 for c in calls)   # the failed forecast is skipped
+    # The EA's own attribution line travels with the data and sits on the terms page.
+    line = "this uses Environment Agency flood and river level data from the real-time data API (Beta)"
+    assert line in bs.data_credits("https://example.org/")["attribution"]
+    assert line in (ROOT / "src" / "dipcast" / "api" / "static" / "terms.html").read_text()
+    assert line in (ROOT / "src" / "dipcast" / "site" / "index.html").read_text()
+
+
+def test_weather_context_is_attached_per_spot_and_a_failed_call_leaves_none():
+    bs = _build_site()
+    seen = []
+
+    def request(url, params, timeout=30):
+        seen.append(params)
+        lats = params["latitude"].split(",")
+        return [{"daily": {"time": ["2026-10-01", "2026-10-02"], "temperature_2m_max": [11.4, None],
+                           "sunrise": ["2026-10-01T07:12", "2026-10-02T07:14"], "sunset": ["2026-10-01T18:40", "2026-10-02T18:38"]}}
+                for _ in lats]
+
+    spots = [{"id": "a", "name": "A", "lat": 54.0, "lon": -2.0}, {"id": "b", "name": "B", "lat": 54.1, "lon": -2.1},
+             {"id": "d", "name": "Broken", "lat": 54.5, "lon": -3.1, "error": "forecast failed: boom"}]
+    assert bs.attach_weather(spots, request=request) == 2
+    assert seen[0]["daily"] == "temperature_2m_max,sunrise,sunset" and seen[0]["latitude"] == "54.000,54.100"
+    assert spots[0]["weather"]["days"] == [{"date": "2026-10-01", "tmax": 11, "sunrise": "07:12", "sunset": "18:40"},
+                                           {"date": "2026-10-02", "tmax": None, "sunrise": "07:14", "sunset": "18:38"}]
+    assert spots[0]["weather"]["credit"] == "Weather data by Open-Meteo.com" and "weather" not in spots[2]
+
+    def broken(url, params, timeout=30):
+        raise RuntimeError("open-meteo request failed")
+    fresh = [{"id": "a", "name": "A", "lat": 54.0, "lon": -2.0}]
+    assert bs.attach_weather(fresh, request=broken) == 0 and "weather" not in fresh[0]
