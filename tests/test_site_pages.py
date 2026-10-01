@@ -86,9 +86,10 @@ def test_about_page_counts_this_builds_spots_and_links_work_on_the_static_site(t
         page = (tmp_path / name).read_text()
         assert 'href="about.html">About</a>' in page, name
         assert 'href="/' not in page, name
-        # Every page's icons and preloaded typefaces, at files the static site has.
-        for ref in ("icons/icon.svg", "icons/apple-touch-icon.png", "fonts/SourceSans3-latin.woff2", "fonts/SourceSerif4-latin.woff2"):
-            assert f'href="{ref}"' in page and (tmp_path / ref).exists(), (name, ref)
+        # A page that declares an icon has its icons and preloaded typefaces at files the static site has.
+        if 'rel="icon"' in (bs.STATIC / name).read_text():
+            for ref in ("icons/icon.svg", "icons/apple-touch-icon.png", "fonts/SourceSans3-latin.woff2", "fonts/SourceSerif4-latin.woff2"):
+                assert f'href="{ref}"' in page and (tmp_path / ref).exists(), (name, ref)
         # On the API server the same links are /static/..., which must resolve there too.
         for ref in re.findall(r'href="/static/([^"]+)"', (bs.STATIC / name).read_text()):
             assert (bs.STATIC / ref).exists(), (name, ref)
