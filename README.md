@@ -698,7 +698,9 @@ party sees a request), one corner radius, hairline borders, the four level
 colours as the only strong colours. The prose pages share
 `src/dipcast/api/static/page.css`; the app page repeats its tokens and header
 inline so that it paints before any stylesheet arrives and works offline on its
-own, and a token changed in one must be changed in the other.
+own, and a token changed in one must be changed in the other. The prose pages'
+favicon and Home Screen icon are copies of the site's icons, kept in
+`src/dipcast/api/static/icons/` so that the API server's pages get them too.
 
 `.github/workflows/site.yml` is scheduled every 30 minutes and also runs on
 every push. GitHub starts scheduled runs when it can: the 113 builds of 13-28

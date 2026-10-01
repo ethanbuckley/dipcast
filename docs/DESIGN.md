@@ -45,9 +45,11 @@ the licence beside them) so that no third party receives a request:
 - The monospaced stack is kept for one thing: model version strings.
 
 Sizes, in pixels. App: body 16, meta 13, labels 13 to 14, card heading 18, spot name 28, headline
-level 32 (28 on the smallest phones), page heading 28. Prose pages: body 17, lede 19, h1 34, h2 23, h3 19. Line height 1.5 for
-text, 1.15 to 1.25 for headings. No letter-spacing beyond −0.01em on the largest headings, and no
-uppercase labels anywhere.
+level 32 (28 on the smallest phones), page heading 28. Prose pages: body 17, lede 19, h1 34, h2 23,
+h3 19, with h1 28 and lede 17 on the smallest phones (up to 360 px); boxed text (the summary,
+notices) 16; notes, hints and table rows 15, table headers 14. Line height 1.5 for text, 1.15 to
+1.25 for headings. No letter-spacing beyond −0.01em on the largest headings, and no uppercase
+labels anywhere.
 
 ### Colour
 
@@ -103,8 +105,48 @@ mark is inlined in every header for the same reason: it needs no path to resolve
   answer in a few lines, and the shared foot: one line about what the site is, then the small links.
 - **Accuracy page:** the four numbers that matter in a ruled definition list at the top, a short "in short" list,
   a contents list, then sections in the same order as before. Tables share one style; the three
-  reliability tables draw forecast against observed as bars. The scoring rules fold away under
-  "How the live scoring works", so the page opens on results.
+  reliability tables draw forecast against observed as bars. A table wider than the screen scrolls
+  sideways in its own box, between two hairlines, and the bar column keeps at least 120 px. The
+  scoring rules fold away under "How the live scoring works", so the page opens on results.
+
+#### Head of every page
+
+Each prose page's `<head>` carries, in this order:
+
+- the title, "Page · SwimSignal", and a meta description (Terms and Privacy have none);
+- `theme-color`, the bar's colour, so the browser's own bar matches it: `#0f5a61`, and `#0b474d`
+  in dark mode;
+- the icon, `icons/icon.svg`, and the Home Screen icon, `icons/apple-touch-icon.png`;
+- the stylesheet, `page.css`;
+- preloads for the two faces every page uses, `SourceSans3-latin.woff2` and
+  `SourceSerif4-latin.woff2`, so that text swaps into them sooner. The italic is rarely used and
+  is not preloaded.
+
+The pages are written for the API server, so these links start `/static/`; `scripts/build_site.py`
+rewrites each one for the static site (`REWRITES`). The API server has its own copies of the two
+icons in `src/dipcast/api/static/icons/`, taken from the site's `src/dipcast/site/icons/`, and a
+test checks that they still match. The 404 page, which the build writes, has the same head with
+absolute links, `noindex` and no description. The app page's head is its own, in `index.html`: it
+adds the manifest and the Home Screen tags.
+
+### What a swimmer wants first (second round, 1 October 2026)
+
+The question a swimmer brings is one of three: is my spot all right today or this weekend; where
+near me is low on Saturday; why is it high, and when does it ease. So the home page opens on the
+answer. First the heading, one line and the search. Then one row of controls, the day picker and
+Low risk, with one muted line under it holding the caveat ("Forecasts, not water tests.") and the
+week's best day. Then the saved spots, or one line on how to save one. The kinds of water (rivers,
+lakes, bathing waters) are a second row under All spots, because they narrow that list only. The
+list carries no colour key: each row says its level in words, and the bars are explained once at
+the foot of the list. On a 375 px phone the first saved spot is now above the fold; before, the
+first screen was controls alone.
+
+On a spot's page the issue time and today's weather share one muted line between the answer and
+the five days, so freshness is read at the point of deciding. While the forecast loads, the home
+page shows the list's shape in hairline grey rather than a line of text. Leaflet's own controls
+(zoom, attribution, popups, tooltips) use the tokens, the one radius and the map lift, so the map
+no longer carries a second visual language. A control keeps its own corner when focused. Fold
+summaries and stand-alone text buttons are 44 px targets.
 
 ### What was kept on purpose
 
@@ -124,6 +166,10 @@ how things look, not what the site says.
    local preview is `.claude/launch.json` (`python3 -m http.server 8766 --directory site`) after
    `scripts/build_site.py` has written `site/`, or after writing the pages alone with
    `build_site.write_pages` over a downloaded `site/data/spots.json`.
+7. In `page.css`, the prose defaults for paragraph and list spacing are written as
+   `:where(main.doc) p`, with no specificity, so that a component's class sets its own spacing.
+   Written as `main.doc p`, a default outranks a single class such as `.note`, and the
+   component's spacing is silently lost.
 
 ## Review refinements
 

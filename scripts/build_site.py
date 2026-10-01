@@ -46,11 +46,16 @@ TEMPLATE = ROOT / "src" / "dipcast" / "site" / "index.html"
 KEEP_CONTRIBUTORS = 10
 MIN_OK_SHARE = 0.8        # fewer spots with a forecast than this and the build fails (no publish)
 MAX_NO_DATA_SHARE = 0.5   # more of today's forecasts without rainfall data than this: fail
-# The pages were written for the FastAPI routes; rewrite them for flat files.
+# The pages were written for the FastAPI routes; rewrite them for flat files. Their icons are
+# /static/icons/ on the API server, which keeps copies of the site's own (src/dipcast/site/icons/)
+# so that its pages get a favicon too; the static site has the originals at icons/ (copy_app_files).
 REWRITES = [('href="/feedback"', 'href="feedback.html"'), ('href="/feedback?type=spot"', 'href="feedback.html?type=spot"'), ('href="/verification"', 'href="verification.html"'), ('href="/terms"', 'href="terms.html"'),
             ('href="/about"', 'href="about.html"'), ('href="/testing"', 'href="testing.html"'),
             ('href="/privacy"', 'href="privacy.html"'), ('href="/terms#data"', 'href="terms.html#data"'), ('href="/"', 'href="index.html"'),
             ('href="/static/page.css"', 'href="page.css"'), ('href="/static/fonts/LICENSE.txt"', 'href="fonts/LICENSE.txt"'),
+            ('href="/static/icons/icon.svg"', 'href="icons/icon.svg"'), ('href="/static/icons/apple-touch-icon.png"', 'href="icons/apple-touch-icon.png"'),
+            ('href="/static/fonts/SourceSans3-latin.woff2"', 'href="fonts/SourceSans3-latin.woff2"'),
+            ('href="/static/fonts/SourceSerif4-latin.woff2"', 'href="fonts/SourceSerif4-latin.woff2"'),
             ("fetch('/api/verification')", "fetch('data/verification.json')")]
 BRAND = "SwimSignal"
 HOME_TITLE = f"{BRAND} · sewage-spill forecasts for swim spots"
@@ -496,8 +501,13 @@ def not_found_page(root: str) -> str:
     r = escape(root)
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        f'<title>Page not found · {BRAND}</title><meta name="robots" content="noindex"><meta name="theme-color" content="#0f5a61">\n'
-        f'<link rel="icon" href="{r}icons/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="{r}page.css">\n'
+        f'<title>Page not found · {BRAND}</title><meta name="robots" content="noindex">\n'
+        '<meta name="theme-color" media="(prefers-color-scheme: light)" content="#0f5a61">'
+        '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b474d">\n'
+        f'<link rel="icon" href="{r}icons/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="{r}icons/apple-touch-icon.png">\n'
+        f'<link rel="stylesheet" href="{r}page.css">\n'
+        f'<link rel="preload" href="{r}fonts/SourceSans3-latin.woff2" as="font" type="font/woff2" crossorigin>'
+        f'<link rel="preload" href="{r}fonts/SourceSerif4-latin.woff2" as="font" type="font/woff2" crossorigin>\n'
         f'</head><body>\n<header class="top"><a class="brand" href="{r}">{MARK}{BRAND}</a>'
         f'<nav aria-label="Site"><a href="{r}">Explore</a><a href="{r}verification.html">Accuracy</a><a href="{r}about.html">About</a><a href="{r}feedback.html">Feedback</a></nav></header>\n'
         '<main class="doc"><h1>No page at this address</h1>\n'
