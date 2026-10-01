@@ -19,11 +19,16 @@
 <!-- /page-meta -->
 <!-- Add to Home Screen: an icon, a name, and a full-screen window without the browser bars. -->
 <link rel="manifest" href="manifest.webmanifest">
+<!-- The two faces the first screen uses, fetched with the page rather than when the CSS asks, so the
+     text does not paint in the system font and then jump. Fonts are fetched in CORS mode, hence
+     crossorigin, or the browser would fetch each twice. -->
+<link rel="preload" href="fonts/SourceSans3-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/SourceSerif4-latin.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="theme-color" media="(prefers-color-scheme: light)" content="#0f5a61">
-<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b4a50">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b474d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -31,219 +36,250 @@
 <!-- Pinned by hash, so a changed file on the CDN is refused rather than run. -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
-  /* Brand teal from the icon. Map markers use the bright risk colours; badges and text use
-     darker shades so they pass WCAG AA (4.5:1) on white and on the level's tint. Every colour is a
-     variable, and the dark scheme below redefines them: the page is opened at dawn by the water. */
+  /* The design system: docs/DESIGN.md. The tokens and the header are the same as page.css, the
+     prose pages' stylesheet, repeated here so that the app paints before any stylesheet arrives
+     and works offline on its own; a token changed in one must be changed in the other. Two
+     typefaces served from this site (fonts/): Source Serif 4 for place names and page headings,
+     Source Sans 3 for everything else. One corner radius, hairline borders, no shadows. Every
+     colour is a variable, and the dark scheme below redefines them: the page is opened at dawn by
+     the water. Level text uses the "k" shades, which pass WCAG AA (4.5:1) on white and on the card. */
+  @font-face { font-family:"Source Sans 3"; font-style:normal; font-weight:400 700; font-display:swap; src:url(fonts/SourceSans3-latin.woff2) format("woff2"); }
+  @font-face { font-family:"Source Sans 3"; font-style:italic; font-weight:400 700; font-display:swap; src:url(fonts/SourceSans3-italic-latin.woff2) format("woff2"); }
+  @font-face { font-family:"Source Serif 4"; font-style:normal; font-weight:400 700; font-display:swap; src:url(fonts/SourceSerif4-latin.woff2) format("woff2"); }
   :root { color-scheme:light dark;
-          --ink:#14212b; --muted:#56626e; --faint:#8a95a0; --line:#e3e9eb; --bg:#f2f5f5; --card:#fff;
-          --brand:#0f5a61; --brand-2:#5cc2b5; --link:#0f5a61; --bar:#0f5a61;
-          --low:#2e9e5b; --moderate:#d8a400; --high:#e06a1b; --veryhigh:#c81e1e; --unknown:#9aa3ad; --clear:#4fb3a6;
-          --b-low:#1d7a45; --b-moderate:#f4c542; --b-high:#b8480f; --b-veryhigh:#b01c1c; --b-na:#5f6873;
-          --t-low:#e3f3e9; --t-moderate:#fbf1cf; --t-high:#fce6d6; --t-veryhigh:#f9dede; --t-na:#eceff1; --t-clear:#dff1f2;
-          --k-low:#17663a; --k-moderate:#6b5200; --k-high:#9a3d0c; --k-veryhigh:#961717; --k-na:#4c545c; --k-clear:#0f5a61;
-          --hover:#f7f9f9; --active:#eef3f3; --seg:#e3eaea; --th:#f1f7f5; --glass:rgba(255,255,255,.96); --map-bg:#e8eef0;
-          --hair:rgba(0,0,0,.09); --intro-a:#e5f3ef; --notice-bg:#fff7ed; --save-bg:#fff4d6; --save-line:#e7c35a; --save-ink:#5e4a00; --star:#8a6a00;
-          --rain:#3d8bd4; --tile-filter:saturate(.35) brightness(1.03);
-          --arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2314212b' stroke-width='2'/%3E%3C/svg%3E");
-          --radius:16px; --shadow:0 1px 2px rgba(15,50,58,.07), 0 6px 20px rgba(15,50,58,.06);
-          --header-h:56px; }
-  /* Dark: the same risk hues, the text shades lightened to pass AA on the dark tints, the map dimmed. */
+          --font-text:"Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+          --font-display:"Source Serif 4", Georgia, "Times New Roman", serif;
+          --font-mono:ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+          --bg:#f4f5f3; --card:#fff; --ink:#1b2328; --muted:#58636b; --faint:#626e76; --line:#dfe3e1; --hair:rgba(27,35,40,.1);
+          --hover:#f7f8f6; --active:#eef1ee; --field:#fff;
+          --brand:#0f5a61; --brand-deep:#0b474d; --brand-2:#5cc2b5; --brand-tint:#e4f1ef; --link:#0f5a61; --bar:#0f5a61;
+          --low:#2f8f58; --moderate:#d49a06; --high:#d6621a; --veryhigh:#bf2a2a; --unknown:#98a2aa; --clear:#4aa39a;
+          --k-low:#1e6a41; --k-moderate:#6f5300; --k-high:#93400f; --k-veryhigh:#961d1d; --k-na:#4f5a62; --k-clear:#0f5a61;
+          --control-low:#1e6a41; --focus:#0f5a61; --notice-bg:#fff6e8; --notice-line:#e5a53a;
+          --radius:8px;
+          /* The app's own: the map, the controls that float on it, and the rain bars. */
+          --map-bg:#e8eceb; --tile-filter:saturate(.35) brightness(1.03); --float:#fff; --veil:rgba(255,255,255,.9); --lift:0 1px 2px rgba(0,0,0,.12), 0 0 0 1px var(--hair);
+          --rain:#3d8bd4; --header-h:56px;
+          --arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2358636b' stroke-width='2'/%3E%3C/svg%3E"); }
   @media (prefers-color-scheme: dark) {
-    :root { --ink:#e6edf0; --muted:#a3b1b9; --faint:#7a8891; --line:#26343b; --bg:#0f181b; --card:#16232a;
-            --link:#7fd3c7; --bar:#0b4a50; --unknown:#6b7780;
-            --t-low:#163323; --t-moderate:#3a3113; --t-high:#3d2517; --t-veryhigh:#3f1b1b; --t-na:#1c262b; --t-clear:#13302f;
-            --k-low:#7ad9a2; --k-moderate:#ecd06a; --k-high:#f3a676; --k-veryhigh:#f08a8a; --k-na:#a3b1b9; --k-clear:#7fd3c7;
-            --hover:#1b2a31; --active:#20313a; --seg:#1f2d34; --th:#1b2a31; --glass:rgba(22,35,42,.94); --map-bg:#1a2529;
-            --hair:rgba(255,255,255,.12); --intro-a:#13302f; --notice-bg:#3a2a16; --save-bg:#3a3113; --save-line:#8a6a00; --save-ink:#f1dc8a; --star:#ecd06a;
-            --rain:#6fb0ea; --tile-filter:brightness(.72) saturate(.3) contrast(1.05);
-            --arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23e6edf0' stroke-width='2'/%3E%3C/svg%3E");
-            --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25); }
-    .leaflet-bar a, .leaflet-bar a:hover, .leaflet-bar a:focus, .leaflet-control-attribution,
-    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:var(--card); color:var(--ink); }
-    .leaflet-bar a { border-bottom-color:var(--line); }
-    .leaflet-bar a.leaflet-disabled { background:var(--bg); color:var(--faint); }
-    .leaflet-container a, .leaflet-control-attribution a { color:var(--link); }
+    :root { --bg:#0e1517; --card:#161f23; --ink:#e6ecee; --muted:#a2afb6; --faint:#a2afb6; --line:#273237; --hair:rgba(230,236,238,.12);
+            --hover:#1b262b; --active:#203037; --field:#121b1f;
+            --brand-tint:#14302f; --link:#7fd3c7; --bar:#0b474d; --unknown:#6b7780;
+            --k-low:#7ad9a2; --k-moderate:#ecd06a; --k-high:#f3a676; --k-veryhigh:#f08a8a; --k-na:#a2afb6; --k-clear:#7fd3c7;
+            --focus:#7fd3c7; --notice-bg:#3a2a16; --notice-line:#b8862b;
+            --map-bg:#1a2529; --tile-filter:brightness(.72) saturate(.3) contrast(1.05); --float:#161f23; --veil:rgba(22,31,35,.9); --lift:0 1px 2px rgba(0,0,0,.4), 0 0 0 1px var(--hair);
+            --rain:#6fb0ea;
+            --arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23a2afb6' stroke-width='2'/%3E%3C/svg%3E"); }
   }
   * { box-sizing:border-box; }
-  html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
+  html { -webkit-text-size-adjust:100%; text-size-adjust:100%; font-optical-sizing:auto; }
   html, body { margin:0; }
-  body { font:16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color:var(--ink); background:var(--bg); }
-  a { color:var(--link); }
-  a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline:3px solid var(--brand-2); outline-offset:2px; border-radius:6px; }
+  body { font:400 16px/1.5 var(--font-text); color:var(--ink); background:var(--bg); }
+  a { color:var(--link); text-decoration-thickness:1px; text-underline-offset:2px; }
+  /* As in page.css: the bare pseudo-class is the weakest selector, so a control keeps its own corner
+     on focus; the 4 px only rounds the ring round a link or a summary, which have none. */
+  :focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:4px; }
   /* A little motion where something changes under the finger; none for anyone who asked for none. */
-  .day, .btn, .chip-btn, .hbtn, .save, a.row, .sortseg button, .bottom-nav a, .bottom-nav button, .low-ctl button, .hero, .f-v, .dd-l {
+  .day, .btn, .chip-btn, .hbtn, .save, a.row, .sortseg button, .bottom-nav a, .bottom-nav button, .low-ctl button, .f-v, .dd-l {
     transition:background-color .18s ease, color .18s ease, box-shadow .18s ease, border-color .18s ease; }
   @keyframes rise { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
   #day-view > * { animation:rise .22s ease; }
+  /* While the forecast loads (main): the shape of the list in hairline grey, breathing slowly. */
+  @keyframes breathe { 50% { opacity:.45; } }
+  .skel { padding:4px 0 0; }
+  .skel span { display:block; background:var(--line); border-radius:var(--radius); animation:breathe 1.2s ease-in-out infinite; }
+  .skel .skel-h { width:70%; height:30px; margin:0 0 24px; }
+  .skel .skel-r { height:60px; margin:0 0 8px; }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
   button { font:inherit; }
+  b, strong { font-weight:600; }
   .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
   .muted { color:var(--muted); } .small { font-size:13.5px; }
+  .msg { margin:8px 0 0; } .tight { margin:0; } .below { margin:0 0 6px; } .after { margin-top:14px; }
+  /* The one icon set: 1.75 px strokes, round caps, the current colour. */
+  .ic { display:inline-block; width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; vertical-align:-3px; }
 
-  /* The header: the brand, and on a phone the way to the map. */
+  /* The header: the mark, the wordmark and the main links, as on every page of the site. */
   .top { position:sticky; top:0; z-index:1100; display:flex; align-items:center; gap:10px; background:var(--bar); color:#fff;
          padding:calc(9px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 9px calc(16px + env(safe-area-inset-left)); }
-  .brand { display:flex; align-items:center; gap:10px; color:#fff; text-decoration:none; font-weight:750; font-size:20px; letter-spacing:-.01em; }
-  .brand img { display:block; width:30px; height:30px; border-radius:8px; box-shadow:0 0 0 1px rgba(255,255,255,.3); }
+  .brand { display:inline-flex; align-items:center; gap:10px; color:#fff; text-decoration:none; font:600 21px/1 var(--font-display); letter-spacing:-.005em; }
+  .brand svg { display:block; width:28px; height:28px; border-radius:7px; }
   .top nav { margin-left:auto; display:flex; align-items:center; gap:4px; }
-  .top nav a, .hbtn { color:#fff; text-decoration:none; font-size:16px; font-weight:600; line-height:1.2; padding:8px 12px; border-radius:999px; border:0; background:transparent; cursor:pointer; }
-  .top nav a:hover, .hbtn:hover { background:rgba(255,255,255,.14); }
-  .top .hbtn { background:rgba(255,255,255,.16); }   /* .top: Saved is a link, and ".top nav a" would win */
-  .top .hbtn:hover { background:rgba(255,255,255,.24); }
-  .top .hbtn[aria-pressed=true], .top .hbtn[aria-current=page] { background:#fff; color:var(--brand); }
-  .hbtn .n { display:inline-block; min-width:20px; margin-left:6px; padding:0 6px; border-radius:999px; background:#fff; color:var(--brand);
-             font-size:13px; font-weight:750; line-height:20px; text-align:center; vertical-align:1px; }
+  .top nav a, .hbtn { color:rgba(255,255,255,.86); text-decoration:none; font-size:15px; font-weight:600; line-height:1.2; min-height:44px; display:inline-flex; align-items:center; padding:8px 10px; border-radius:6px; border:0; background:transparent; cursor:pointer; }
+  .top nav a:hover, .hbtn:hover { color:#fff; background:rgba(255,255,255,.12); }
+  .top .hbtn[aria-pressed=true], .top .hbtn[aria-current=page] { color:#fff; box-shadow:inset 0 -2px 0 #fff; border-radius:0; background:transparent; }
+  .top :focus-visible { outline-color:#fff; }
+  .hbtn .n { display:inline-block; min-width:20px; margin-left:6px; padding:0 6px; border-radius:999px; background:#fff; color:var(--brand); font-size:13px; font-weight:600; line-height:20px; text-align:center; vertical-align:1px; }
   .hbtn .n[hidden] { display:none; }
-  .hbtn[aria-current=page] .n { background:var(--brand); color:#fff; }
 
   #app { position:relative; }
   #map-wrap { position:relative; background:var(--map-bg); }
   #map { position:absolute; inset:0; background:var(--map-bg); }
-  .leaflet-tile-pane { filter:var(--tile-filter); }   /* a quieter base map, so the risk colours carry */
+  .leaflet-tile-pane { filter:var(--tile-filter); }   /* a quieter base map, so the level colours carry */
+  /* Leaflet's own controls in the system: the one lift, the one radius, the site's type and colours.
+     Leaflet marks every map .leaflet-touch on any browser with pointer events, and styles the zoom bar
+     through that class, so these rules start .leaflet-container to equal it and win by coming later.
+     Tokens, so the dark scheme recolours them with everything else. */
+  .leaflet-container { font-family:var(--font-text); }
+  .leaflet-container a { color:var(--link); }
+  .leaflet-container .leaflet-bar { border:0; border-radius:var(--radius); background:var(--float); box-shadow:var(--lift); }
+  .leaflet-container .leaflet-bar a { width:36px; height:36px; font:600 20px/36px var(--font-text); color:var(--ink); background:var(--float); border-bottom:1px solid var(--line); }
+  .leaflet-container .leaflet-bar a:hover, .leaflet-container .leaflet-bar a:focus { background:var(--hover); }
+  .leaflet-container .leaflet-bar a.leaflet-disabled { background:var(--bg); color:var(--unknown); }
+  .leaflet-container .leaflet-bar a:first-child { border-radius:var(--radius) var(--radius) 0 0; }
+  .leaflet-container .leaflet-bar a:last-child { border-bottom:0; border-radius:0 0 var(--radius) var(--radius); }
+  @media (pointer: coarse) { .leaflet-container .leaflet-bar a { width:44px; height:44px; line-height:44px; } }
+  .leaflet-container .leaflet-control-attribution { font-size:11px; color:var(--muted); background:var(--veil); padding:2px 6px; border-radius:6px 0 0 0; }
+  .leaflet-popup-content-wrapper { border-radius:var(--radius); }
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:var(--float); color:var(--ink); box-shadow:var(--lift); }
+  .leaflet-tooltip { padding:4px 8px; border-color:var(--float); border-radius:6px; background:var(--float); color:var(--ink); box-shadow:var(--lift); font-size:13px; }
+  .leaflet-tooltip-top::before { border-top-color:var(--float); } .leaflet-tooltip-bottom::before { border-bottom-color:var(--float); }
+  .leaflet-tooltip-left::before { border-left-color:var(--float); } .leaflet-tooltip-right::before { border-right-color:var(--float); }
   /* Touch screens: one finger scrolls the page and two move the map, so the map cannot trap the scroll. */
   .map-hint { position:absolute; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:0 24px; text-align:center;
-              background:rgba(20,33,43,.55); color:#fff; font-weight:650; font-size:16px; opacity:0; transition:opacity .25s; pointer-events:none; }
+              background:rgba(20,33,43,.55); color:#fff; font-weight:600; font-size:16px; opacity:0; transition:opacity .25s; pointer-events:none; }
   .map-hint.show { opacity:1; }
-  .map-legend { background:var(--glass); border-radius:10px; padding:8px 11px; font-size:12.5px; line-height:1.65; box-shadow:0 1px 5px rgba(0,0,0,.2); color:var(--ink); }
-  .map-legend .ttl { font-weight:650; }
+  /* What floats on the map: white, a hairline and the one small lift that tiles need. */
+  .map-legend { background:var(--float); border-radius:var(--radius); padding:8px 11px; font-size:13px; line-height:1.65; box-shadow:var(--lift); color:var(--ink); }
+  .map-legend .ttl { font-weight:600; }
   .map-legend .extra { color:var(--muted); margin-top:4px; max-width:210px; line-height:1.45; }
   .dot { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:6px; vertical-align:-1px; box-shadow:0 0 0 1.5px #fff, 0 0 0 2.5px rgba(0,0,0,.18); }
   /* The map's "Low risk only" switch, and the list's chip for the same thing. */
   .low-ctl { display:flex; flex-direction:column; align-items:flex-end; }
-  .low-ctl button { display:flex; align-items:center; font-size:16px; font-weight:650; line-height:1.2; padding:9px 13px; border:0; border-radius:999px;
-                    background:var(--glass); color:var(--ink); box-shadow:0 1px 5px rgba(0,0,0,.25); cursor:pointer; }
-  .low-ctl button[aria-pressed=true], .chip-btn.low[aria-pressed=true] { background:var(--b-low); border-color:var(--b-low); color:#fff; }
-  .low-ctl select { margin:0 0 6px; font:inherit; font-size:16px; font-weight:650; line-height:1.2; color:var(--ink); padding:9px 34px 9px 14px; border:0; border-radius:999px;
-                    background:var(--glass) var(--arrow) no-repeat right 14px center;
-                    box-shadow:0 1px 5px rgba(0,0,0,.25); cursor:pointer; -webkit-appearance:none; appearance:none; }
-  .low-ctl .n { margin-left:6px; font-weight:750; color:var(--muted); } .low-ctl button[aria-pressed=true] .n { color:#fff; }
-  .chip-btn.low { display:inline-flex; align-items:center; margin-right:6px; }   /* a switch of its own, before the kinds */
+  .low-ctl button { min-height:44px; display:flex; align-items:center; font-size:15px; font-weight:600; line-height:1.2; padding:9px 12px; border:0; border-radius:var(--radius);
+                    background:var(--float); color:var(--ink); box-shadow:var(--lift); cursor:pointer; }
+  .low-ctl button[aria-pressed=true], .chip-btn.low[aria-pressed=true] { background:var(--control-low); border-color:var(--control-low); color:#fff; }
+  .low-ctl select { min-height:44px; margin:0 0 6px; font:inherit; font-size:15px; font-weight:600; line-height:1.2; color:var(--ink); padding:9px 32px 9px 12px; border:0; border-radius:var(--radius);
+                    background:var(--float) var(--arrow) no-repeat right 12px center; box-shadow:var(--lift); cursor:pointer; -webkit-appearance:none; appearance:none; }
+  .low-ctl .n { margin-left:6px; font-weight:600; color:var(--muted); } .low-ctl button[aria-pressed=true] .n { color:#fff; }
+  .chip-btn.low { display:inline-flex; align-items:center; }
   .chip-btn.low .dot { width:10px; height:10px; box-shadow:none; }
   .low-ctl button[aria-pressed=true] .dot, .chip-btn.low[aria-pressed=true] .dot { background:#fff !important; }
-  .low-note { display:none; max-width:230px; margin:6px 0 0 auto; padding:7px 10px; border-radius:10px; background:var(--glass);
-              box-shadow:0 1px 5px rgba(0,0,0,.2); font-size:12.5px; line-height:1.4; color:var(--muted); }
+  .low-note { display:none; max-width:230px; margin:6px 0 0 auto; padding:7px 10px; border-radius:var(--radius); background:var(--float);
+              box-shadow:var(--lift); font-size:13px; line-height:1.4; color:var(--muted); }
   .low-ctl button[aria-pressed=true] + .low-note { display:block; }
   .dot.sm { width:9px; height:9px; margin:0 4px 0 8px; box-shadow:none; }
+  .dot.sm:first-child { margin-left:0; }   /* a key that starts a line */
 
   #panel { padding:16px 16px 32px; }
-  h1, h2, h3 { letter-spacing:-.01em; }
+  h1, h2, h3 { font-family:var(--font-display); font-weight:600; letter-spacing:-.005em; }
 
-  /* The list */
-  .compare-fields { display:grid; gap:10px; margin:14px 0; }
-  .compare-fields label { font-size:14px; font-weight:650; }
-  .compare-fields select { display:block; width:100%; min-height:44px; margin-top:4px; padding:8px; font:inherit; color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:8px; }
-  .compare-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
-  .compare-table { width:100%; min-width:540px; border-collapse:collapse; font-size:14px; }
-  .compare-table caption { text-align:left; padding:10px; color:var(--muted); }
-  .compare-table th, .compare-table td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; min-width:150px; }
-  .compare-table th { background:var(--th); }
-  .compare-table th a { display:block; min-height:44px; padding:4px 0; }
-  .compare-table th[scope=row] { min-width:100px; }
-  .comparison > summary { cursor:pointer; font-weight:750; font-size:18px; padding:6px 0; }
-  .comparison[open] > summary { margin-bottom:10px; }
-  .intro { padding:18px; border:1px solid var(--line); border-radius:20px; background:linear-gradient(135deg, var(--intro-a), var(--card) 75%); }
-  .intro .eyebrow { margin:0 0 8px; color:var(--link); font-size:12px; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
-  /* The colour key, on a phone, where the map's legend is a tap away. */
-  .key { display:flex; flex-wrap:wrap; gap:4px 12px; margin:12px 0 0; font-size:12.5px; color:var(--muted); }
-  .key span { display:inline-flex; align-items:center; }
-  .planner { margin:16px 0 12px; }
-  .planner label { display:block; font-size:14px; font-weight:650; margin-bottom:6px; }
-  .planner select { width:100%; min-height:46px; padding:10px; font:inherit; color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:10px; }
-  .planner-note { margin:7px 0 0; font-size:13px; color:var(--muted); }
-  select:focus-visible { outline:3px solid var(--brand-2); outline-offset:2px; }
-  .intro h1 { font-size:26px; line-height:1.15; letter-spacing:-.02em; margin:4px 0 6px; }
-  .lede { color:var(--muted); margin:0; font-size:15.5px; }
-  .search { position:relative; margin:16px 0 10px; }
-  .search svg { position:absolute; left:14px; top:50%; width:20px; height:20px; transform:translateY(-50%); color:var(--faint); pointer-events:none; }
-  .search input { width:100%; font:inherit; font-size:17px; color:var(--ink); padding:13px 14px 13px 44px; border:1px solid var(--line); border-radius:14px; background:var(--card); box-shadow:var(--shadow); -webkit-appearance:none; appearance:none; }
+  /* The list, answer first: the intro, one row of controls (the day, low risk only) and a line under
+     it, then the saved spots, then all the spots with their sort and their kinds. */
+  .intro { padding:4px 0 0; }
+  .intro h1 { font-size:26px; line-height:1.15; letter-spacing:-.01em; margin:0 0 4px; text-wrap:balance; }
+  .lede { color:var(--muted); margin:0; font-size:16px; }
+  .search { position:relative; margin:12px 0 0; }
+  .search svg { position:absolute; left:12px; top:50%; width:18px; height:18px; transform:translateY(-50%); color:var(--faint); pointer-events:none; }
+  .search input { width:100%; font:inherit; font-size:16px; color:var(--ink); padding:11px 12px 11px 38px; border:1px solid var(--line); border-radius:var(--radius); background:var(--field); -webkit-appearance:none; appearance:none; }
   .search input::placeholder { color:var(--faint); }
-  .chips-row { display:flex; gap:8px; overflow-x:auto; padding:2px 0 4px; scrollbar-width:none; }
+  .toolbar { display:flex; align-items:center; gap:8px; margin:8px 0 0; }
+  .toolbar select, .compare-fields select { display:block; width:100%; min-height:44px; padding:9px 36px 9px 12px; font:inherit; font-size:16px; color:var(--ink); background:var(--field) var(--arrow) no-repeat right 12px center;
+                    border:1px solid var(--line); border-radius:var(--radius); -webkit-appearance:none; appearance:none; }
+  .toolbar select { flex:1 1 0; min-width:0; font-weight:600; }
+  .toolbar .chip-btn { border-radius:var(--radius); font-size:15px; padding:6px 12px; }   /* the select's corner, beside it */
+  .planner-note { margin:8px 0 0; font-size:13.5px; color:var(--muted); }
+  .best-day b { color:var(--k-low); }
+  .save-hint { display:flex; align-items:center; gap:8px; margin:16px 0 0; font-size:14px; color:var(--muted); }
+  /* The padding is room for a focus ring, which the scrolling row would otherwise clip; the margin
+     takes it back, so the chips line up with the rows. */
+  .chips-row { display:flex; gap:6px; overflow-x:auto; padding:4px; margin:-4px -4px 4px; scrollbar-width:none; }
   .chips-row::-webkit-scrollbar { display:none; }
-  .chip-btn { flex:none; font-size:16px; font-weight:600; padding:7px 12px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+  .chip-btn { min-height:44px; flex:none; font-size:14px; font-weight:600; padding:6px 10px; border-radius:6px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
   .chip-btn[aria-pressed=true] { background:var(--brand); border-color:var(--brand); color:#fff; }
-  .group { margin:22px 0 0; }
+  .group { margin:24px 0 0; }
   .group-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 12px; margin:0 0 8px; }
-  .group-head { font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:750; margin:0; }
+  .group-head { font-size:19px; line-height:1.2; margin:0; }
   .group > .group-head { margin:0 0 8px; }
-  .sortseg { display:inline-flex; gap:2px; padding:3px; border-radius:11px; background:var(--seg); }
-  .sortseg button { font-size:16px; font-weight:600; padding:6px 11px; border:0; border-radius:8px; background:transparent; color:var(--muted); cursor:pointer; }
-  .sortseg button[aria-pressed=true] { background:var(--card); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.14); }
-  .overview { font-size:14px; color:var(--muted); margin:0 0 10px; }
-  ul.spots { list-style:none; margin:0; padding:0; background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+  .sortseg { display:inline-flex; border:1px solid var(--line); border-radius:6px; background:var(--card); overflow:hidden; }
+  .sortseg button { min-height:44px; font-size:14px; font-weight:600; padding:6px 10px; border:0; border-left:1px solid var(--line); background:transparent; color:var(--muted); cursor:pointer; }
+  .sortseg button:first-child { border-left:0; }
+  .sortseg button:focus-visible { outline-offset:-3px; }   /* inside: the segment clips what is outside */
+  .sortseg button[aria-pressed=true] { background:var(--active); color:var(--ink); }
+  .overview { font-size:14px; color:var(--muted); margin:0 0 8px; }
+  ul.spots { list-style:none; margin:0; padding:0; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; }
   ul.spots li + li { border-top:1px solid var(--line); }
-  a.row { display:flex; align-items:center; gap:12px; min-height:64px; padding:12px 14px 12px 16px; color:inherit; text-decoration:none; }
+  a.row { display:flex; align-items:center; gap:12px; min-height:60px; padding:11px 14px; color:inherit; text-decoration:none; }
+  a.row:focus-visible { outline-offset:-3px; }
   a.row:hover { background:var(--hover); } a.row:active { background:var(--active); }
   .row-main { flex:1; min-width:0; display:flex; flex-direction:column; }
-  .nm { font-weight:650; font-size:16px; line-height:1.3; overflow-wrap:anywhere; }
-  .hl { font-size:14px; font-weight:650; line-height:1.35; margin-top:1px; }
+  .nm { font-weight:600; font-size:16px; line-height:1.3; overflow-wrap:anywhere; }
+  .hl { font-size:14px; font-weight:600; line-height:1.35; margin-top:1px; }
   .hl.low { color:var(--k-low); } .hl.moderate { color:var(--k-moderate); } .hl.high { color:var(--k-high); } .hl.veryhigh { color:var(--k-veryhigh); } .hl.na { color:var(--muted); }
   .hl.clear { color:var(--k-clear); }
   .k { font-size:13px; color:var(--muted); line-height:1.35; }
   .week { flex:none; display:flex; gap:4px; }
   .wk { display:flex; flex-direction:column; align-items:center; gap:3px; }
-  .wk i { display:block; width:11px; height:24px; border-radius:4px; background:var(--unknown); }
+  .wk i { display:block; width:10px; height:22px; background:var(--unknown); }   /* square, as the day strip's bars */
   .wk i.low { background:var(--low); } .wk i.moderate { background:var(--moderate); } .wk i.high { background:var(--high); } .wk i.veryhigh { background:var(--veryhigh); }
   .wk b { font-size:10.5px; font-weight:600; line-height:1; color:var(--faint); }
   .wk.first b { color:var(--ink); }
   /* Where nothing upstream can spill, the week shows the rain instead: bars by the 48-hour total. */
-  .week.rain .wk { justify-content:flex-end; height:38px; }
+  .week.rain .wk { justify-content:flex-end; height:36px; }
   .week.rain .wk i { height:var(--h, 3px); min-height:3px; background:var(--rain); opacity:.85; }
   .empty { padding:16px; color:var(--muted); }
   .count { font-size:13.5px; color:var(--muted); margin:8px 2px 0; }
 
   /* One spot */
-  .back { display:inline-flex; align-items:center; gap:6px; font-size:16px; font-weight:600; text-decoration:none; padding:6px 0; }
-  .title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin:6px 0 6px; }
-  h1.spot-name { font-size:25px; line-height:1.2; letter-spacing:-.02em; margin:0; overflow-wrap:anywhere; }
-  .save { flex:none; margin-top:2px; font-size:16px; font-weight:650; padding:7px 14px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; box-shadow:var(--shadow); }
-  .save[aria-pressed=true] { background:var(--save-bg); border-color:var(--save-line); color:var(--save-ink); }
-  .chips { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 4px; }
-  .chip { font-size:13px; color:var(--muted); background:var(--card); border:1px solid var(--line); border-radius:999px; padding:2px 10px; }
-  .hero { border-radius:var(--radius); padding:18px 16px 16px; margin:14px 0 12px; background:var(--t-na); box-shadow:var(--shadow); }
-  .hero.low { background:var(--t-low); } .hero.moderate { background:var(--t-moderate); } .hero.high { background:var(--t-high); } .hero.veryhigh { background:var(--t-veryhigh); } .hero.clear { background:var(--t-clear); }
-  .kicker { font-size:12px; font-weight:750; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
-  .headline { font-size:28px; line-height:1.15; font-weight:800; letter-spacing:-.02em; margin:4px 0 8px; color:var(--k-na); }
+  .back { min-height:44px; display:inline-flex; align-items:center; gap:2px; font-size:15px; font-weight:600; text-decoration:none; padding:6px 0; }
+  .back::before { content:""; width:8px; height:8px; margin:0 6px 0 2px; border-left:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(45deg); }
+  .title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin:6px 0 8px; }
+  .spot-name { font-size:28px; line-height:1.15; letter-spacing:-.01em; margin:0; overflow-wrap:anywhere; }   /* also the h2 a spot's built page shows before the script runs */
+  .save { min-height:44px; flex:none; display:inline-flex; align-items:center; gap:6px; margin-top:2px; font-size:15px; font-weight:600; padding:8px 12px; border-radius:var(--radius); border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+  .save[aria-pressed=true] { background:var(--brand-tint); border-color:var(--brand); color:var(--link); }
+  .save[aria-pressed=true] .ic { fill:currentColor; }
+  .chips { display:flex; flex-wrap:wrap; gap:2px 0; margin:0 0 4px; color:var(--muted); }
+  .chip { font-size:14px; }
+  .chip + .chip::before { content:" · "; white-space:pre; padding:0 6px; }
+  /* Place names are editorial; the decision itself uses sturdy sans-serif type and a level rule. */
+  .hero { background:var(--card); border:1px solid var(--line); border-left:6px solid var(--unknown); border-radius:var(--radius); padding:18px 16px 16px; margin:14px 0 12px; }
+  .hero.low { border-left-color:var(--low); } .hero.moderate { border-left-color:var(--moderate); } .hero.high { border-left-color:var(--high); } .hero.veryhigh { border-left-color:var(--veryhigh); } .hero.clear { border-left-color:var(--clear); }
+  .kicker { font-size:14px; font-weight:600; color:var(--ink); }
+  .headline { font:700 32px/1.12 var(--font-text); letter-spacing:-.01em; margin:4px 0 8px; color:var(--k-na); }
   .hero.low .headline { color:var(--k-low); } .hero.moderate .headline { color:var(--k-moderate); } .hero.high .headline { color:var(--k-high); } .hero.veryhigh .headline { color:var(--k-veryhigh); } .hero.clear .headline { color:var(--k-clear); }
-  .head-why { font-size:18px; line-height:1.3; font-weight:700; margin:-4px 0 12px; }
+  .head-why { font-size:16px; line-height:1.4; font-weight:400; margin:0 0 8px; }
+  .head-why:empty { display:none; }
   .hero .headline + .days { margin-top:12px; }
   /* What the level rests on: sewage spills, water quality and the EA's rating, a row each. */
-  .factors { margin:14px 0 0; }
-  .factor { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:2px 12px; align-items:baseline; padding:11px 0 10px; border-top:1px solid var(--hair); }
-  .f-l { font-size:12px; font-weight:750; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
-  .f-v { font-size:16px; font-weight:800; text-align:right; color:var(--k-na); }
+  .factors { margin:12px 0 0; }
+  .factor { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:2px 12px; align-items:baseline; padding:12px 0; border-top:1px solid var(--hair); }
+  .f-l { font-size:14px; font-weight:600; color:var(--muted); }
+  .f-v { font-size:15px; font-weight:700; text-align:right; color:var(--k-na); }
   .f-v.low { color:var(--k-low); } .f-v.moderate { color:var(--k-moderate); } .f-v.high { color:var(--k-high); } .f-v.veryhigh { color:var(--k-veryhigh); } .f-v.clear { color:var(--k-clear); }
   .f-d { grid-column:1 / -1; font-size:15px; line-height:1.45; margin-top:2px; }
-  .days { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:5px; margin:0 0 6px; }
-  .day { display:block; width:100%; min-width:0; margin:0; font:inherit; line-height:1.5; border:0; border-top:5px solid var(--unknown); border-radius:10px; background:var(--card); color:var(--k-na); padding:6px 0 7px; text-align:center; }
+  /* The five days as one strip: a bordered box of five cells, each with its level as a bar at the top. */
+  .days { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); margin:0 0 8px; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; background:var(--card); }
+  .day { display:block; width:100%; min-width:0; margin:0; font:inherit; line-height:1.5; border:0; border-left:1px solid var(--line); border-top:4px solid var(--unknown); border-radius:0; background:transparent; color:var(--k-na); min-height:76px; padding:9px 2px; text-align:center; -webkit-appearance:none; appearance:none; }
+  .day:first-child { border-left:0; }
   .day .d, .day .l, .day .r { display:block; }
-  .day .d, .day .r { font-size:12px; color:var(--muted); } .day .l { font-size:12px; font-weight:750; line-height:1.15; margin:2px 0; letter-spacing:-.01em; }
-  .day.low { border-color:var(--low); color:var(--k-low); } .day.moderate { border-color:var(--moderate); color:var(--k-moderate); }
-  .day.high { border-color:var(--high); color:var(--k-high); } .day.veryhigh { border-color:var(--veryhigh); color:var(--k-veryhigh); }
-  /* A day you can pick: ringed in its level's colour while it is open. */
+  .day .d, .day .r { font-size:13px; color:var(--ink); } .day .l { display:flex; align-items:center; justify-content:center; min-height:2.3em; font-size:13px; font-weight:700; line-height:1.15; margin:2px 0; letter-spacing:-.01em; }
+  .day.low { border-top-color:var(--low); color:var(--k-low); } .day.moderate { border-top-color:var(--moderate); color:var(--k-moderate); }
+  .day.high { border-top-color:var(--high); color:var(--k-high); } .day.veryhigh { border-top-color:var(--veryhigh); color:var(--k-veryhigh); }
+  /* A day you can pick: ringed inside while it is open. */
   button.day { cursor:pointer; -webkit-tap-highlight-color:transparent; }
   @media (hover: hover) { button.day:hover { background:var(--hover); } }   /* a phone keeps :hover after a tap */
-  button.day:focus-visible { border-radius:10px; }
-  button.day[aria-pressed=true] { box-shadow:0 0 0 2.5px currentColor; }
-  button.day[aria-pressed=true] .d { color:inherit; font-weight:750; }
-  .strip-note { font-size:13px; color:var(--muted); margin:0; }
+  button.day:focus-visible { outline-offset:-3px; border-radius:0; }
+  button.day[aria-pressed=true] { background:var(--active); box-shadow:inset 0 0 0 2px currentColor; }
+  button.day[aria-pressed=true] .d { color:inherit; font-weight:600; }
+  .strip-note { font-size:14px; color:var(--muted); margin:0; }
   /* One day, picked in the strip, in the place of the summary of today and tomorrow. */
-  .dd-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:14px 0 0; }
-  .dd-t { font-size:17px; line-height:1.3; font-weight:750; margin:0; }
-  .dd-l { font-size:18px; line-height:1.3; font-weight:800; margin:2px 0 0; color:var(--k-na); }
+  .dd-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:12px 0 0; }
+  .dd-t { font-size:18px; line-height:1.3; margin:0; }
+  .dd-l { font-size:17px; line-height:1.3; font-weight:700; margin:4px 0 0; color:var(--k-na); }
   .dd-l.low { color:var(--k-low); } .dd-l.moderate { color:var(--k-moderate); } .dd-l.high { color:var(--k-high); } .dd-l.veryhigh { color:var(--k-veryhigh); } .dd-l.clear { color:var(--k-clear); }
-  .dd-l + .factors { margin-top:10px; }
+  .dd-l + .factors { margin-top:8px; }
   ul.dd-ovs { list-style:none; margin:8px 0 0; padding:0; font-size:14px; line-height:1.4; }
   ul.dd-ovs li { display:flex; gap:8px; margin-top:4px; } ul.dd-ovs .sdot { width:10px; height:10px; margin-top:5px; }
-  .issued { font-size:13px; color:var(--muted); margin:10px 0 0; }
+  /* The hero's one line of context: when the forecast was issued, then today's weather at the spot. */
+  .issued { font-size:14px; line-height:1.45; color:var(--muted); margin:0 0 12px; }
   .check { font-size:14px; line-height:1.4; margin:8px 0 0; padding-top:8px; border-top:1px solid var(--hair); }
-  .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; margin:12px 0; }
-  .card-h { font-size:17px; font-weight:750; margin:0 0 2px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin:12px 0; }
+  .card-h { font-family:var(--font-text); font-size:18px; line-height:1.25; margin:0 0 2px; }
   .sub { color:var(--muted); font-size:13.5px; margin:0 0 10px; }
   .now-row { display:flex; align-items:center; gap:14px; }
-  .now-row .big { font-size:40px; line-height:1; font-weight:800; color:var(--ink); min-width:34px; text-align:center; }
-  .now-row .big.hot { color:var(--b-veryhigh); }
-  .now-row .big.level { font-size:34px; min-width:auto; } .now-row .big small { font-size:16px; font-weight:600; color:var(--muted); margin-left:3px; }
-  .best-day b { color:var(--k-low); }
+  .now-row .big { font:600 40px/1 var(--font-text); color:var(--ink); min-width:34px; text-align:center; font-variant-numeric:tabular-nums; }
+  .now-row .big.hot { color:var(--k-veryhigh); }
+  .now-row .big.level { font-size:34px; min-width:auto; } .now-row .big small { font:600 15px var(--font-text); color:var(--muted); margin-left:3px; }
   /* The swim log on the Saved page: a row per swim, newest first. */
   ul.swims { list-style:none; margin:0; padding:0; }
   ul.swims li { display:flex; gap:10px; align-items:baseline; padding:8px 0; border-top:1px solid var(--line); }
@@ -251,87 +287,107 @@
   .swim-when { flex:none; width:96px; font-size:13px; color:var(--muted); } .swim-what { flex:1; min-width:0; overflow-wrap:anywhere; }
   ul.swims .badge { vertical-align:1px; margin-left:4px; }
   /* A phone's spot page: where the spot is, at a glance, under its name. */
-  .loc { position:relative; height:140px; margin:0 0 12px; border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); background:var(--map-bg); }
+  .loc { position:relative; height:140px; margin:0 0 12px; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; background:var(--map-bg); }
   #loc-map { position:absolute; inset:0; z-index:0; background:var(--map-bg); cursor:pointer; }
-  .loc-open { position:absolute; top:10px; right:10px; z-index:1; font-size:16px; font-weight:650; line-height:1.2; padding:7px 13px; border:0; border-radius:999px;
-              background:var(--glass); color:var(--ink); box-shadow:0 1px 5px rgba(0,0,0,.25); cursor:pointer; }
-  .loc .leaflet-control-attribution { font-size:10px; }
-  #spot-map { position:relative; height:260px; border-radius:12px; overflow:hidden; margin:8px 0 8px; }
+  .loc-open { min-height:44px; position:absolute; top:10px; right:10px; z-index:1; font-size:14px; font-weight:600; line-height:1.2; padding:7px 11px; border:0; border-radius:6px;
+              background:var(--float); color:var(--ink); box-shadow:var(--lift); cursor:pointer; }
+  #spot-map { position:relative; height:260px; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; margin:8px 0 8px; }
   ul.ovs { list-style:none; margin:4px 0 0; padding:0; }
   ul.ovs li { display:flex; gap:10px; padding:10px 0; border-top:1px solid var(--line); }
   ul.ovs li:first-child { border-top:0; }
   #contrib:not(.all) li.extra { display:none; }
   .sdot { flex:none; width:12px; height:12px; border-radius:50%; margin-top:5px; background:var(--unknown); }
   .sdot.s1 { background:var(--veryhigh); } .sdot.s0 { background:#5b6470; }
-  .ov-name { font-weight:650; font-size:15px; overflow-wrap:anywhere; }
+  .ov-name { font-weight:600; font-size:15px; overflow-wrap:anywhere; }
   .ov-meta { font-size:13px; color:var(--muted); }
   .ov-stats { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:13.5px; margin-top:2px; }
-  .btn { display:inline-flex; align-items:center; justify-content:center; font-size:16px; font-weight:650; padding:10px 16px; border-radius:12px; border:1px solid var(--line); background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; font-size:15px; font-weight:600; padding:8px 14px; border-radius:var(--radius); border:1px solid var(--line); background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+  .btn:hover { background:var(--hover); }
   .btn.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
+  .btn.primary:hover { background:var(--brand-deep); border-color:var(--brand-deep); }
   .btn[hidden] { display:none; }   /* display:inline-flex would otherwise show it */
-  .btn.quiet { margin-top:6px; padding:8px 14px; font-size:16px; }
+  .btn.quiet { margin-top:6px; min-height:44px; padding:6px 12px; font-size:14px; }
   .actions { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 6px; }
-  details.fold > summary { cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; }
-  details.fold > summary::-webkit-details-marker { display:none; }
-  details.fold > summary::after { content:"+"; font-size:22px; line-height:1; color:var(--muted); }
-  details.fold[open] > summary::after { content:"–"; }
-  details.fold[open] > summary { margin-bottom:10px; }
-  details.more > summary { cursor:pointer; color:var(--link); font-size:15px; margin-top:8px; font-weight:600; }
-  details.more[open] > summary { margin-bottom:6px; }
+  /* Folds: a chevron, not a text marker, and a 44 px target. In a card the target reaches into the
+     card's padding, so a closed fold is no taller for it. */
+  details.fold > summary, details.more > summary, details.comparison > summary { cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; }
+  details.fold > summary::-webkit-details-marker, details.more > summary::-webkit-details-marker, details.comparison > summary::-webkit-details-marker { display:none; }
+  details.fold > summary::after, details.more > summary::after, details.comparison > summary::after { content:""; flex:none; width:8px; height:8px; margin-right:5px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); transform:rotate(45deg); transition:transform .15s; }
+  details[open].fold > summary::after, details[open].more > summary::after, details[open].comparison > summary::after { transform:rotate(-135deg); }
+  details.card > summary { margin:-10px 0; }
+  details.card[open] > summary { margin-bottom:0; }
+  details.more > summary { justify-content:flex-start; gap:8px; color:var(--link); font-size:15px; font-weight:600; }
+  details.more > summary::after { border-color:var(--link); }
   table { width:100%; border-collapse:collapse; font-size:14px; }
   th, td { text-align:left; padding:7px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
   tr:last-child td { border-bottom:0; }
   th { color:var(--muted); font-weight:600; font-size:13px; }
   td.num, th.num { text-align:right; font-variant-numeric:tabular-nums; }
-  .badge { display:inline-block; padding:2px 9px; border-radius:999px; color:#fff; font-size:12.5px; font-weight:650; white-space:nowrap; }
-  .b-low{background:var(--b-low)} .b-moderate{background:var(--b-moderate);color:#3d2e00} .b-high{background:var(--b-high)}
-  .b-veryhigh{background:var(--b-veryhigh)} .b-na{background:var(--b-na)}
+  .badge { display:inline-block; padding:1px 8px; border-radius:6px; color:#fff; font-size:12.5px; font-weight:600; white-space:nowrap; }
+  .b-low{background:var(--k-low)} .b-moderate{background:var(--moderate);color:#2b2200} .b-high{background:var(--k-high)}
+  .b-veryhigh{background:var(--k-veryhigh)} .b-na{background:var(--k-na)}
+  @media (prefers-color-scheme: dark) { .b-low, .b-high, .b-veryhigh, .b-na { color:var(--bg); } }
   dl.tech { display:grid; grid-template-columns:max-content 1fr; gap:3px 12px; margin:6px 0 0; font-size:13px; }
   dl.tech dt { color:var(--muted); } dl.tech dd { margin:0; overflow-wrap:anywhere; }
-  .notice { border:1px solid var(--high); background:var(--notice-bg); border-radius:12px; padding:10px 14px; margin:12px 0; font-size:14.5px; }
+  .notice { border:1px solid var(--notice-line); background:var(--notice-bg); border-radius:var(--radius); padding:10px 14px; margin:12px 0; font-size:14.5px; }
   .notice.quiet { border-color:var(--line); background:var(--card); }
 
-  /* Saved spots: a card per spot, tinted by its level, the whole card opening the spot. */
-  .page-h { font-size:26px; line-height:1.15; letter-spacing:-.02em; margin:6px 0 6px; }
+  /* Saved spots: a card per spot, its level as the rule down its left, the whole card opening the spot. */
+  .page-h { font-size:28px; line-height:1.15; letter-spacing:-.01em; margin:6px 0 6px; }
   ul.scards { list-style:none; margin:14px 0 0; padding:0; display:grid; gap:12px; }
-  .scard { position:relative; border-radius:var(--radius); padding:14px 14px 12px 16px; background:var(--t-na); box-shadow:var(--shadow); }
-  .scard.low { background:var(--t-low); } .scard.moderate { background:var(--t-moderate); } .scard.high { background:var(--t-high); } .scard.veryhigh { background:var(--t-veryhigh); } .scard.clear { background:var(--t-clear); }
+  .scard { position:relative; border:1px solid var(--line); border-left:4px solid var(--unknown); border-radius:var(--radius); padding:14px 14px 12px 14px; background:var(--card); }
+  .scard.low { border-left-color:var(--low); } .scard.moderate { border-left-color:var(--moderate); } .scard.high { border-left-color:var(--high); } .scard.veryhigh { border-left-color:var(--veryhigh); } .scard.clear { border-left-color:var(--clear); }
   .scard-top { display:flex; align-items:flex-start; gap:10px; }
   .scard-link { flex:1; min-width:0; display:flex; flex-direction:column; color:inherit; text-decoration:none; }
   .scard-link::after { content:""; position:absolute; inset:0; border-radius:var(--radius); }
-  .scard-link:focus-visible { outline:none; } .scard-link:focus-visible::after { outline:3px solid var(--brand-2); outline-offset:2px; }
+  .scard-link:focus-visible { outline:none; } .scard-link:focus-visible::after { outline:2px solid var(--focus); outline-offset:2px; }
   .scard-link .nm { font-size:17px; }
-  .unsave { position:relative; z-index:1; flex:none; width:44px; height:44px; margin:-6px -6px 0 0; border:0; border-radius:50%; background:transparent; color:var(--star); font-size:24px; line-height:1; cursor:pointer; }
-  .unsave:hover { background:var(--glass); }
-  .scard-hl { font-size:20px; line-height:1.2; font-weight:800; letter-spacing:-.01em; margin:6px 0 10px; color:var(--k-na); }
+  .unsave { position:relative; z-index:1; flex:none; display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; margin:-6px -6px 0 0; border:0; border-radius:50%; background:transparent; color:var(--link); cursor:pointer; }
+  .unsave .ic { width:20px; height:20px; fill:currentColor; }
+  .unsave:hover { background:var(--hover); }
+  .scard-hl { font:700 21px/1.25 var(--font-text); margin:6px 0 10px; color:var(--k-na); }
   .scard.low .scard-hl { color:var(--k-low); } .scard.moderate .scard-hl { color:var(--k-moderate); } .scard.high .scard-hl { color:var(--k-high); } .scard.veryhigh .scard-hl { color:var(--k-veryhigh); } .scard.clear .scard-hl { color:var(--k-clear); }
   .scard .days { position:relative; z-index:1; margin:0 0 10px; }   /* above the card's link: a day opens the spot on it */
   .scard-now { display:flex; gap:8px; font-size:14px; line-height:1.4; margin:0; }
   .scard-now .sdot { margin-top:4px; }
-  .scard.removed { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; padding:12px 16px; background:transparent; box-shadow:none; border:1px dashed var(--line); color:var(--muted); font-size:15px; }
-  .linkbtn { font-size:16px; font-weight:650; color:var(--link); background:none; border:0; padding:6px 0; cursor:pointer; text-decoration:underline; }
+  .scard.removed { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; padding:12px 16px; background:transparent; border:1px dashed var(--line); color:var(--muted); font-size:15px; }
+  .linkbtn { font-size:15px; font-weight:600; color:var(--link); background:none; border:0; padding:6px 0; cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
+  .linkbtn:not(.small) { display:inline-flex; align-items:center; min-height:44px; }   /* on its own: a 44 px target */
+  .linkbtn[hidden] { display:none; }
   .linkbtn.small { font-size:inherit; padding:0; }   /* inside a sentence */
   .empty-saved { text-align:center; padding:26px 18px 22px; }
-  .empty-saved .big-star { font-size:40px; line-height:1; color:#c9a227; margin-bottom:8px; }
+  .empty-saved .ic { width:36px; height:36px; color:var(--faint); margin-bottom:8px; }
   ul.inc-list { margin:6px 0 12px; padding-left:20px; }
+  .compare-fields { display:grid; gap:10px; margin:14px 0; }
+  .compare-fields label { font-size:14px; font-weight:600; }
+  .compare-fields select { margin-top:4px; }
+  .compare-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); }
+  .compare-table { width:100%; min-width:540px; border-collapse:collapse; font-size:14px; }
+  .compare-table caption { text-align:left; padding:10px; color:var(--muted); }
+  .compare-table th, .compare-table td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; min-width:150px; }
+  .compare-table th { background:var(--hover); }
+  .compare-table th a { display:block; min-height:44px; padding:4px 0; }
+  .compare-table th[scope=row] { min-width:100px; }
+  .comparison > summary { font:600 18px/1.25 var(--font-text); padding:2px 0; }
 
   .about { margin-top:28px; font-size:15px; }
-  .about h2 { font-size:17px; margin:0 0 6px; }
-  .about dl { margin:6px 0 0; } .about dt { font-weight:650; margin-top:10px; } .about dd { margin:2px 0 0; color:var(--muted); font-size:14px; }
+  .about h2 { font-size:19px; line-height:1.2; margin:0 0 8px; }   /* serif (h2), the size of the list's group headings */
+  .about dl { margin:6px 0 0; } .about dt { font-weight:600; margin-top:10px; } .about dd { margin:2px 0 0; color:var(--muted); font-size:14px; }
   .about dl.levels dt { display:flex; align-items:center; gap:8px; }
-  footer.fine { margin-top:20px; padding-top:14px; border-top:1px solid var(--line); font-size:12.5px; color:var(--muted); }
+  footer.fine { margin-top:20px; padding-top:14px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); }
   footer.fine p { margin:0 0 8px; }
+  footer.fine a { color:var(--muted); } footer.fine a:hover { color:var(--link); }
   /* Keyboards: the first Tab shows a link past the header and the map to the forecasts. */
-  .skip { position:fixed; top:-100px; left:16px; z-index:3000; background:var(--card); padding:12px 16px; border-radius:12px; }
+  .skip { position:fixed; top:-100px; left:16px; z-index:3000; background:var(--card); border:1px solid var(--line); padding:12px 16px; border-radius:var(--radius); }
   .skip:focus { top:8px; }
-  #panel:focus { outline:none; }
+  #panel:focus { outline:none; border-radius:0; }
   .bottom-nav { display:none; }
 
   /* Desktop: the map fills the left, the list or the spot scrolls on the right. */
   @media (min-width: 801px) {
     html, body { height:100%; }
     body { display:flex; flex-direction:column; }
-    .top { position:static; padding:10px 18px; }
+    .top { position:static; padding:10px 20px; }
     #app { flex:1; min-height:0; display:grid; grid-template-columns:minmax(0, 1fr) 460px; }
     #map-wrap { min-height:0; }
     #panel { overflow:auto; padding:20px 22px 32px; border-left:1px solid var(--line); }
@@ -340,7 +396,7 @@
   }
   /* Phones: the list first, the map one tap away; a spot's page carries its own small map. */
   @media (max-width: 800px) {
-    :root { --nav-h:calc(65px + env(safe-area-inset-bottom)); }
+    :root { --nav-h:calc(64px + env(safe-area-inset-bottom)); }
     .desk-only { display:none !important; }
     #map-wrap { display:none; }
     body.map-mode #map-wrap { display:block; position:fixed; left:0; right:0; bottom:var(--nav-h); top:var(--header-h); z-index:1000; }
@@ -353,10 +409,10 @@
     .bottom-nav { position:fixed; z-index:1200; left:0; right:0; bottom:0; height:var(--nav-h); display:grid; grid-template-columns:repeat(3, 1fr); gap:6px;
       padding:8px max(16px, env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
       background:var(--card); border-top:1px solid var(--line); }
-    .bottom-nav a, .bottom-nav button { display:flex; align-items:center; justify-content:center; gap:7px; min-height:48px; border:0; border-radius:12px;
+    .bottom-nav a, .bottom-nav button { display:flex; align-items:center; justify-content:center; gap:7px; min-height:48px; border:0; border-radius:var(--radius);
       font:inherit; font-size:14px; font-weight:600; background:none; color:var(--muted); text-decoration:none; cursor:pointer; }
-    .bottom-nav svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-    .bottom-nav [aria-current=page], .bottom-nav [aria-pressed=true] { background:var(--bg); color:var(--link); }
+    .bottom-nav svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; }
+    .bottom-nav [aria-current=page], .bottom-nav [aria-pressed=true] { background:var(--brand-tint); color:var(--link); }
     .bottom-nav .n { min-width:20px; padding:0 6px; border-radius:999px; background:var(--brand); color:#fff; font-size:12.5px; line-height:20px; text-align:center; }
     .bottom-nav .n[hidden] { display:none; }
     #spot-map .map-legend { display:none; }
@@ -365,21 +421,22 @@
   }
   /* The smallest phones (320-360 px): nothing may be wider than the screen. */
   @media (max-width: 360px) {
-    .brand { font-size:18px; } .top nav a, .hbtn { padding:7px 10px; }
-    .days { gap:3px; } .day .l { font-size:11px; letter-spacing:-.03em; } .day .d, .day .r { font-size:11px; }
-    .headline { font-size:24px; } .wk i { width:9px; } .week { gap:3px; }
+    .brand { font-size:19px; } .top nav a, .hbtn { padding:7px 8px; }
+    .day .l { font-size:12px; letter-spacing:-.01em; } .day .d, .day .r { font-size:12px; }
+    .headline { font-size:28px; } .spot-name, .intro h1, .page-h { font-size:24px; } .wk i { width:9px; } .week { gap:3px; }
     table { font-size:12.5px; } th, td { padding:5px 2px; }
   }
   /* 320 px: "Moderate" does not fit a day's cell, which shows "Mod." (screen readers still get the word). */
   @media (max-width: 340px) {
     .day .l[data-short] { font-size:0; } .day .l[data-short]::after { content:attr(data-short); font-size:11px; }
+    .toolbar .chip-btn .dot { display:none; }   /* room for "Today and tomorrow" at 16 px, which iOS needs not to zoom */
   }
 </style>
 </head>
 <body class="view-list">
 <a class="skip" href="#panel">Skip to forecasts</a>
 <header class="top" id="top">
-  <a class="brand" href="./"><img src="icons/icon.svg" alt="" width="30" height="30">SwimSignal</a>
+  <a class="brand" href="./"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#1a6871"/><path d="M430-20C330 110 470 230 300 290S110 380 190 540" fill="none" stroke="#5CC2B5" stroke-width="70" stroke-linecap="round"/><circle cx="318" cy="138" r="38" fill="#F08A4B"/><circle cx="165" cy="358" r="46" fill="none" stroke="#fff" stroke-width="22"/></svg>SwimSignal</a>
   <!-- A phone shows none of these: Saved and Map are in the bar at the bottom, and About is linked from the list's intro. -->
   <nav aria-label="Site">
     <a href="saved/" class="hbtn" id="savedbtn" aria-label="Saved spots">Saved<span class="n" id="saved-n" hidden></span></a>
@@ -557,7 +614,7 @@ const cls = l => ORDER[l] === undefined ? 'b-na' : 'b-' + l.replace(' ', '');
 // 'clear': no monitored overflow upstream, so nothing to forecast. Its own calm teal, not the grey
 // of "no level", which is for a spot the forecast cannot cover at all.
 const tone = l => l === NO_OVERFLOWS ? 'clear' : ORDER[l] === undefined ? 'na' : l.replace(' ', '');
-const colour = l => ({low:'#2e9e5b', moderate:'#d8a400', high:'#e06a1b', 'very high':'#c81e1e', [NO_OVERFLOWS]:'#4fb3a6'})[l] || '#8a939e';
+const colour = l => ({low:'#2f8f58', moderate:'#d49a06', high:'#d6621a', 'very high':'#bf2a2a', [NO_OVERFLOWS]:'#4aa39a'})[l] || '#98a2aa';   // --low, --moderate, --high, --veryhigh, --clear, --unknown
 const DARK = matchMedia('(prefers-color-scheme: dark)');
 const RING = () => DARK.matches ? '#7fd3c7' : '#0f5a61';   // the ring round the open spot, on light or dimmed tiles
 const SCROLL = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
@@ -565,7 +622,7 @@ const dateLabel = iso => { const t = serverToday ?? localISO(new Date());
   if (iso === t) return 'Today'; if (iso === addDays(t, 1)) return 'Tomorrow';
   return new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'}); };
 const statusText = s => ({1:'discharging', 0:'not discharging', '-1':'monitor offline', '-2':'no live feed'})[s] ?? '?';
-const colourFor = s => s === 1 ? '#c81e1e' : s === 0 ? '#5b6470' : '#b3bac2';
+const colourFor = s => s === 1 ? '#bf2a2a' : s === 0 ? '#5b6470' : '#b3bac2';
 const dayWord = iso => iso === today() ? 'today' : iso === addDays(today(), 1) ? 'tomorrow'
   : 'on ' + new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'long'});
 const initial = iso => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'narrow'});
@@ -594,7 +651,7 @@ window.addEventListener('storage', e => {
   let ids = []; try { ids = JSON.parse(e.newValue || '[]'); } catch (err) { return; }
   SAVED.clear(); ids.forEach(id => SAVED.add(id)); savedBadge();
   const b = document.getElementById('save');
-  if (b && current) { const on = SAVED.has(current.id); b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '★ Saved' : '☆ Save'; }
+  if (b && current) { const on = SAVED.has(current.id); b.setAttribute('aria-pressed', String(on)); b.innerHTML = saveLabel(on); }
   if (DATA && document.body.classList.contains('view-saved')) renderSaved();
 });
 function savedBadge() {
@@ -673,11 +730,11 @@ function alertsCard() {
   const why = 'A notification when one of your saved spots turns high or very high, at most once a day for each. An alert can be late or not come at all, so no alert does not mean the water is clean. '
     + 'Turning alerts on sends your browser\'s push address and the list of your saved spots, and nothing else about you, to SwimSignal\'s alert service. Alerts reach you through your browser maker\'s push service (Google, Apple, Mozilla or Microsoft), encrypted so it cannot read them. '
     + 'You can turn them off here at any time, which deletes what the alert service holds. <a href="privacy.html">Privacy notice</a>.';
-  const body = canPush() && offlineOff() ? `<p class="small" style="margin:0">Alerts need the offline copy, which is turned off in this browser. <a href="#your-data">Turn it back on</a> to use them.</p>`
+  const body = canPush() && offlineOff() ? `<p class="small tight">Alerts need the offline copy, which is turned off in this browser. <a href="#your-data">Turn it back on</a> to use them.</p>`
     : canPush() ? `<button type="button" class="btn" id="alerts-btn" disabled>Turn on alerts</button>`
-    : IOS && !navigator.standalone ? `<p class="small" style="margin:0">On iPhone and iPad, alerts work only in the Home Screen app: tap <b>Share</b>, then <b>Add to Home Screen</b>, open SwimSignal from there and save your spots in it.</p>`
-    : `<p class="small" style="margin:0">This browser cannot show notifications from websites.</p>`;
-  return `<section class="card" aria-labelledby="alerts-h"><h2 class="card-h" id="alerts-h">Alerts</h2><p class="sub">${why}</p>${body}<p class="small muted" id="alerts-msg" aria-live="polite" style="margin:8px 0 0"></p></section>`;
+    : IOS && !navigator.standalone ? `<p class="small tight">On iPhone and iPad, alerts work only in the Home Screen app: tap <b>Share</b>, then <b>Add to Home Screen</b>, open SwimSignal from there and save your spots in it.</p>`
+    : `<p class="small tight">This browser cannot show notifications from websites.</p>`;
+  return `<section class="card" aria-labelledby="alerts-h"><h2 class="card-h" id="alerts-h">Alerts</h2><p class="sub">${why}</p>${body}<p class="small muted msg" id="alerts-msg" aria-live="polite"></p></section>`;
 }
 async function bindAlerts() {
   const b = document.getElementById('alerts-btn'), m = document.getElementById('alerts-msg'); if (!b) return;
@@ -792,7 +849,7 @@ const algae = a => { if (!a) return '';
     : `No algae seen at any of ${a.n_checks} check${a.n_checks === 1 ? '' : 's'} ${season}.`;
   return `<section class="card"><h2 class="card-h">Algae</h2><p class="sub">Environment Agency sampler's visual check</p>`
     + `<div>${when}: <b${a.level >= 3 ? ' style="color:var(--k-high)"' : ''}>${esc(a.phrase)}</b>.</div>`
-    + `<div class="small muted" style="margin-top:4px">${tally}${age > 14 ? ' No check since: the EA checks bathing waters from May to September, and results take about a week to be published.' : ''} A look at the water, not a lab test: it does not tell blue-green algae, which can be toxic, from harmless kinds.</div></section>`; };
+    + `<div class="small muted msg">${tally}${age > 14 ? ' No check since: the EA checks bathing waters from May to September, and results take about a week to be published.' : ''} A look at the water, not a lab test: it does not tell blue-green algae, which can be toxic, from harmless kinds.</div></section>`; };
 // The five days as cells: the day's level and, where E. coli is estimated, its chance; else the rain.
 // Where the level changes from day to day each cell is a button: on a spot's page it opens the day
 // (showDay), on a Saved card the spot on that day. A card's link already reaches the spot by
@@ -809,8 +866,10 @@ const cells = (d, card = false) => { const on = daily(d), pct = ecoliTested(d), 
     const r = pct ? (nil(x.p_ecoli_gt900) ? '–' : Math.round(x.p_ecoli_gt900 * 100) + '%' + (untested(x) ? '†' : '')) : nil(x.rain_48h_mm) ? '–' : Math.round(x.rain_48h_mm) + ' mm';
     const attrs = !on ? '' : ` type="button" data-day="${x.date}"` + (card ? ` data-spot="${esc(d.id)}" tabindex="-1"` : ' aria-pressed="false" aria-controls="day-view"');
     return `<${tag} class="day ${lv ? tone(lv) : ''}"${attrs}><span class="d">${shortDay(x.date)}</span><span class="l"${lv === 'moderate' ? ' data-short="Mod."' : ''}>${!on ? '–' : lv ? cap(lv) : 'No data'}</span><span class="r">${r}</span></${tag}>`; }).join('') + `</div>`; };
+// One line under the strip: what the second figure in each cell is. The † sentence stays whenever a
+// cell carries the mark, since it says why that figure is not in the level.
 const strip = d => cells(d) + `<p class="strip-note">${!daily(d) ? 'No daily forecast here; rain in the previous 48 h.'
-  : (ecoliTested(d) ? 'The level each day, and the chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml.' : 'The level each day, and rain here in the previous 48 h.') + ' Pick a day for its details.'
+  : (ecoliTested(d) ? 'The level each day; the figure is the chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml.' : 'The level each day, and rain here in the previous 48 h.') + ' Pick a day for its details.'
     + (anyUntested(d) ? ' ' + UNTESTED_NOTE : '')}</p>`;
 // The week at a glance in a list row: one bar per day, coloured by level. Where no overflow can
 // reach the spot there is no level to colour, so the bars show the rain instead (40 mm fills one).
@@ -840,24 +899,34 @@ function riverCard(d) {
   return `<section class="card" aria-labelledby="river-h"><h2 class="card-h" id="river-h">River level</h2><p class="sub">Environment Agency gauge at ${where}</p>`
     + `<div class="now-row"><span class="big level${hot ? ' hot' : ''}">${fmt(rs.level_m, 2)}<small>m</small></span><div><b>${word || 'Level'}</b>${rs.label === 'very high' ? ', above its usual range' : rs.label === 'low' ? ', near the bottom of its usual range' : ''}`
     + `<div class="small muted">${when ? `Observed ${when}.` : ''}${range}</div></div></div>`
-    + `<p class="small muted" style="margin:8px 0 0">Not part of the pollution level. A high river runs faster and colder, and after rain it can rise quickly.${link}</p></section>`;
+    + `<p class="small muted msg">Not part of the pollution level. A high river runs faster and colder, and after rain it can rise quickly.${link}</p></section>`;
 }
-// Today's high and daylight, from Open-Meteo (build_site.attach_weather), under the day strip, and
-// a row in a day's detail: context, as a weather app gives it, not an input to the forecast.
+// Today's high and daylight, from Open-Meteo (build_site.attach_weather), in the hero's line of
+// context and as a row in a day's detail: context, as a weather app gives it, not an input to the
+// forecast. The credit is Open-Meteo's licence (CC BY): it goes wherever the figures do.
 const weatherOn = (d, iso) => ((d.weather || {}).days || []).find(w => w.date === iso) || null;
-const weatherLine = d => { const w = weatherOn(d, today()); if (!w) return '';
-  return `<p class="strip-note">${!nil(w.tmax) ? `Today's high about <b>${w.tmax}°</b> · ` : ''}sunrise ${esc(w.sunrise)}, sunset ${esc(w.sunset)}. <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a></p>`; };
+// The hero's one line between the answer and the days: when the forecast was issued, always, since
+// the stored copy (sw.js) can answer when the network is slow; then today's weather, where there is some.
+const metaLine = d => { const w = weatherOn(d, today());
+  const wx = !w ? '' : ` · ${nil(w.tmax) ? 'Sunrise' : `Today's high about ${w.tmax}°, sunrise`} ${esc(w.sunrise)}, sunset ${esc(w.sunset)} · <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a>`;
+  return `<p class="issued">Issued ${issued()}, ${ago(ageMin())} ago${wx}</p>`; };
 const weatherRow = (d, iso) => { const w = weatherOn(d, iso); if (!w) return '';
   return factorRow('Weather', null, nil(w.tmax) ? '–' : `${w.tmax}°`, `${nil(w.tmax) ? '' : `Daytime high about ${w.tmax}°C. `}Sunrise ${esc(w.sunrise)}, sunset ${esc(w.sunset)}. <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a>.`); };
-// "Lowest pollution risk this week": the day with the most low spots (levels.js, bestDay), a tap away.
+// "Lowest pollution risk this week": the day with the most low spots (levels.js, bestDay), a tap
+// away, as a phrase. The list puts it after its caveat, and leaves it out when no spot is low on any
+// day, since without the count "lowest" would claim more than it means; the Saved page gives it a
+// line of its own, with how many of your spots are low.
 function bestDayNote(spots, yours = false) {
   const b = bestDay(spots, [0, 1, 2, 3, 4].map(k => addDays(today(), k)));
-  if (!b || (yours && b.known < 2)) return '';
-  const who = yours ? `${b.low} of your ${b.known} spots are` : `${b.low} of the ${b.known} spots with a daily forecast are`;
-  return `<p class="planner-note best-day">Lowest pollution risk this week: <b>${dateLabel(b.date)}</b>, when ${who} low.`
-    + `${VIEW.day === b.date ? '' : ` <button type="button" class="linkbtn small" data-pick-day="${b.date}">Show ${dateLabel(b.date)}</button>`}</p>`;
+  if (!b || (yours ? b.known < 2 : !b.low)) return '';
+  return `Lowest pollution risk this week: <b>${dateLabel(b.date)}</b>${yours ? `, when ${b.low} of your ${b.known} spots are low.` : ''}`
+    + `<span class="pick"${VIEW.day === b.date ? ' hidden' : ''}>${yours ? ' ' : ' · '}<button type="button" class="linkbtn small" data-pick-day="${b.date}">Show ${dateLabel(b.date)}</button></span>`;
 }
-const bindBestDay = () => document.querySelectorAll('[data-pick-day]').forEach(b => b.addEventListener('click', () => { setMapDay(b.dataset.pickDay); b.hidden = true; }));
+// The button, with the dot before it, shows while another day is picked: setMapDay keeps it in step.
+const syncBestDay = () => document.querySelectorAll('[data-pick-day]').forEach(b => { b.parentElement.hidden = b.dataset.pickDay === VIEW.day; });
+// The button hides once pressed, so the focus goes to the day picker, which now shows its day.
+const bindBestDay = () => document.querySelectorAll('[data-pick-day]').forEach(b => b.addEventListener('click', () => {
+  setMapDay(b.dataset.pickDay); const sel = document.getElementById('listday'); if (sel) sel.focus(); }));
 
 // ------------------------------------------------------------------------------ swim log
 // "I swam here today": the spot, the date and the day's level, kept in this browser only. A diary
@@ -870,13 +939,13 @@ const swamOn = (id, iso) => swims().some(x => x.id === id && x.date === iso);
 function logSwim(d) { const l = dayLevel(d, today()), list = swims().filter(x => !(x.id === d.id && x.date === today()));
   list.push({ id: d.id, date: today(), level: ORDER[l] !== undefined ? l : null }); return storeSwims(list); }
 const unlogSwim = (id, iso) => storeSwims(swims().filter(x => !(x.id === id && x.date === iso)));
-const swimLabel = on => on ? '✓ Swam here today' : 'I swam here today';
+const swimLabel = on => on ? CHECK + 'Swam here today' : 'I swam here today';
 const swimFeedback = (name, iso) => `${esc(FEEDBACK)}&amp;spot=${encodeURIComponent(`${name}, ${dateLabel(iso)} ${iso}`)}`;
 function bindSwim(d) {
   const b = document.getElementById('swam'), m = document.getElementById('swam-msg'); if (!b) return;
   b.addEventListener('click', () => {
     const on = !swamOn(d.id, today()), kept = on ? logSwim(d) : unlogSwim(d.id, today());
-    b.setAttribute('aria-pressed', String(on)); b.textContent = swimLabel(on);
+    b.setAttribute('aria-pressed', String(on)); b.innerHTML = swimLabel(on);
     m.innerHTML = !kept ? 'This browser is not keeping site data, so this lasts only for this visit.'
       : on ? `Logged on this device, with today's level; your swims are on the Saved page. <a href="${swimFeedback(d.name, today())}">Tell us how the water was</a>.` : 'Removed from your swim log.';
   });
@@ -889,7 +958,7 @@ function swimsCard() {
       + ` <a class="small" href="${swimFeedback(name, x.date)}">How was it?</a></span>`
       + `<button type="button" class="linkbtn small" data-unswim="${esc(x.id)}" data-date="${x.date}" aria-label="Remove ${esc(name)} on ${x.date} from your swim log">Remove</button></li>`; }).join('');
   return `<section class="card" aria-labelledby="swims-h"><h2 class="card-h" id="swims-h">Your swims</h2><p class="sub">Logged from a spot's page with "I swam here today", with the forecast level that day. Kept on this device only.</p><ul class="swims" id="swims">${rows}</ul>`
-    + `<p class="small muted" style="margin:8px 0 0"><button type="button" class="linkbtn small" id="clear-swims">Clear the log</button></p></section>`;
+    + `<p class="small muted msg"><button type="button" class="linkbtn small" id="clear-swims">Clear the log</button></p></section>`;
 }
 function bindSwims() {
   const ul = document.getElementById('swims'); if (!ul) return;
@@ -916,23 +985,24 @@ function roundRect(g, x, y, w, h, r) { g.beginPath(); g.moveTo(x + r, y); g.arcT
 function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
 async function shareImage(d) {
   const W = 1080, H = 1350, c = document.createElement('canvas'); c.width = W; c.height = H;
-  const g = c.getContext('2d'), F = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif';
+  const g = c.getContext('2d'), F = '"Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif', FD = '"Source Serif 4", Georgia, serif';
+  if (document.fonts && document.fonts.load) await Promise.all([document.fonts.load(`600 66px ${FD}`), document.fonts.load(`600 30px ${F}`)]).catch(() => {});
   const v = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
   g.fillStyle = v('--bg'); g.fillRect(0, 0, W, H);
   g.fillStyle = v('--bar'); g.fillRect(0, 0, W, 150);
-  g.fillStyle = '#fff'; g.font = `750 56px ${F}`; g.fillText(BRAND, 60, 96);
+  g.fillStyle = '#fff'; g.font = `600 56px ${FD}`; g.fillText(BRAND, 60, 96);
   g.font = `600 30px ${F}`; g.textAlign = 'right'; g.fillText(location.host, W - 60, 96); g.textAlign = 'left';
-  g.fillStyle = v('--ink'); g.font = `800 66px ${F}`; let y = wrapText(g, d.name, 60, 270, W - 120, 78);
+  g.fillStyle = v('--ink'); g.font = `600 66px ${FD}`; let y = wrapText(g, d.name, 60, 270, W - 120, 78);
   const iso = DAY, [head, why] = iso ? [dayHeadline(d, iso), dateLabel(iso)] : headParts(d);
   const lv = iso ? dayLevel(d, iso) : level(d);
-  g.fillStyle = v(`--k-${tone(lv)}`) || v('--ink'); g.font = `800 60px ${F}`; y = wrapText(g, head, 60, y + 40, W - 120, 70);
+  g.fillStyle = v(`--k-${tone(lv)}`) || v('--ink'); g.font = `700 60px ${F}`; y = wrapText(g, head, 60, y + 40, W - 120, 70);
   if (why) { g.fillStyle = v('--muted'); g.font = `600 36px ${F}`; y = wrapText(g, cap(why), 60, y + 6, W - 120, 46); }
   const days = d.days.slice(0, 5), on = daily(d), pct = ecoliTested(d), cw = (W - 120 - 4 * 18) / 5; y += 30;
   days.forEach((x, i) => { const lx = 60 + i * (cw + 18), dl = on ? risk(d, x).level : null;
-    g.fillStyle = v('--card'); roundRect(g, lx, y, cw, 190, 18); g.fill();
-    g.fillStyle = dl ? colour(dl) : v('--unknown'); roundRect(g, lx, y, cw, 14, 7); g.fill();
+    g.fillStyle = v('--card'); roundRect(g, lx, y, cw, 190, 12); g.fill(); g.strokeStyle = v('--line'); g.lineWidth = 2; g.stroke();
+    g.fillStyle = dl ? colour(dl) : v('--unknown'); roundRect(g, lx, y, cw, 12, 6); g.fill();
     g.textAlign = 'center'; g.fillStyle = v('--muted'); g.font = `600 30px ${F}`; g.fillText(shortDay(x.date), lx + cw / 2, y + 62);
-    g.fillStyle = dl ? v(`--k-${tone(dl)}`) : v('--muted'); g.font = `800 32px ${F}`; g.fillText(!on ? '–' : dl ? cap(dl) : 'No data', lx + cw / 2, y + 112);
+    g.fillStyle = dl ? v(`--k-${tone(dl)}`) : v('--muted'); g.font = `700 32px ${F}`; g.fillText(!on ? '–' : dl ? cap(dl) : 'No data', lx + cw / 2, y + 112);
     const r = pct ? (nil(x.p_ecoli_gt900) ? '–' : Math.round(x.p_ecoli_gt900 * 100) + '%' + (untested(x) ? '†' : '')) : nil(x.rain_48h_mm) ? '–' : Math.round(x.rain_48h_mm) + ' mm';
     g.fillStyle = v('--muted'); g.font = `600 28px ${F}`; g.fillText(r, lx + cw / 2, y + 160); g.textAlign = 'left'; });
   if (days.length) y += 190 + 40;
@@ -1026,6 +1096,10 @@ function bindDays(d) {
   else if (DAY) showDay(d, null);   // no day to pick here (no overflows upstream): the summary, and a plain address
 }
 const scrollTop = () => { if (PHONE.matches) window.scrollTo(0, 0); else document.getElementById('panel').scrollTop = 0; };
+// Redraw without moving el on the screen, where the page can scroll that far: the list's kinds sit
+// below the Saved group, which a picked kind hides, and the chip would jump from under the finger.
+const steady = (el, redraw) => { const y = el.getBoundingClientRect().top; redraw(); const dy = el.getBoundingClientRect().top - y;
+  if (dy) { if (PHONE.matches) window.scrollBy(0, dy); else document.getElementById('panel').scrollTop += dy; } };
 
 let ovCall = 0;
 async function loadOverflows() {
@@ -1046,13 +1120,13 @@ async function loadOverflows() {
 // Offline the layer is not stored (6 MB): the map then shows the spots without it.
 map.on('moveend', () => loadOverflows().catch(() => ovLayer.clearLayers()));
 
-// The colour key: the map's legend, and on a phone a row under the list's filters.
+// The colour key: the map's legend. The list needs none: each row says its level in words.
 const KEY = [['low','Low'], ['moderate','Moderate'], ['high','High'], ['very high','Very high'], [NO_OVERFLOWS, 'No overflows upstream'], ['', 'No level']];
 const legend = L.control({ position: 'bottomleft' });
 legend.onAdd = () => { const el = L.DomUtil.create('div', 'map-legend');
   el.innerHTML = `<div class="ttl">Pollution risk, today and tomorrow</div>`
     + KEY.map(([l, t]) => `<div class="row"><span class="dot" style="background:${colour(l)}"></span>${t}</div>`).join('')
-    + `<div class="extra">Zoom in to see storm overflows:<br><span class="dot sm" style="background:#c81e1e"></span>discharging<span class="dot sm" style="background:#5b6470"></span>not discharging<span class="dot sm" style="background:#b3bac2"></span>offline</div>`;
+    + `<div class="extra">Zoom in to see storm overflows:<br><span class="dot sm" style="background:#bf2a2a"></span>discharging<span class="dot sm" style="background:#5b6470"></span>not discharging<span class="dot sm" style="background:#b3bac2"></span>offline</div>`;
   L.DomEvent.disableClickPropagation(el); return el; };
 legend.addTo(map);
 // "Low risk only": every other spot shrinks to a faint dot, so the green ones stand out while you
@@ -1070,7 +1144,7 @@ function styleMarkers() {
   for (const s of DATA.spots) {
     const m = MARKERS.get(s.id), lv = mapLevel(s), on = !VIEW.lowOnly || lv === 'low'; if (!m) continue;
     m.setTooltipContent(markerTip(s));
-    m.setStyle(on ? { color: '#fff', weight: 1.5, fillColor: colour(lv), fillOpacity: .95 } : { color: '#fff', weight: 1, fillColor: '#8a939e', fillOpacity: .45 });
+    m.setStyle(on ? { color: '#fff', weight: 1.5, fillColor: colour(lv), fillOpacity: .95 } : { color: '#fff', weight: 1, fillColor: '#98a2aa', fillOpacity: .45 });
     m.setRadius(on ? (VIEW.lowOnly ? 9 : 8) : 4);
     if (on) m.bringToFront();
   }
@@ -1085,7 +1159,7 @@ function styleMarkers() {
 function setMapDay(iso) {
   VIEW.day = iso || null;
   document.querySelectorAll('#mapday, #listday').forEach(el => { el.value = VIEW.day || ''; });
-  styleMarkers();
+  styleMarkers(); syncBestDay();
   if (document.getElementById('spots')) drawSpots();
 }
 // The five days, once the forecast has loaded: its dates, not the phone's.
@@ -1112,7 +1186,7 @@ lowCtl.addTo(map);
 // would have shown 48% of the time; at 6 h, 1%; at 8 h, never. So 8 h means a build has failed.
 const STALE_MIN = 8 * 60;
 const ageMin = () => (Date.now() - new Date(DATA.generated_at).getTime()) / 60000;
-const ago = m => { const t = Math.round(m); return t < 60 ? `${t} min` : `${Math.floor(t / 60)} h ${t % 60} min`; };
+const ago = m => { const t = Math.round(m); return t < 60 ? `${t} min` : t % 60 ? `${Math.floor(t / 60)} h ${t % 60} min` : `${t / 60} h`; };   // "6 h", not "6 h 0 min"
 const issued = () => new Date(DATA.generated_at).toLocaleString('en-GB', {weekday:'short', hour:'2-digit', minute:'2-digit'});
 function freshness() {
   const m = ageMin(); const b = DATA.build || {};
@@ -1143,6 +1217,9 @@ function setPanel(h) { parkMap(); if (MINI) { MINI.remove(); MINI = null; } docu
 // ------------------------------------------------------------------------------ the list
 const FILTERS = { all: 'All', river: 'Rivers', lake: 'Lakes', designated: 'Bathing waters' };
 const SORTS = { risk: 'Highest risk', name: 'A–Z', near: 'Near me' };
+const BOOKMARK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>';
+const CHECK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';
+const saveLabel = on => BOOKMARK + (on ? 'Saved' : 'Save');
 const SEARCH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>';
 function overview(spots) {
   const rated = spots.filter(s => ORDER[mapLevel(s)] !== undefined);
@@ -1175,21 +1252,25 @@ function renderList() {
   contribLayer.clearLayers(); selLayer.clearLayers(); current = null; shown = 'list';
   setView('list');
   document.title = `${BRAND} · sewage-spill forecasts for swim spots`;
-  const saved = DATA.spots.filter(s => SAVED.has(s.id));
+  const saved = DATA.spots.filter(s => SAVED.has(s.id)), best = bestDayNote(DATA.spots);
   const sorts = Object.entries(SORTS).filter(([k]) => k !== 'near' || 'geolocation' in navigator);
-  let h = `<section class="intro"><p class="eyebrow">Plan your next swim</p><h1>Check the water before you go</h1><p class="lede">Five-day pollution forecasts for ${DATA.spots.length} spots in England. <a href="#about">How it works</a></p>`
-    + `<div class="search">${SEARCH_ICON}<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(VIEW.q)}"></div>`
-    + `<div class="planner"><label for="listday">When are you swimming?</label><select id="listday"><option value="">Today and tomorrow · overview</option>${[0,1,2,3,4].map(k => addDays(today(), k)).map(iso => `<option value="${iso}"${VIEW.day === iso ? ' selected' : ''}>${dateLabel(iso)}</option>`).join('')}</select><p class="planner-note">Forecasts, not water tests. Check local advice.</p>${bestDayNote(DATA.spots)}</div>`
-    + `<div class="chips-row" role="group" aria-label="Show"><button type="button" class="chip-btn low" data-low aria-pressed="${VIEW.lowOnly}"><span class="dot" style="background:${colour('low')}"></span><span data-low-t>${lowLabel()}</span></button>`
-    + `${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div>`
-    + `<p class="small muted" id="low-note-list"${VIEW.lowOnly ? '' : ' hidden'}>${lowListNote()}</p>`
-    + `<div class="key phone-only" aria-hidden="true">${KEY.map(([l, t]) => `<span><span class="dot" style="background:${colour(l)}"></span>${t}</span>`).join('')}</div></section>`;
+  // The answer first: the intro and one row of controls, with one line under it (the caveat and the
+  // week's best day), then the saved spots. The colour key went: each row says its level in words.
+  let h = `<section class="intro"><h1>Check the water before you go</h1><p class="lede">Five-day pollution forecasts for ${DATA.spots.length} spots in England. <a href="#about">How it works</a></p>`
+    + `<div class="search">${SEARCH_ICON}<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(VIEW.q)}"></div></section>`
+    + `<div class="toolbar"><label class="sr" for="listday">When are you swimming?</label><select id="listday"><option value="">Today and tomorrow</option>${[0,1,2,3,4].map(k => addDays(today(), k)).map(iso => `<option value="${iso}"${VIEW.day === iso ? ' selected' : ''}>${dateLabel(iso)}</option>`).join('')}</select>`
+    + `<button type="button" class="chip-btn low" data-low aria-pressed="${VIEW.lowOnly}" aria-describedby="low-note-list"><span class="dot" style="background:${colour('low')}"></span><span data-low-t>${lowLabel()}</span></button></div>`
+    + `<p class="planner-note best-day">Forecasts, not water tests.${best ? ' ' + best : ''}</p>`
+    + `<p class="planner-note" id="low-note-list"${VIEW.lowOnly ? '' : ' hidden'}>${lowListNote()}</p>`;
   h += notices();
-  if (saved.length) h += `<section class="group" id="saved-group" aria-labelledby="saved-h"><h2 class="group-head" id="saved-h">Saved spots</h2><ul class="spots" id="saved-list">${saved.map(spotItem).join('')}</ul></section>`;
+  h += saved.length ? `<section class="group" id="saved-group" aria-labelledby="saved-h"><h2 class="group-head" id="saved-h">Saved spots</h2><ul class="spots" id="saved-list">${saved.map(spotItem).join('')}</ul></section>`
+    : `<p class="save-hint">${BOOKMARK}Open a spot and press Save to keep it here.</p>`;
+  // The kinds of water are a second row under the heading: they narrow this list, not the day.
   h += `<section class="group" aria-labelledby="all-h"><div class="group-bar"><h2 class="group-head" id="all-h">All spots</h2>`
     + `<div class="sortseg" role="group" aria-label="Sort">${sorts.map(([k, t]) => `<button type="button" data-sort="${k}" aria-pressed="${VIEW.sort === k}">${t}</button>`).join('')}</div></div>`
+    + `<div class="chips-row" role="group" aria-label="Show">${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div>`
     + `<p class="overview" id="overview"></p><p class="small muted" id="untested-note" hidden>${UNTESTED_NOTE}</p><p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p><ul class="spots" id="spots"></ul><p class="count" id="count" role="status"></p></section>`;
-  h += `<p class="small muted" style="margin-top:14px">Updated ${issued()} (${ago(ageMin())} ago), several times a day. The coloured bars are the next five days. <a href="#levels">What the levels mean</a>. ${saved.length ? '' : 'Open a spot and press Save to keep it at the top and on your Saved page. '}${STANDALONE ? '' : '<a href="#home-screen">Add to your Home Screen</a>. '}Missing your spot? <a href="feedback.html?type=spot">Request it</a>.</p>`;
+  h += `<p class="small muted after">Updated ${issued()} (${ago(ageMin())} ago), several times a day. The coloured bars are the next five days. <a href="#levels">What the levels mean</a>. ${STANDALONE ? '' : '<a href="#home-screen">Add to your Home Screen</a>. '}Missing your spot? <a href="feedback.html?type=spot">Request it</a>.</p>`;
   setPanel(h);
   if (saved.length) bindItems(document.getElementById('saved-list'));
   document.getElementById('listday').addEventListener('change', e => setMapDay(e.target.value));
@@ -1201,7 +1282,7 @@ function renderList() {
   document.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => {
     VIEW.filter = b.dataset.filter;
     document.querySelectorAll('[data-filter]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    drawSpots(); }));
+    steady(b, drawSpots); }));
   document.querySelector('[data-low]').addEventListener('click', () => setLowOnly(!VIEW.lowOnly));
   document.querySelectorAll('[data-sort]').forEach(b => b.addEventListener('click', () => {
     if (b.dataset.sort === 'near' && !VIEW.here) { locate(); return; }
@@ -1242,7 +1323,7 @@ function drawSpots() {
   document.getElementById('overview').textContent = overview(items);
   document.getElementById('untested-note').hidden = !items.some(waterEst);
   ul.innerHTML = items.length ? items.map(spotItem).join('')
-    : `<li class="empty"><p style="margin:0 0 10px">No spots match. SwimSignal covers ${DATA.spots.length} river and lake spots in England. Missing yours? <a href="feedback.html?type=spot">Request it</a>.</p>`
+    : `<li class="empty"><p class="below">No spots match. SwimSignal covers ${DATA.spots.length} river and lake spots in England. Missing yours? <a href="feedback.html?type=spot">Request it</a>.</p>`
       + `<button type="button" class="btn" id="clear-filters">Clear search and filters</button></li>`;
   document.getElementById('count').textContent = items.length === DATA.spots.length ? `${items.length} spots.` : `Showing ${items.length} of ${DATA.spots.length} spots.`;
   const clear = document.getElementById('clear-filters');
@@ -1264,8 +1345,8 @@ function nowLine(s) {
 function savedCard(s) {
   const meta = [cap(s.kind), s.source === 'designated' ? 'bathing water' : null].filter(Boolean).join(' · ');
   return `<li class="scard ${headTone(s)}"><div class="scard-top"><a class="scard-link" href="${esc(spotPath(s.id))}" data-id="${esc(s.id)}"><span class="nm">${esc(s.name)}</span><span class="k">${meta}</span></a>`
-    + `<button type="button" class="unsave" data-unsave="${esc(s.id)}" aria-label="Remove ${esc(s.name)} from saved spots">★</button></div>`
-    + `<div class="scard-hl">${headline(s)}</div>${s.error ? `<p class="small muted" style="margin:0">${esc(s.error)}</p>` : cells(s, true)}${nowLine(s)}</li>`;
+    + `<button type="button" class="unsave" data-unsave="${esc(s.id)}" aria-label="Remove ${esc(s.name)} from saved spots">${BOOKMARK}</button></div>`
+    + `<div class="scard-hl">${headline(s)}</div>${s.error ? `<p class="small muted tight">${esc(s.error)}</p>` : cells(s, true)}${nowLine(s)}</li>`;
 }
 const listOf = spots => `<ul class="inc-list">${spots.slice(0, 5).map(s => `<li>${esc(s.name)}</li>`).join('')}${spots.length > 5 ? `<li>and ${spots.length - 5} more</li>` : ''}</ul>`;
 const COMPARE = { ids: null, day: null, open: false };
@@ -1313,26 +1394,27 @@ function renderSaved() {
   document.title = `Saved spots · ${BRAND}`;
   const spots = [...SAVED].map(id => DATA.spots.find(s => s.id === id)).filter(Boolean), gone = SAVED.size - spots.length;
   const offered = (INCOMING || []).map(id => DATA.spots.find(s => s.id === id)).filter(s => s && !SAVED.has(s.id));
-  let h = `<a href="${esc(ROOT.pathname)}" class="back" id="back">← All spots</a><h1 class="page-h">Saved spots</h1>`
+  let h = `<a href="${esc(ROOT.pathname)}" class="back" id="back">All spots</a><h1 class="page-h">Saved spots</h1>`
     + `<p class="lede">${spots.length ? `The next five days at ${spots.length === 1 ? 'your spot' : `your ${spots.length} spots`}, kept` : 'Spots you save show here, kept'} `
     + `${navigator.standalone ? 'in this Home Screen app' : 'in this browser'}${DATA.push ? ', and by the alert service only if you turn alerts on' : ' only'}${navigator.standalone ? ': Safari keeps a list of its own' : ''}.</p>`;
   if (offered.length) h += `<section class="card" aria-labelledby="inc-h"><h2 class="card-h" id="inc-h">A shared list</h2><p class="sub">Someone sent you ${offered.length === 1 ? 'a spot' : `${offered.length} spots`} to follow:</p>${listOf(offered)}`
-    + `<div class="actions" style="margin:0"><button type="button" class="btn primary" id="inc-save">Save ${offered.length === 1 ? 'it' : `all ${offered.length}`}</button><button type="button" class="btn" id="inc-skip">Not now</button></div></section>`;
+    + `<div class="actions tight"><button type="button" class="btn primary" id="inc-save">Save ${offered.length === 1 ? 'it' : `all ${offered.length}`}</button><button type="button" class="btn" id="inc-skip">Not now</button></div></section>`;
   else if (INCOMING) h += `<p class="notice quiet" role="status">${INCOMING.length === 1 ? 'The spot in that link is' : 'The spots in that link are'} already saved here.</p>`;
   INCOMING = offered.length ? INCOMING : null;
   h += notices();
   h += `<div id="compare-host">${compareSection(spots)}</div>`;
-  if (spots.length) h += bestDayNote(spots, true);
+  const best = spots.length ? bestDayNote(spots, true) : '';
+  if (best) h += `<p class="planner-note best-day">${best}</p>`;
   if (spots.length) h += `<ul class="scards" id="scards">${spots.map(savedCard).join('')}</ul>`
-    + `<p class="small muted" style="margin:10px 2px 0">Updated ${issued()} (${ago(ageMin())} ago). Tap a spot for its full forecast, or a day for that day. <a href="#levels">What the levels mean</a>. Forecasts, not water tests: check the signs at the water before you swim.${spots.some(anyUntested) ? ' ' + UNTESTED_NOTE : ''}</p>`;
-  else h += `<div class="card empty-saved"><div class="big-star" aria-hidden="true">☆</div><h2 class="card-h">No saved spots yet</h2>`
-    + `<p class="sub" style="margin:4px 0 16px">Open a spot and press <b>☆&nbsp;Save</b>. It then shows here with the days ahead.`
+    + `<p class="small muted msg">Updated ${issued()} (${ago(ageMin())} ago). Tap a spot for its full forecast, or a day for that day. <a href="#levels">What the levels mean</a>. Forecasts, not water tests: check the signs at the water before you swim.${spots.some(anyUntested) ? ' ' + UNTESTED_NOTE : ''}</p>`;
+  else h += `<div class="card empty-saved"><div aria-hidden="true">${BOOKMARK}</div><h2 class="card-h">No saved spots yet</h2>`
+    + `<p class="sub">Open a spot and press <b>Save</b>. It then shows here with the days ahead.`
     + `${navigator.standalone ? ' Spots saved in Safari do not appear in the Home Screen app: iPhones keep the two apart, so save them again here.' : ''}</p>`
     + `<a class="btn primary" href="${esc(ROOT.pathname)}" id="find">Find a spot</a></div>`;
-  if (gone) h += `<p class="small muted" style="margin:10px 2px 0">${gone === 1 ? 'A spot you saved is' : `${gone} spots you saved are`} no longer in the forecast. <button type="button" class="linkbtn small" id="forget">Remove ${gone === 1 ? 'it' : 'them'}</button></p>`;
+  if (gone) h += `<p class="small muted msg">${gone === 1 ? 'A spot you saved is' : `${gone} spots you saved are`} no longer in the forecast. <button type="button" class="linkbtn small" id="forget">Remove ${gone === 1 ? 'it' : 'them'}</button></p>`;
   if (spots.length) h += alertsCard();
   if (spots.length) h += `<section class="card"><h2 class="card-h">Share this list</h2><p class="sub">A link that opens ${spots.length === 1 ? 'this spot' : `these ${spots.length} spots`} on another phone or browser, or for a friend. It holds which spots they are and nothing else.</p>`
-    + `<button type="button" class="btn" id="share-list">Share this list</button><p class="small muted" id="share-list-msg" aria-live="polite" style="margin:8px 0 0"></p></section>`;
+    + `<button type="button" class="btn" id="share-list">Share this list</button><p class="small muted msg" id="share-list-msg" aria-live="polite"></p></section>`;
   h += swimsCard();
   setPanel(h);
   bindBack(); bindSavedPage(spots, offered); bindAlerts(); bindComparison(); bindBestDay(); bindSwims();
@@ -1413,13 +1495,13 @@ window.addEventListener('hashchange', () => { if (!DATA || !/^#spots=/.test(loca
 
 function saveButton(d) {
   const on = SAVED.has(d.id);
-  return `<button type="button" class="save" id="save" aria-pressed="${on}">${on ? '★ Saved' : '☆ Save'}</button>`;
+  return `<button type="button" class="save" id="save" aria-pressed="${on}">${saveLabel(on)}</button>`;
 }
 function bindSave(d) {
   const b = document.getElementById('save'); if (!b) return;
   b.addEventListener('click', () => {
     const on = !SAVED.has(d.id), kept = setSaved(on ? [...SAVED, d.id] : [...SAVED].filter(x => x !== d.id));
-    b.setAttribute('aria-pressed', String(on)); b.textContent = on ? '★ Saved' : '☆ Save';
+    b.setAttribute('aria-pressed', String(on)); b.innerHTML = saveLabel(on);
     const m = document.getElementById('share-msg');
     if (m) m.textContent = !kept ? 'This browser is not keeping site data, so the star lasts only for this visit.'
       : on ? 'Saved on this device. All your saved spots are under Saved, top right.' : 'Removed from your saved spots.';
@@ -1431,8 +1513,8 @@ function actions(d) {
     + `<button type="button" class="btn" id="share-img">Share as a picture</button>`
     + `<button type="button" class="btn" id="swam" aria-pressed="${swam}">${swimLabel(swam)}</button>`
     + `<a class="btn" href="${esc(FEEDBACK)}&amp;spot=${encodeURIComponent(d.name)}">Tell us how you used this</a></div>`
-    + `<p class="small muted" id="share-msg" aria-live="polite" style="margin:0 0 6px"></p><p class="small muted" id="swam-msg" aria-live="polite" style="margin:0 0 6px"></p>`
-    + `<p class="small muted" style="margin:0 0 6px">Did the forecast change where or when you swam? That is what decides whether this site is worth building on. Prepare a private email to Ethan. No GitHub account needed.</p>`;
+    + `<p class="small muted below" id="share-msg" aria-live="polite"></p><p class="small muted below" id="swam-msg" aria-live="polite"></p>`
+    + `<p class="small muted below">Did the forecast change where or when you swam? That is what decides whether this site is worth building on. Prepare a private email to Ethan. No GitHub account needed.</p>`;
 }
 function bindShare(d) {
   const b = document.getElementById('share'); if (!b) return;
@@ -1480,8 +1562,8 @@ function dayTable(d, total, isLake, scope) {
   if (isLake) notes.push(`<b>E. coli not shown for lakes</b>: ${esc(scope.note || 'no ranking skill on lakes in the fitting data.')}`);
   if (anyOffSeason) notes.push(`<sup>†</sup>Outside May to September, when the EA takes no samples: untested. <a href="#about-ecoli">What this means</a>`);
   if (anyNoData) notes.push(`<b>No data</b>: the rainfall forecast for that day did not arrive; no figure is shown rather than one computed as if it were dry.`);
-  if (notes.length) h += `<div class="small muted" style="margin-top:6px">${notes.join(' ')}</div>`;
-  return h + `<p class="small muted" style="margin:10px 0 0">Exposure index (0–100): modelled chance that an upstream spill reaches here, from Open-Meteo rainfall through a spill model trained on 743,735 United Utilities discharge events (2023–25) and verified on a held-out year, then travel time, die-off and dilution. An index, not a probability. <b>E. coli &gt; 900</b>: estimated probability that a midday sample would exceed 900 cfu/100 ml, from rain at the spot in the previous 48 h, the exposure index, and season. Daily resolution. <a href="#levels">What the levels mean</a> · <a href="verification.html">How accurate is it?</a></p></details>`;
+  if (notes.length) h += `<div class="small muted msg">${notes.join(' ')}</div>`;
+  return h + `<p class="small muted msg">Exposure index (0–100): modelled chance that an upstream spill reaches here, from Open-Meteo rainfall through a spill model trained on 743,735 United Utilities discharge events (2023–25) and verified on a held-out year, then travel time, die-off and dilution. An index, not a probability. <b>E. coli &gt; 900</b>: estimated probability that a midday sample would exceed 900 cfu/100 ml, from rain at the spot in the previous 48 h, the exposure index, and season. Daily resolution. <a href="#levels">What the levels mean</a> · <a href="verification.html">How accurate is it?</a></p></details>`;
 }
 // The overflows that matter most, as a list: on a phone a five-column table was too tight to read.
 function overflowCard(d, total) {
@@ -1496,7 +1578,7 @@ function overflowCard(d, total) {
       .bindTooltip(`${esc(c.site_name ?? c.site_id)}: ${far} km, reach ${Math.round(c.weight * 100)}%`).addTo(contribLayer);
   });
   return h + `</ul>${n > SHOW ? `<button type="button" class="btn quiet" id="more-contrib" aria-controls="contrib" aria-expanded="false">Show all ${n}</button>` : ''}`
-    + `<p class="small muted" style="margin:8px 0 0">Reach: the chance a spill there affects this spot, from die-off over the travel time and dilution by the size of the river network upstream.</p></section>`;
+    + `<p class="small muted msg">Reach: the chance a spill there affects this spot, from die-off over the travel time and dilution by the size of the river network upstream.</p></section>`;
 }
 
 function render(d) {
@@ -1509,12 +1591,12 @@ function render(d) {
     loc.watercourse ? esc(loc.watercourse) : null, loc.lake_area_km2 ? `${loc.lake_area_km2} km²` : null,
     d.notes && d.notes !== 'Environment Agency designated bathing water' ? esc(d.notes) : null].filter(Boolean);
   const fromSaved = (history.state || {}).from === 'saved';
-  let h = `<a href="${esc(fromSaved ? savedPath() : ROOT.pathname)}" class="back" id="back">← ${fromSaved ? 'Saved spots' : 'All spots'}</a>`;
+  let h = `<a href="${esc(fromSaved ? savedPath() : ROOT.pathname)}" class="back" id="back">${fromSaved ? 'Saved spots' : 'All spots'}</a>`;
   h += `<div class="title-row"><h1 class="spot-name">${esc(d.name)}</h1>${saveButton(d)}</div><div class="chips">${tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>`;
   // The answer first, then where the spot is: on a small phone the map pushed the level below the fold.
   const where = `<div class="loc phone-only"><div id="loc-map" aria-hidden="true"></div><button type="button" class="loc-open" id="loc-open" aria-label="Open map at ${esc(d.name)}">Open map</button></div>`;
   const [head, why] = headParts(d);
-  const hero = body => `<section class="hero ${headTone(d)}" id="risk-hero"><div class="kicker">Pollution risk</div><div class="headline">${head}</div>`
+  const hero = body => `<section class="hero ${headTone(d)}" id="risk-hero" aria-labelledby="risk-headline"><div class="kicker">Pollution risk</div><h2 class="headline" id="risk-headline">${head}</h2>`
     + `<div class="head-why">${why ? cap(why) : ''}</div>${body}</section>`;
   if (d.error) {
     DAY = null;   // no days here: a day link opens the spot, and the address loses the day
@@ -1525,17 +1607,17 @@ function render(d) {
   }
   const now = d.now, isLake = loc.mode === 'lake', scope = d.ecoli_scope || {}, total = d.upstream_summary.overflows;
   h += notices();
-  // Always say how old it is: the stored copy (sw.js) can answer when the network is slow.
-  h += hero(`${strip(d)}${weatherLine(d)}<div id="day-view">${factors(d)}</div><p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p>${check(d)}`) + where;
+  // The answer, one line of context (metaLine: how old the forecast is, today's weather), the days.
+  h += hero(`${metaLine(d)}${strip(d)}<div id="day-view">${factors(d)}</div>${check(d)}`) + where;
   if (total) {
     h += `<section class="card"><h2 class="card-h">Right now</h2><div class="now-row"><span class="big${now.discharging_upstream ? ' hot' : ''}">${now.discharging_upstream}</span>`
       + `<div>of ${total} upstream overflow${total === 1 ? '' : 's'} discharging now<div class="small muted">${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h · ${now.monitored_upstream} of ${total} report live${now.monitored_upstream < total ? `. ${total - now.monitored_upstream === 1 ? 'The one that does not' : `The ${total - now.monitored_upstream} that do not`} could be spilling unseen` : ''}</div></div></div></section>`;
   }
   h += riverCard(d) + algae(d.algae);
   h += `<section class="card phone-only"><h2 class="card-h">Upstream</h2><p class="sub">The spot (ringed) and the overflows that matter most; a bigger circle means more of a spill would reach here. Two fingers move the map.</p><div id="spot-map"></div>`
-    + `<p class="small muted" style="margin:0"><span class="dot sm" style="background:#c81e1e;margin-left:0"></span>discharging<span class="dot sm" style="background:#5b6470"></span>not discharging<span class="dot sm" style="background:#b3bac2"></span>offline or no feed</p></section>`;
+    + `<p class="small muted tight"><span class="dot sm" style="background:#bf2a2a"></span>discharging<span class="dot sm" style="background:#5b6470"></span>not discharging<span class="dot sm" style="background:#b3bac2"></span>offline or no feed</p></section>`;
   h += d.contributors.length ? overflowCard(d, total)
-    : `<section class="card"><h2 class="card-h">No monitored overflows upstream</h2><p class="small muted" style="margin:0">None within ${d.assumptions.max_upstream_km} km upstream. Risk from farms, wildlife and unmonitored sources is not modelled.</p></section>`;
+    : `<section class="card"><h2 class="card-h">No monitored overflows upstream</h2><p class="small muted tight">None within ${d.assumptions.max_upstream_km} km upstream. Risk from farms, wildlife and unmonitored sources is not modelled.</p></section>`;
   h += dayTable(d, total, isLake, scope);
   h += actions(d) + tech(d);
   setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); bindDays(d); miniMap(d);
@@ -1559,7 +1641,14 @@ document.addEventListener('click', e => { const a = e.target.closest('a[href^="#
 // A phone turned or a window resized across the breakpoint: put the map where that layout wants it.
 PHONE.addEventListener('change', () => { if (!PHONE.matches && mapMode()) setMapMode(false); setHeaderHeight(); placeMap(); });
 
+// While the forecast loads, the shape of the list in its place, so the page does not jump when it
+// comes; the words are for screen readers. Only over the home page's placeholder: a spot's built
+// page already shows its name there, and the Saved page its heading.
+const SKELETON = '<div class="skel" aria-busy="true"><p class="sr">Loading forecasts…</p><div aria-hidden="true"><span class="skel-h"></span>'
+  + '<span class="skel-r"></span>'.repeat(5) + '</div></div>';
 async function main() {
+  const box = document.getElementById('result');
+  if (box.textContent.trim() === 'Loading forecasts…') box.innerHTML = SKELETON;
   // no-cache: ask the server, not the browser's own copy, which GitHub Pages lets it use for 10
   // minutes. With the offline copy on, sw.js asks the same way.
   const res = await fetch('data/spots.json', { cache: 'no-cache' });
