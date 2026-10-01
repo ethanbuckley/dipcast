@@ -691,6 +691,17 @@ hours, and sends them 15 a run (about 450 an hour on Cloudflare's free plan). Th
 notice gains its alerts section only then. On an iPhone, alerts work only in
 the Home Screen app.
 
+**How it looks** is set out in `docs/DESIGN.md`: two typefaces served from the
+site itself (Source Serif 4 for headings, Source Sans 3 for the rest, in
+`src/dipcast/api/static/fonts/` under the SIL Open Font License, so no third
+party sees a request), one corner radius, hairline borders, the four level
+colours as the only strong colours. The prose pages share
+`src/dipcast/api/static/page.css`; the app page repeats its tokens and header
+inline so that it paints before any stylesheet arrives and works offline on its
+own, and a token changed in one must be changed in the other. The prose pages'
+favicon and Home Screen icon are copies of the site's icons, kept in
+`src/dipcast/api/static/icons/` so that the API server's pages get them too.
+
 `.github/workflows/site.yml` is scheduled every 30 minutes and also runs on
 every push. GitHub starts scheduled runs when it can: the 113 builds of 13-28
 Sep 2026 were a median 2.9 h apart and at most 8.1 h, so no step depends on a

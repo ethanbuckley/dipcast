@@ -46,11 +46,17 @@ TEMPLATE = ROOT / "src" / "dipcast" / "site" / "index.html"
 KEEP_CONTRIBUTORS = 10
 MIN_OK_SHARE = 0.8        # fewer spots with a forecast than this and the build fails (no publish)
 MAX_NO_DATA_SHARE = 0.5   # more of today's forecasts without rainfall data than this: fail
-# The pages were written for the FastAPI routes; rewrite them for flat files.
+# The pages were written for the FastAPI routes; rewrite them for flat files. Their icons are
+# /static/icons/ on the API server, which keeps copies of the site's own (src/dipcast/site/icons/)
+# so that its pages get a favicon too; the static site has the originals at icons/ (copy_app_files).
 REWRITES = [('href="/feedback"', 'href="feedback.html"'), ('href="/feedback?type=spot"', 'href="feedback.html?type=spot"'), ('href="/verification"', 'href="verification.html"'), ('href="/terms"', 'href="terms.html"'),
             ('href="/about"', 'href="about.html"'), ('href="/testing"', 'href="testing.html"'),
             ('href="/privacy"', 'href="privacy.html"'), ('href="/terms#data"', 'href="terms.html#data"'), ('href="/"', 'href="index.html"'),
-            ('href="/static/page.css"', 'href="page.css"'), ("fetch('/api/verification')", "fetch('data/verification.json')")]
+            ('href="/static/page.css"', 'href="page.css"'), ('href="/static/fonts/LICENSE.txt"', 'href="fonts/LICENSE.txt"'),
+            ('href="/static/icons/icon.svg"', 'href="icons/icon.svg"'), ('href="/static/icons/apple-touch-icon.png"', 'href="icons/apple-touch-icon.png"'),
+            ('href="/static/fonts/SourceSans3-latin.woff2"', 'href="fonts/SourceSans3-latin.woff2"'),
+            ('href="/static/fonts/SourceSerif4-latin.woff2"', 'href="fonts/SourceSerif4-latin.woff2"'),
+            ("fetch('/api/verification')", "fetch('data/verification.json')")]
 BRAND = "SwimSignal"
 HOME_TITLE = f"{BRAND} · sewage-spill forecasts for swim spots"
 DESCRIPTION = ("Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow "
@@ -62,6 +68,10 @@ SAVED_DESCRIPTION = "A list of river and lake swim spots, each with its five-day
 SPOT_ID = re.compile(r"[A-Za-z0-9_-]+")
 PAGE_META = re.compile(r"<!-- page-meta.*?<!-- /page-meta -->", re.DOTALL)
 LOADING = '<div id="result"><p class="muted">Loading forecasts…</p></div>'
+# The brand mark, inline in every page's header (the static pages carry the same markup), so it needs no path.
+MARK = ('<svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#1a6871"/>'
+        '<path d="M430-20C330 110 470 230 300 290S110 380 190 540" fill="none" stroke="#5CC2B5" stroke-width="70" stroke-linecap="round"/>'
+        '<circle cx="318" cy="138" r="38" fill="#F08A4B"/><circle cx="165" cy="358" r="46" fill="none" stroke="#fff" stroke-width="22"/></svg>')
 SITE_URL_ENV = "DIPCAST_SITE_URL"
 # Optional page-view counter (Cloudflare Web Analytics). Off unless the repository
 # variable is set; the token is public (it sits in the page), so it is a variable,
@@ -492,13 +502,20 @@ def not_found_page(root: str) -> str:
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">\n'
         f'<title>Page not found · {BRAND}</title><meta name="robots" content="noindex">\n'
-        f'<link rel="icon" href="{r}icons/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="{r}page.css">\n'
-        '<style>.big{font-size:64px;line-height:1;font-weight:800;color:var(--accent);margin:0 0 10px;letter-spacing:-.03em} ul.go{padding-left:20px} ul.go li{margin:6px 0}</style>\n'
-        f'</head><body><main>\n<nav><a href="{r}" class="brand">{BRAND}</a><a href="{r}">Explore</a><a href="{r}about.html">About</a><a href="{r}feedback.html">Feedback</a></nav>\n'
-        '<p class="big" aria-hidden="true">404</p><h1>No page at this address</h1>\n'
+        '<meta name="theme-color" media="(prefers-color-scheme: light)" content="#0f5a61">'
+        '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b474d">\n'
+        f'<link rel="icon" href="{r}icons/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="{r}icons/apple-touch-icon.png">\n'
+        f'<link rel="stylesheet" href="{r}page.css">\n'
+        f'<link rel="preload" href="{r}fonts/SourceSans3-latin.woff2" as="font" type="font/woff2" crossorigin>'
+        f'<link rel="preload" href="{r}fonts/SourceSerif4-latin.woff2" as="font" type="font/woff2" crossorigin>\n'
+        f'</head><body>\n<header class="top"><a class="brand" href="{r}">{MARK}{BRAND}</a>'
+        f'<nav aria-label="Site"><a href="{r}">Explore</a><a href="{r}verification.html">Accuracy</a><a href="{r}about.html">About</a><a href="{r}feedback.html">Feedback</a></nav></header>\n'
+        '<main class="doc"><h1>No page at this address</h1>\n'
         '<p class="lead">A spot changes address when it is renamed or removed, and a link can be copied or typed wrongly.</p>\n'
-        f'<ul class="go"><li><a href="{r}">All spots</a>, each with its five-day forecast</li><li><a href="{r}saved/">Your saved spots</a></li>'
-        f'<li><a href="{r}feedback.html?type=spot">Ask for a spot to be added</a></li></ul>\n</main></body></html>\n')
+        f'<ul><li><a href="{r}">All spots</a>, each with its five-day forecast</li><li><a href="{r}saved/">Your saved spots</a></li>'
+        f'<li><a href="{r}feedback.html?type=spot">Ask for a spot to be added</a></li></ul></main>\n'
+        f'<footer class="site-foot"><div class="rule"><p>{BRAND} is a free, non-commercial forecast of sewage-overflow risk at river and lake swim spots in England, run by Ethan Buckley. A forecast, not a water test.</p>'
+        f'<p><a href="{r}terms.html">Terms of use</a> · <a href="{r}privacy.html">Privacy</a> · <a href="{r}feedback.html">Feedback</a></p></div></footer></body></html>\n')
 
 
 def robots(root: str) -> str:
@@ -527,6 +544,7 @@ def write_pages(site: Path, results: list[dict], token: str | None = None, root:
             s = with_counts(s, results)
         (site / name).write_text(with_counter(with_push(s, push) if name == "privacy.html" else s, token))
     shutil.copy(STATIC / "page.css", site / "page.css")
+    shutil.copytree(STATIC / "fonts", site / "fonts", dirs_exist_ok=True)   # declared in page.css and index.html
     copy_app_files(site)
     home = PAGE_META.sub(lambda m: page_meta(HOME_TITLE, DESCRIPTION, root, root, base="./"), template, count=1)
     (site / "index.html").write_text(with_counter(home, token))

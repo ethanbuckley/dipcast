@@ -3,6 +3,7 @@ name (never today's level, which a cached preview would show for days), every pa
 absolute preview links, a spot's page has a relative <base>, and the live scorer reports when the
 observation records its coverage rule needs begin."""
 
+import re
 import shutil
 import subprocess
 import sys
@@ -49,11 +50,14 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     assert '<link rel="canonical" href="https://example.org/swim/">' in home
     assert '<base href="./">' in home.split("</head>")[0]   # pushState to spot/<id>/ must not move its links
     assert "Loading forecasts…" in home
-    for f in ["sw.js", "manifest.webmanifest", "icons/og.png", "verification.html", "privacy.html", "page.css", ".nojekyll", "404.html", "robots.txt"]:
+    for f in ["sw.js", "manifest.webmanifest", "icons/og.png", "verification.html", "privacy.html", "page.css", ".nojekyll", "404.html", "robots.txt",
+              "fonts/SourceSans3-latin.woff2", "fonts/SourceSerif4-latin.woff2", "fonts/LICENSE.txt"]:   # the typefaces page.css declares
         assert (tmp_path / f).exists(), f
     # GitHub Pages serves 404.html at any depth, so its links must be absolute; search engines may not keep it.
     lost = (tmp_path / "404.html").read_text()
     assert 'href="https://example.org/swim/"' in lost and 'href="https://example.org/swim/page.css"' in lost and 'content="noindex"' in lost
+    assert 'class="top"' in lost and 'href="https://example.org/swim/about.html">About</a>' in lost   # the shared header, absolute
+    assert 'href="https://example.org/swim/icons/apple-touch-icon.png"' in lost
     assert (tmp_path / "robots.txt").read_text() == "User-agent: *\nAllow: /\nSitemap: https://example.org/swim/sitemap.xml\n"
     sm = (tmp_path / "sitemap.xml").read_text()
     assert sm.count("<url>") == 6 and "<loc>https://example.org/swim/spot/tarn/</loc>" in sm
@@ -78,10 +82,19 @@ def test_about_page_counts_this_builds_spots_and_links_work_on_the_static_site(t
     about = (tmp_path / "about.html").read_text()
     assert '<span id="n-spots">2</span> spots, <span id="n-bw">1</span> of them designated' in about
     # The server's absolute links become the static site's relative files, on every page.
-    for name in ["about.html", "verification.html", "terms.html", "privacy.html", "testing.html"]:
+    for name in ["about.html", "verification.html", "terms.html", "privacy.html", "testing.html", "feedback.html"]:
         page = (tmp_path / name).read_text()
         assert 'href="about.html">About</a>' in page, name
         assert 'href="/' not in page, name
+        # A page that declares an icon has its icons and preloaded typefaces at files the static site has.
+        if 'rel="icon"' in (bs.STATIC / name).read_text():
+            for ref in ("icons/icon.svg", "icons/apple-touch-icon.png", "fonts/SourceSans3-latin.woff2", "fonts/SourceSerif4-latin.woff2"):
+                assert f'href="{ref}"' in page and (tmp_path / ref).exists(), (name, ref)
+        # On the API server the same links are /static/..., which must resolve there too.
+        for ref in re.findall(r'href="/static/([^"]+)"', (bs.STATIC / name).read_text()):
+            assert (bs.STATIC / ref).exists(), (name, ref)
+    for icon in ("icon.svg", "apple-touch-icon.png"):   # the API server's copies of the site's icons
+        assert (bs.STATIC / "icons" / icon).read_bytes() == (bs.TEMPLATE.parent / "icons" / icon).read_bytes(), icon
     home = (tmp_path / "index.html").read_text()
     assert '<a href="about.html">About SwimSignal</a>' in home and '<a href="about.html" class="desk-only">About</a>' in home
 
