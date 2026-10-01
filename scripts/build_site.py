@@ -407,6 +407,26 @@ def with_counts(html: str, results: list[dict]) -> str:
     return re.sub(r'(<span id="n-bw">)\d+(</span>)', rf"\g<1>{n_bw}\g<2>", html, count=1)
 
 
+def not_found_page(root: str) -> str:
+    """404.html: GitHub Pages serves it for any missing address, at any depth, so every link in it
+    is absolute. Before this, a mistyped or outdated link got GitHub's own page, with no way back."""
+    r = escape(root)
+    return (
+        '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        f'<title>Page not found · {BRAND}</title><meta name="robots" content="noindex">\n'
+        f'<link rel="icon" href="{r}icons/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="{r}page.css">\n'
+        '<style>.big{font-size:64px;line-height:1;font-weight:800;color:var(--accent);margin:0 0 10px;letter-spacing:-.03em} ul.go{padding-left:20px} ul.go li{margin:6px 0}</style>\n'
+        f'</head><body><main>\n<nav><a href="{r}" class="brand">{BRAND}</a><a href="{r}">Explore</a><a href="{r}about.html">About</a><a href="{r}feedback.html">Feedback</a></nav>\n'
+        '<p class="big" aria-hidden="true">404</p><h1>No page at this address</h1>\n'
+        '<p class="lead">A spot changes address when it is renamed or removed, and a link can be copied or typed wrongly.</p>\n'
+        f'<ul class="go"><li><a href="{r}">All spots</a>, each with its five-day forecast</li><li><a href="{r}saved/">Your saved spots</a></li>'
+        f'<li><a href="{r}feedback.html?type=spot">Ask for a spot to be added</a></li></ul>\n</main></body></html>\n')
+
+
+def robots(root: str) -> str:
+    return f"User-agent: *\nAllow: /\nSitemap: {root}sitemap.xml\n"
+
+
 def sitemap(root: str, spot_ids: list[str], day: str) -> str:
     urls = [root, f"{root}about.html", f"{root}verification.html"] + [f"{root}spot/{i}/" for i in spot_ids]
     body = "".join(f"<url><loc>{escape(u)}</loc><lastmod>{day}</lastmod></url>" for u in urls)
@@ -444,6 +464,8 @@ def write_pages(site: Path, results: list[dict], token: str | None = None, root:
         (site / "spot" / r["id"] / "index.html").write_text(with_counter(spot_page(template, r, root), token))
         ids.append(r["id"])
     (site / "sitemap.xml").write_text(sitemap(root, ids, day or pd.Timestamp.now(tz="Europe/London").date().isoformat()))
+    (site / "404.html").write_text(with_counter(not_found_page(root), token))
+    (site / "robots.txt").write_text(robots(root))
     (site / ".nojekyll").write_text("")
     return len(ids)
 
