@@ -30,6 +30,12 @@ const shortDay = iso => iso === today() ? 'Today' : new Date(iso + 'T12:00:00').
 //    tighter: on 29 Sep 2026 the model put Pangbourne and Wallingford on the Thames at 11-15%
 //    while none of the 20 samples at each this season had been over 900, so a 10% line for
 //    "high" would have called clean water poor.
+//    In season only (May to September, `in_validated_season`). The EA takes no samples from
+//    October to April, so nothing tests the figure then, and on 1 Oct 2026 it alone put 35 of 89
+//    spots on high or very high while the spill forecast read low at 78 of 87: a list that red all
+//    winter, from an untested number, would tell a swimmer nothing and cost the site its credibility.
+//    Out of season the figure is still shown, in its own row and in the day cells, marked untested
+//    (†), but it does not set the level or the headline.
 //  - The Environment Agency's rating of a designated bathing water: at "poor", advice against
 //    bathing applies while the rating stands, so the spot is at least high on every day, whatever
 //    the forecast. The local authority that controls the water issues that advice, not the EA
@@ -55,7 +61,11 @@ const classOf = s => s.classification && s.classification.class ? String(s.class
 const advisedAgainst = s => classOf(s) === 'poor';
 const daily = s => !s.error && overflows(s) > 0;   // a forecast that changes from day to day
 const ecoliTested = s => daily(s) && (s.location || {}).mode !== 'lake';
-const ecoliLevel = (s, x) => ecoliTested(s) && x && !nil(x.p_ecoli_gt900) ? ECOLI_BANDS.find(([t]) => x.p_ecoli_gt900 < t)[1] : null;
+// The figure's band, for its own row and cell, in any month.
+const ecoliBand = (s, x) => ecoliTested(s) && x && !nil(x.p_ecoli_gt900) ? ECOLI_BANDS.find(([t]) => x.p_ecoli_gt900 < t)[1] : null;
+// Untested from October to April (the build marks each day): shown, but not counted in the level.
+const ecoliUntested = x => !!x && x.in_validated_season === false;
+const ecoliLevel = (s, x) => ecoliUntested(x) ? null : ecoliBand(s, x);
 const algaeAge = a => (Date.parse(today()) - Date.parse(a.date)) / 864e5;
 const algaeLevel = s => { const a = s.algae; if (!a || nil(a.level) || algaeAge(a) > 14) return null;
   return a.level >= 3 ? 'high' : a.level >= 2 ? 'moderate' : null; };
@@ -122,5 +132,5 @@ function dayHeadline(s, iso) {
 
 if (typeof module === 'object' && module.exports) {
   module.exports = { ORDER, NOT_COVERED, NO_FORECAST, NO_OVERFLOWS, setToday, today, rank, risk, level, dayLevel,
-    headParts, headline, dayHeadline, daily };
+    headParts, headline, dayHeadline, daily, ecoliBand, ecoliLevel, ecoliUntested };
 }
