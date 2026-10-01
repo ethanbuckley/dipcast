@@ -33,7 +33,7 @@ test('evidence distinguishes missing feeds, dated records, and out-of-season mod
   assert.match(facts['EA rating'], /2025.*not today/);
   assert.match(facts['Water samples'], /not included/);
   assert.match(facts['Model limits'], /untested/);
-  assert.match(facts['Algae observation'], /2026-09-10.*not a current/);
+  assert.match(facts['Algae observation'], /10 Sept? 2026.*not a current/);
 });
 test('missing coverage is not reported as a low risk or current test', () => {
   const facts = Object.fromEntries(evidenceRows({days:[]},'2026-09-30',''));

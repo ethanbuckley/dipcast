@@ -817,6 +817,9 @@ function showDay(d, iso) {
   hero.querySelector('.head-why').textContent = why ? cap(why) : '';
   const addr = location.pathname + location.search + (DAY ? '#day=' + DAY : '');
   if (addr !== location.pathname + location.search + location.hash) history.replaceState(history.state, '', addr);
+  // The map beside the page shows the same day: a shared link, a Saved card or the comparison can open a
+  // day the list never picked, and the day picked here is the swim day back on the list too.
+  if ((VIEW.day || null) !== DAY) setMapDay(DAY);
   document.getElementById('day-view').innerHTML = x ? dayDetail(d, x) : factors(d);
   document.querySelectorAll('#day-strip [data-day]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.day === DAY)));
   const close = document.getElementById('day-close');
