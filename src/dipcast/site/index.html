@@ -22,7 +22,8 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<meta name="theme-color" content="#0f5a61">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#0f5a61">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b4a50">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -31,27 +32,56 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
 <style>
   /* Brand teal from the icon. Map markers use the bright risk colours; badges and text use
-     darker shades so they pass WCAG AA (4.5:1) on white and on the level's tint. */
-  :root { --ink:#14212b; --muted:#56626e; --faint:#8a95a0; --line:#e3e9eb; --bg:#f2f5f5; --card:#fff;
-          --brand:#0f5a61; --brand-2:#5cc2b5;
-          --low:#2e9e5b; --moderate:#d8a400; --high:#e06a1b; --veryhigh:#c81e1e; --unknown:#9aa3ad;
+     darker shades so they pass WCAG AA (4.5:1) on white and on the level's tint. Every colour is a
+     variable, and the dark scheme below redefines them: the page is opened at dawn by the water. */
+  :root { color-scheme:light dark;
+          --ink:#14212b; --muted:#56626e; --faint:#8a95a0; --line:#e3e9eb; --bg:#f2f5f5; --card:#fff;
+          --brand:#0f5a61; --brand-2:#5cc2b5; --link:#0f5a61; --bar:#0f5a61;
+          --low:#2e9e5b; --moderate:#d8a400; --high:#e06a1b; --veryhigh:#c81e1e; --unknown:#9aa3ad; --clear:#4fb3a6;
           --b-low:#1d7a45; --b-moderate:#f4c542; --b-high:#b8480f; --b-veryhigh:#b01c1c; --b-na:#5f6873;
-          --t-low:#e3f3e9; --t-moderate:#fbf1cf; --t-high:#fce6d6; --t-veryhigh:#f9dede; --t-na:#eceff1;
-          --k-low:#17663a; --k-moderate:#6b5200; --k-high:#9a3d0c; --k-veryhigh:#961717; --k-na:#4c545c;
+          --t-low:#e3f3e9; --t-moderate:#fbf1cf; --t-high:#fce6d6; --t-veryhigh:#f9dede; --t-na:#eceff1; --t-clear:#dff1f2;
+          --k-low:#17663a; --k-moderate:#6b5200; --k-high:#9a3d0c; --k-veryhigh:#961717; --k-na:#4c545c; --k-clear:#0f5a61;
+          --hover:#f7f9f9; --active:#eef3f3; --seg:#e3eaea; --th:#f1f7f5; --glass:rgba(255,255,255,.96); --map-bg:#e8eef0;
+          --hair:rgba(0,0,0,.09); --intro-a:#e5f3ef; --notice-bg:#fff7ed; --save-bg:#fff4d6; --save-line:#e7c35a; --save-ink:#5e4a00; --star:#8a6a00;
+          --rain:#3d8bd4; --tile-filter:saturate(.35) brightness(1.03);
+          --arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2314212b' stroke-width='2'/%3E%3C/svg%3E");
           --radius:16px; --shadow:0 1px 2px rgba(15,50,58,.07), 0 6px 20px rgba(15,50,58,.06);
           --header-h:56px; }
+  /* Dark: the same risk hues, the text shades lightened to pass AA on the dark tints, the map dimmed. */
+  @media (prefers-color-scheme: dark) {
+    :root { --ink:#e6edf0; --muted:#a3b1b9; --faint:#7a8891; --line:#26343b; --bg:#0f181b; --card:#16232a;
+            --link:#7fd3c7; --bar:#0b4a50; --unknown:#6b7780;
+            --t-low:#163323; --t-moderate:#3a3113; --t-high:#3d2517; --t-veryhigh:#3f1b1b; --t-na:#1c262b; --t-clear:#13302f;
+            --k-low:#7ad9a2; --k-moderate:#ecd06a; --k-high:#f3a676; --k-veryhigh:#f08a8a; --k-na:#a3b1b9; --k-clear:#7fd3c7;
+            --hover:#1b2a31; --active:#20313a; --seg:#1f2d34; --th:#1b2a31; --glass:rgba(22,35,42,.94); --map-bg:#1a2529;
+            --hair:rgba(255,255,255,.12); --intro-a:#13302f; --notice-bg:#3a2a16; --save-bg:#3a3113; --save-line:#8a6a00; --save-ink:#f1dc8a; --star:#ecd06a;
+            --rain:#6fb0ea; --tile-filter:brightness(.72) saturate(.3) contrast(1.05);
+            --arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%23e6edf0' stroke-width='2'/%3E%3C/svg%3E");
+            --shadow:0 1px 2px rgba(0,0,0,.3), 0 6px 20px rgba(0,0,0,.25); }
+    .leaflet-bar a, .leaflet-bar a:hover, .leaflet-bar a:focus, .leaflet-control-attribution,
+    .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:var(--card); color:var(--ink); }
+    .leaflet-bar a { border-bottom-color:var(--line); }
+    .leaflet-bar a.leaflet-disabled { background:var(--bg); color:var(--faint); }
+    .leaflet-container a, .leaflet-control-attribution a { color:var(--link); }
+  }
   * { box-sizing:border-box; }
   html { -webkit-text-size-adjust:100%; text-size-adjust:100%; }
   html, body { margin:0; }
   body { font:16px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color:var(--ink); background:var(--bg); }
-  a { color:var(--brand); }
+  a { color:var(--link); }
   a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline:3px solid var(--brand-2); outline-offset:2px; border-radius:6px; }
+  /* A little motion where something changes under the finger; none for anyone who asked for none. */
+  .day, .btn, .chip-btn, .hbtn, .save, a.row, .sortseg button, .bottom-nav a, .bottom-nav button, .low-ctl button, .hero, .f-v, .dd-l {
+    transition:background-color .18s ease, color .18s ease, box-shadow .18s ease, border-color .18s ease; }
+  @keyframes rise { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+  #day-view > * { animation:rise .22s ease; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition:none !important; animation:none !important; scroll-behavior:auto !important; } }
   button { font:inherit; }
   .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
   .muted { color:var(--muted); } .small { font-size:13.5px; }
 
   /* The header: the brand, and on a phone the way to the map. */
-  .top { position:sticky; top:0; z-index:1100; display:flex; align-items:center; gap:10px; background:var(--brand); color:#fff;
+  .top { position:sticky; top:0; z-index:1100; display:flex; align-items:center; gap:10px; background:var(--bar); color:#fff;
          padding:calc(9px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 9px calc(16px + env(safe-area-inset-left)); }
   .brand { display:flex; align-items:center; gap:10px; color:#fff; text-decoration:none; font-weight:750; font-size:20px; letter-spacing:-.01em; }
   .brand img { display:block; width:30px; height:30px; border-radius:8px; box-shadow:0 0 0 1px rgba(255,255,255,.3); }
@@ -67,30 +97,30 @@
   .hbtn[aria-current=page] .n { background:var(--brand); color:#fff; }
 
   #app { position:relative; }
-  #map-wrap { position:relative; background:#e8eef0; }
-  #map { position:absolute; inset:0; background:#e8eef0; }
-  .leaflet-tile-pane { filter:saturate(.35) brightness(1.03); }   /* a quieter base map, so the risk colours carry */
+  #map-wrap { position:relative; background:var(--map-bg); }
+  #map { position:absolute; inset:0; background:var(--map-bg); }
+  .leaflet-tile-pane { filter:var(--tile-filter); }   /* a quieter base map, so the risk colours carry */
   /* Touch screens: one finger scrolls the page and two move the map, so the map cannot trap the scroll. */
   .map-hint { position:absolute; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:0 24px; text-align:center;
               background:rgba(20,33,43,.55); color:#fff; font-weight:650; font-size:16px; opacity:0; transition:opacity .25s; pointer-events:none; }
   .map-hint.show { opacity:1; }
-  .map-legend { background:rgba(255,255,255,.95); border-radius:10px; padding:8px 11px; font-size:12.5px; line-height:1.65; box-shadow:0 1px 5px rgba(0,0,0,.2); color:var(--ink); }
+  .map-legend { background:var(--glass); border-radius:10px; padding:8px 11px; font-size:12.5px; line-height:1.65; box-shadow:0 1px 5px rgba(0,0,0,.2); color:var(--ink); }
   .map-legend .ttl { font-weight:650; }
   .map-legend .extra { color:var(--muted); margin-top:4px; max-width:210px; line-height:1.45; }
   .dot { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:6px; vertical-align:-1px; box-shadow:0 0 0 1.5px #fff, 0 0 0 2.5px rgba(0,0,0,.18); }
   /* The map's "Low risk only" switch, and the list's chip for the same thing. */
   .low-ctl { display:flex; flex-direction:column; align-items:flex-end; }
   .low-ctl button { display:flex; align-items:center; font-size:16px; font-weight:650; line-height:1.2; padding:9px 13px; border:0; border-radius:999px;
-                    background:rgba(255,255,255,.97); color:var(--ink); box-shadow:0 1px 5px rgba(0,0,0,.25); cursor:pointer; }
+                    background:var(--glass); color:var(--ink); box-shadow:0 1px 5px rgba(0,0,0,.25); cursor:pointer; }
   .low-ctl button[aria-pressed=true], .chip-btn.low[aria-pressed=true] { background:var(--b-low); border-color:var(--b-low); color:#fff; }
   .low-ctl select { margin:0 0 6px; font:inherit; font-size:16px; font-weight:650; line-height:1.2; color:var(--ink); padding:9px 34px 9px 14px; border:0; border-radius:999px;
-                    background:rgba(255,255,255,.97) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2314212b' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 14px center;
+                    background:var(--glass) var(--arrow) no-repeat right 14px center;
                     box-shadow:0 1px 5px rgba(0,0,0,.25); cursor:pointer; -webkit-appearance:none; appearance:none; }
   .low-ctl .n { margin-left:6px; font-weight:750; color:var(--muted); } .low-ctl button[aria-pressed=true] .n { color:#fff; }
   .chip-btn.low { display:inline-flex; align-items:center; margin-right:6px; }   /* a switch of its own, before the kinds */
   .chip-btn.low .dot { width:10px; height:10px; box-shadow:none; }
   .low-ctl button[aria-pressed=true] .dot, .chip-btn.low[aria-pressed=true] .dot { background:#fff !important; }
-  .low-note { display:none; max-width:230px; margin:6px 0 0 auto; padding:7px 10px; border-radius:10px; background:rgba(255,255,255,.96);
+  .low-note { display:none; max-width:230px; margin:6px 0 0 auto; padding:7px 10px; border-radius:10px; background:var(--glass);
               box-shadow:0 1px 5px rgba(0,0,0,.2); font-size:12.5px; line-height:1.4; color:var(--muted); }
   .low-ctl button[aria-pressed=true] + .low-note { display:block; }
   .dot.sm { width:9px; height:9px; margin:0 4px 0 8px; box-shadow:none; }
@@ -101,18 +131,21 @@
   /* The list */
   .compare-fields { display:grid; gap:10px; margin:14px 0; }
   .compare-fields label { font-size:14px; font-weight:650; }
-  .compare-fields select { display:block; width:100%; min-height:44px; margin-top:4px; padding:8px; font:inherit; background:white; border:1px solid var(--line); border-radius:8px; }
+  .compare-fields select { display:block; width:100%; min-height:44px; margin-top:4px; padding:8px; font:inherit; color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:8px; }
   .compare-scroll { overflow-x:auto; border:1px solid var(--line); border-radius:10px; }
   .compare-table { width:100%; min-width:540px; border-collapse:collapse; font-size:14px; }
   .compare-table caption { text-align:left; padding:10px; color:var(--muted); }
   .compare-table th, .compare-table td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; min-width:150px; }
-  .compare-table th { background:#f1f7f5; }
+  .compare-table th { background:var(--th); }
   .compare-table th a { display:block; min-height:44px; padding:4px 0; }
   .compare-table th[scope=row] { min-width:100px; }
   .comparison > summary { cursor:pointer; font-weight:750; font-size:18px; padding:6px 0; }
   .comparison[open] > summary { margin-bottom:10px; }
-  .intro { padding:18px; border:1px solid var(--line); border-radius:20px; background:linear-gradient(135deg,#e5f3ef,#fff 75%); }
-  .intro .eyebrow { margin:0 0 8px; color:var(--brand); font-size:12px; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
+  .intro { padding:18px; border:1px solid var(--line); border-radius:20px; background:linear-gradient(135deg, var(--intro-a), var(--card) 75%); }
+  .intro .eyebrow { margin:0 0 8px; color:var(--link); font-size:12px; font-weight:750; letter-spacing:.09em; text-transform:uppercase; }
+  /* The colour key, on a phone, where the map's legend is a tap away. */
+  .key { display:flex; flex-wrap:wrap; gap:4px 12px; margin:12px 0 0; font-size:12.5px; color:var(--muted); }
+  .key span { display:inline-flex; align-items:center; }
   .planner { margin:16px 0 12px; }
   .planner label { display:block; font-size:14px; font-weight:650; margin-bottom:6px; }
   .planner select { width:100%; min-height:46px; padding:10px; font:inherit; color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:10px; }
@@ -132,18 +165,19 @@
   .group-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 12px; margin:0 0 8px; }
   .group-head { font-size:13px; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:750; margin:0; }
   .group > .group-head { margin:0 0 8px; }
-  .sortseg { display:inline-flex; gap:2px; padding:3px; border-radius:11px; background:#e3eaea; }
+  .sortseg { display:inline-flex; gap:2px; padding:3px; border-radius:11px; background:var(--seg); }
   .sortseg button { font-size:16px; font-weight:600; padding:6px 11px; border:0; border-radius:8px; background:transparent; color:var(--muted); cursor:pointer; }
   .sortseg button[aria-pressed=true] { background:var(--card); color:var(--ink); box-shadow:0 1px 2px rgba(0,0,0,.14); }
   .overview { font-size:14px; color:var(--muted); margin:0 0 10px; }
   ul.spots { list-style:none; margin:0; padding:0; background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
   ul.spots li + li { border-top:1px solid var(--line); }
   a.row { display:flex; align-items:center; gap:12px; min-height:64px; padding:12px 14px 12px 16px; color:inherit; text-decoration:none; }
-  a.row:hover { background:#f7f9f9; } a.row:active { background:#eef3f3; }
+  a.row:hover { background:var(--hover); } a.row:active { background:var(--active); }
   .row-main { flex:1; min-width:0; display:flex; flex-direction:column; }
   .nm { font-weight:650; font-size:16px; line-height:1.3; overflow-wrap:anywhere; }
   .hl { font-size:14px; font-weight:650; line-height:1.35; margin-top:1px; }
   .hl.low { color:var(--k-low); } .hl.moderate { color:var(--k-moderate); } .hl.high { color:var(--k-high); } .hl.veryhigh { color:var(--k-veryhigh); } .hl.na { color:var(--muted); }
+  .hl.clear { color:var(--k-clear); }
   .k { font-size:13px; color:var(--muted); line-height:1.35; }
   .week { flex:none; display:flex; gap:4px; }
   .wk { display:flex; flex-direction:column; align-items:center; gap:3px; }
@@ -151,6 +185,9 @@
   .wk i.low { background:var(--low); } .wk i.moderate { background:var(--moderate); } .wk i.high { background:var(--high); } .wk i.veryhigh { background:var(--veryhigh); }
   .wk b { font-size:10.5px; font-weight:600; line-height:1; color:var(--faint); }
   .wk.first b { color:var(--ink); }
+  /* Where nothing upstream can spill, the week shows the rain instead: bars by the 48-hour total. */
+  .week.rain .wk { justify-content:flex-end; height:38px; }
+  .week.rain .wk i { height:var(--h, 3px); min-height:3px; background:var(--rain); opacity:.85; }
   .empty { padding:16px; color:var(--muted); }
   .count { font-size:13.5px; color:var(--muted); margin:8px 2px 0; }
 
@@ -159,22 +196,22 @@
   .title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin:6px 0 6px; }
   h1.spot-name { font-size:25px; line-height:1.2; letter-spacing:-.02em; margin:0; overflow-wrap:anywhere; }
   .save { flex:none; margin-top:2px; font-size:16px; font-weight:650; padding:7px 14px; border-radius:999px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; box-shadow:var(--shadow); }
-  .save[aria-pressed=true] { background:#fff4d6; border-color:#e7c35a; color:#5e4a00; }
+  .save[aria-pressed=true] { background:var(--save-bg); border-color:var(--save-line); color:var(--save-ink); }
   .chips { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 4px; }
   .chip { font-size:13px; color:var(--muted); background:var(--card); border:1px solid var(--line); border-radius:999px; padding:2px 10px; }
   .hero { border-radius:var(--radius); padding:18px 16px 16px; margin:14px 0 12px; background:var(--t-na); box-shadow:var(--shadow); }
-  .hero.low { background:var(--t-low); } .hero.moderate { background:var(--t-moderate); } .hero.high { background:var(--t-high); } .hero.veryhigh { background:var(--t-veryhigh); }
+  .hero.low { background:var(--t-low); } .hero.moderate { background:var(--t-moderate); } .hero.high { background:var(--t-high); } .hero.veryhigh { background:var(--t-veryhigh); } .hero.clear { background:var(--t-clear); }
   .kicker { font-size:12px; font-weight:750; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); }
   .headline { font-size:28px; line-height:1.15; font-weight:800; letter-spacing:-.02em; margin:4px 0 8px; color:var(--k-na); }
-  .hero.low .headline { color:var(--k-low); } .hero.moderate .headline { color:var(--k-moderate); } .hero.high .headline { color:var(--k-high); } .hero.veryhigh .headline { color:var(--k-veryhigh); }
+  .hero.low .headline { color:var(--k-low); } .hero.moderate .headline { color:var(--k-moderate); } .hero.high .headline { color:var(--k-high); } .hero.veryhigh .headline { color:var(--k-veryhigh); } .hero.clear .headline { color:var(--k-clear); }
   .head-why { font-size:18px; line-height:1.3; font-weight:700; margin:-4px 0 12px; }
   .hero .headline + .days { margin-top:12px; }
   /* What the level rests on: sewage spills, water quality and the EA's rating, a row each. */
   .factors { margin:14px 0 0; }
-  .factor { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:2px 12px; align-items:baseline; padding:11px 0 10px; border-top:1px solid rgba(0,0,0,.09); }
+  .factor { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:2px 12px; align-items:baseline; padding:11px 0 10px; border-top:1px solid var(--hair); }
   .f-l { font-size:12px; font-weight:750; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
   .f-v { font-size:16px; font-weight:800; text-align:right; color:var(--k-na); }
-  .f-v.low { color:var(--k-low); } .f-v.moderate { color:var(--k-moderate); } .f-v.high { color:var(--k-high); } .f-v.veryhigh { color:var(--k-veryhigh); }
+  .f-v.low { color:var(--k-low); } .f-v.moderate { color:var(--k-moderate); } .f-v.high { color:var(--k-high); } .f-v.veryhigh { color:var(--k-veryhigh); } .f-v.clear { color:var(--k-clear); }
   .f-d { grid-column:1 / -1; font-size:15px; line-height:1.45; margin-top:2px; }
   .days { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:5px; margin:0 0 6px; }
   .day { display:block; width:100%; min-width:0; margin:0; font:inherit; line-height:1.5; border:0; border-top:5px solid var(--unknown); border-radius:10px; background:var(--card); color:var(--k-na); padding:6px 0 7px; text-align:center; }
@@ -184,7 +221,7 @@
   .day.high { border-color:var(--high); color:var(--k-high); } .day.veryhigh { border-color:var(--veryhigh); color:var(--k-veryhigh); }
   /* A day you can pick: ringed in its level's colour while it is open. */
   button.day { cursor:pointer; -webkit-tap-highlight-color:transparent; }
-  @media (hover: hover) { button.day:hover { background:#f6f8f8; } }   /* a phone keeps :hover after a tap */
+  @media (hover: hover) { button.day:hover { background:var(--hover); } }   /* a phone keeps :hover after a tap */
   button.day:focus-visible { border-radius:10px; }
   button.day[aria-pressed=true] { box-shadow:0 0 0 2.5px currentColor; }
   button.day[aria-pressed=true] .d { color:inherit; font-weight:750; }
@@ -193,12 +230,12 @@
   .dd-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:14px 0 0; }
   .dd-t { font-size:17px; line-height:1.3; font-weight:750; margin:0; }
   .dd-l { font-size:18px; line-height:1.3; font-weight:800; margin:2px 0 0; color:var(--k-na); }
-  .dd-l.low { color:var(--k-low); } .dd-l.moderate { color:var(--k-moderate); } .dd-l.high { color:var(--k-high); } .dd-l.veryhigh { color:var(--k-veryhigh); }
+  .dd-l.low { color:var(--k-low); } .dd-l.moderate { color:var(--k-moderate); } .dd-l.high { color:var(--k-high); } .dd-l.veryhigh { color:var(--k-veryhigh); } .dd-l.clear { color:var(--k-clear); }
   .dd-l + .factors { margin-top:10px; }
   ul.dd-ovs { list-style:none; margin:8px 0 0; padding:0; font-size:14px; line-height:1.4; }
   ul.dd-ovs li { display:flex; gap:8px; margin-top:4px; } ul.dd-ovs .sdot { width:10px; height:10px; margin-top:5px; }
   .issued { font-size:13px; color:var(--muted); margin:10px 0 0; }
-  .check { font-size:14px; line-height:1.4; margin:8px 0 0; padding-top:8px; border-top:1px solid rgba(0,0,0,.09); }
+  .check { font-size:14px; line-height:1.4; margin:8px 0 0; padding-top:8px; border-top:1px solid var(--hair); }
   .card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; margin:12px 0; }
   .card-h { font-size:17px; font-weight:750; margin:0 0 2px; }
   .sub { color:var(--muted); font-size:13.5px; margin:0 0 10px; }
@@ -206,10 +243,10 @@
   .now-row .big { font-size:40px; line-height:1; font-weight:800; color:var(--ink); min-width:34px; text-align:center; }
   .now-row .big.hot { color:var(--b-veryhigh); }
   /* A phone's spot page: where the spot is, at a glance, under its name. */
-  .loc { position:relative; height:140px; margin:10px 0 0; border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); background:#e8eef0; }
-  #loc-map { position:absolute; inset:0; z-index:0; background:#e8eef0; cursor:pointer; }
+  .loc { position:relative; height:140px; margin:0 0 12px; border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); background:var(--map-bg); }
+  #loc-map { position:absolute; inset:0; z-index:0; background:var(--map-bg); cursor:pointer; }
   .loc-open { position:absolute; top:10px; right:10px; z-index:1; font-size:16px; font-weight:650; line-height:1.2; padding:7px 13px; border:0; border-radius:999px;
-              background:rgba(255,255,255,.96); color:var(--ink); box-shadow:0 1px 5px rgba(0,0,0,.25); cursor:pointer; }
+              background:var(--glass); color:var(--ink); box-shadow:0 1px 5px rgba(0,0,0,.25); cursor:pointer; }
   .loc .leaflet-control-attribution { font-size:10px; }
   #spot-map { position:relative; height:260px; border-radius:12px; overflow:hidden; margin:8px 0 8px; }
   ul.ovs { list-style:none; margin:4px 0 0; padding:0; }
@@ -231,7 +268,7 @@
   details.fold > summary::after { content:"+"; font-size:22px; line-height:1; color:var(--muted); }
   details.fold[open] > summary::after { content:"–"; }
   details.fold[open] > summary { margin-bottom:10px; }
-  details.more > summary { cursor:pointer; color:var(--brand); font-size:15px; margin-top:8px; font-weight:600; }
+  details.more > summary { cursor:pointer; color:var(--link); font-size:15px; margin-top:8px; font-weight:600; }
   details.more[open] > summary { margin-bottom:6px; }
   table { width:100%; border-collapse:collapse; font-size:14px; }
   th, td { text-align:left; padding:7px 4px; border-bottom:1px solid var(--line); vertical-align:top; }
@@ -243,28 +280,28 @@
   .b-veryhigh{background:var(--b-veryhigh)} .b-na{background:var(--b-na)}
   dl.tech { display:grid; grid-template-columns:max-content 1fr; gap:3px 12px; margin:6px 0 0; font-size:13px; }
   dl.tech dt { color:var(--muted); } dl.tech dd { margin:0; overflow-wrap:anywhere; }
-  .notice { border:1px solid var(--high); background:#fff7ed; border-radius:12px; padding:10px 14px; margin:12px 0; font-size:14.5px; }
+  .notice { border:1px solid var(--high); background:var(--notice-bg); border-radius:12px; padding:10px 14px; margin:12px 0; font-size:14.5px; }
   .notice.quiet { border-color:var(--line); background:var(--card); }
 
   /* Saved spots: a card per spot, tinted by its level, the whole card opening the spot. */
   .page-h { font-size:26px; line-height:1.15; letter-spacing:-.02em; margin:6px 0 6px; }
   ul.scards { list-style:none; margin:14px 0 0; padding:0; display:grid; gap:12px; }
   .scard { position:relative; border-radius:var(--radius); padding:14px 14px 12px 16px; background:var(--t-na); box-shadow:var(--shadow); }
-  .scard.low { background:var(--t-low); } .scard.moderate { background:var(--t-moderate); } .scard.high { background:var(--t-high); } .scard.veryhigh { background:var(--t-veryhigh); }
+  .scard.low { background:var(--t-low); } .scard.moderate { background:var(--t-moderate); } .scard.high { background:var(--t-high); } .scard.veryhigh { background:var(--t-veryhigh); } .scard.clear { background:var(--t-clear); }
   .scard-top { display:flex; align-items:flex-start; gap:10px; }
   .scard-link { flex:1; min-width:0; display:flex; flex-direction:column; color:inherit; text-decoration:none; }
   .scard-link::after { content:""; position:absolute; inset:0; border-radius:var(--radius); }
   .scard-link:focus-visible { outline:none; } .scard-link:focus-visible::after { outline:3px solid var(--brand-2); outline-offset:2px; }
   .scard-link .nm { font-size:17px; }
-  .unsave { position:relative; z-index:1; flex:none; width:44px; height:44px; margin:-6px -6px 0 0; border:0; border-radius:50%; background:transparent; color:#8a6a00; font-size:24px; line-height:1; cursor:pointer; }
-  .unsave:hover { background:rgba(255,255,255,.6); }
+  .unsave { position:relative; z-index:1; flex:none; width:44px; height:44px; margin:-6px -6px 0 0; border:0; border-radius:50%; background:transparent; color:var(--star); font-size:24px; line-height:1; cursor:pointer; }
+  .unsave:hover { background:var(--glass); }
   .scard-hl { font-size:20px; line-height:1.2; font-weight:800; letter-spacing:-.01em; margin:6px 0 10px; color:var(--k-na); }
-  .scard.low .scard-hl { color:var(--k-low); } .scard.moderate .scard-hl { color:var(--k-moderate); } .scard.high .scard-hl { color:var(--k-high); } .scard.veryhigh .scard-hl { color:var(--k-veryhigh); }
+  .scard.low .scard-hl { color:var(--k-low); } .scard.moderate .scard-hl { color:var(--k-moderate); } .scard.high .scard-hl { color:var(--k-high); } .scard.veryhigh .scard-hl { color:var(--k-veryhigh); } .scard.clear .scard-hl { color:var(--k-clear); }
   .scard .days { position:relative; z-index:1; margin:0 0 10px; }   /* above the card's link: a day opens the spot on it */
   .scard-now { display:flex; gap:8px; font-size:14px; line-height:1.4; margin:0; }
   .scard-now .sdot { margin-top:4px; }
   .scard.removed { display:flex; flex-wrap:wrap; align-items:center; gap:4px 10px; padding:12px 16px; background:transparent; box-shadow:none; border:1px dashed var(--line); color:var(--muted); font-size:15px; }
-  .linkbtn { font-size:16px; font-weight:650; color:var(--brand); background:none; border:0; padding:6px 0; cursor:pointer; text-decoration:underline; }
+  .linkbtn { font-size:16px; font-weight:650; color:var(--link); background:none; border:0; padding:6px 0; cursor:pointer; text-decoration:underline; }
   .linkbtn.small { font-size:inherit; padding:0; }   /* inside a sentence */
   .empty-saved { text-align:center; padding:26px 18px 22px; }
   .empty-saved .big-star { font-size:40px; line-height:1; color:#c9a227; margin-bottom:8px; }
@@ -311,7 +348,7 @@
     .bottom-nav a, .bottom-nav button { display:flex; align-items:center; justify-content:center; gap:7px; min-height:48px; border:0; border-radius:12px;
       font:inherit; font-size:14px; font-weight:600; background:none; color:var(--muted); text-decoration:none; cursor:pointer; }
     .bottom-nav svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
-    .bottom-nav [aria-current=page], .bottom-nav [aria-pressed=true] { background:var(--bg); color:var(--brand); }
+    .bottom-nav [aria-current=page], .bottom-nav [aria-pressed=true] { background:var(--bg); color:var(--link); }
     .bottom-nav .n { min-width:20px; padding:0 6px; border-radius:999px; background:var(--brand); color:#fff; font-size:12.5px; line-height:20px; text-align:center; }
     .bottom-nav .n[hidden] { display:none; }
     #spot-map .map-legend { display:none; }
@@ -494,7 +531,7 @@ function miniMap(s) {
     boxZoom: false, keyboard: false }).setView([s.lat, s.lon], 12);
   MINI.attributionControl.setPrefix(false);
   tiles().addTo(MINI);
-  L.circleMarker([s.lat, s.lon], { radius: 15, color: '#0f5a61', weight: 3, fill: false, interactive: false }).addTo(MINI);
+  L.circleMarker([s.lat, s.lon], { radius: 15, color: RING(), weight: 3, fill: false, interactive: false }).addTo(MINI);
   L.circleMarker([s.lat, s.lon], { radius: 8, color: '#fff', weight: 2, fillColor: colour(level(s)), fillOpacity: 1, interactive: false }).addTo(MINI);
   const open = () => { setMapMode(true); map.setView([s.lat, s.lon], 13); };
   MINI.on('click', open); document.getElementById('loc-open').addEventListener('click', open);
@@ -509,8 +546,13 @@ const VIEW = { q: '', filter: 'all', sort: 'risk', here: null, geoMsg: '', lowOn
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'})[c]);
 const fmt = (x, d=0) => (x === null || x === undefined) ? '–' : Number(x).toFixed(d);
 const cls = l => ORDER[l] === undefined ? 'b-na' : 'b-' + l.replace(' ', '');
-const tone = l => ORDER[l] === undefined ? 'na' : l.replace(' ', '');
-const colour = l => ({low:'#2e9e5b', moderate:'#d8a400', high:'#e06a1b', 'very high':'#c81e1e'})[l] || '#8a939e';
+// 'clear': no monitored overflow upstream, so nothing to forecast. Its own calm teal, not the grey
+// of "no level", which is for a spot the forecast cannot cover at all.
+const tone = l => l === NO_OVERFLOWS ? 'clear' : ORDER[l] === undefined ? 'na' : l.replace(' ', '');
+const colour = l => ({low:'#2e9e5b', moderate:'#d8a400', high:'#e06a1b', 'very high':'#c81e1e', [NO_OVERFLOWS]:'#4fb3a6'})[l] || '#8a939e';
+const DARK = matchMedia('(prefers-color-scheme: dark)');
+const RING = () => DARK.matches ? '#7fd3c7' : '#0f5a61';   // the ring round the open spot, on light or dimmed tiles
+const SCROLL = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
 const dateLabel = iso => { const t = serverToday ?? localISO(new Date());
   if (iso === t) return 'Today'; if (iso === addDays(t, 1)) return 'Tomorrow';
   return new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'}); };
@@ -741,7 +783,7 @@ const algae = a => { if (!a) return '';
   const tally = a.n_seen ? `Algae seen at ${a.n_seen} of ${a.n_checks} checks ${season}${a.n_objectionable ? `, ${a.n_objectionable} of them enough to be objectionable` : ''}.`
     : `No algae seen at any of ${a.n_checks} check${a.n_checks === 1 ? '' : 's'} ${season}.`;
   return `<section class="card"><h2 class="card-h">Algae</h2><p class="sub">Environment Agency sampler's visual check</p>`
-    + `<div>${when}: <b${a.level >= 3 ? ' style="color:var(--b-high)"' : ''}>${esc(a.phrase)}</b>.</div>`
+    + `<div>${when}: <b${a.level >= 3 ? ' style="color:var(--k-high)"' : ''}>${esc(a.phrase)}</b>.</div>`
     + `<div class="small muted" style="margin-top:4px">${tally}${age > 14 ? ' No check since: the EA checks bathing waters from May to September, and results take about a week to be published.' : ''} A look at the water, not a lab test: it does not tell blue-green algae, which can be toxic, from harmless kinds.</div></section>`; };
 // The five days as cells: the day's level and, where E. coli is estimated, its chance; else the rain.
 // Where the level changes from day to day each cell is a button: on a spot's page it opens the day
@@ -762,10 +804,20 @@ const cells = (d, card = false) => { const on = daily(d), pct = ecoliTested(d), 
 const strip = d => cells(d) + `<p class="strip-note">${!daily(d) ? 'No daily forecast here; rain in the previous 48 h.'
   : (ecoliTested(d) ? 'The level each day, and the chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml.' : 'The level each day, and rain here in the previous 48 h.') + ' Pick a day for its details.'
     + (anyUntested(d) ? ' ' + UNTESTED_NOTE : '')}</p>`;
-// The week at a glance in a list row: one bar per day, coloured by level.
-const week = s => { if (!daily(s) || ORDER[level(s)] === undefined || !s.days.length) return '';
+// The week at a glance in a list row: one bar per day, coloured by level. Where no overflow can
+// reach the spot there is no level to colour, so the bars show the rain instead (40 mm fills one).
+const week = s => {
+  if (!s.days || !s.days.length) return '';
+  if (!daily(s)) { if (!s.days.some(x => !nil(x.rain_48h_mm))) return '';
+    return `<span class="week rain" aria-hidden="true" title="Rain in the 48 hours before each day">${s.days.slice(0, 5).map((x, i) =>
+      `<span class="wk${i ? '' : ' first'}"><i style="--h:${nil(x.rain_48h_mm) ? 3 : Math.round(3 + 21 * Math.min(1, x.rain_48h_mm / 40))}px"></i><b>${initial(x.date)}</b></span>`).join('')}</span>`; }
+  if (ORDER[level(s)] === undefined) return '';
   return `<span class="week" aria-hidden="true">${s.days.slice(0, 5).map((x, i) => { const lv = risk(s, x).level;
     return `<span class="wk${i ? '' : ' first'}"><i class="${lv ? tone(lv) : ''}"></i><b>${initial(x.date)}</b></span>`; }).join('')}</span>`; };
+// A row's second line, where there is no level: the rain, which is what there is to go by.
+const rainMeta = s => { if (daily(s) || !s.days || !s.days.length) return '';
+  const x = (VIEW.day && s.days.find(y => y.date === VIEW.day)) || s.days[0];
+  return x && !nil(x.rain_48h_mm) ? `${Math.round(x.rain_48h_mm)} mm of rain in 48 h` : ''; };
 // ------------------------------------------------------------------------------ one day
 // A day picked in a spot's strip, as a weather app opens a day: its level and what set it, then
 // the spills, the water and the rain that day, then the algae and the rating, which hold on every
@@ -857,11 +909,12 @@ async function loadOverflows() {
 // Offline the layer is not stored (6 MB): the map then shows the spots without it.
 map.on('moveend', () => loadOverflows().catch(() => ovLayer.clearLayers()));
 
+// The colour key: the map's legend, and on a phone a row under the list's filters.
+const KEY = [['low','Low'], ['moderate','Moderate'], ['high','High'], ['very high','Very high'], [NO_OVERFLOWS, 'No overflows upstream'], ['', 'No level']];
 const legend = L.control({ position: 'bottomleft' });
 legend.onAdd = () => { const el = L.DomUtil.create('div', 'map-legend');
   el.innerHTML = `<div class="ttl">Pollution risk, today and tomorrow</div>`
-    + [['low','Low'], ['moderate','Moderate'], ['high','High'], ['very high','Very high'], ['', 'No level']]
-      .map(([l, t]) => `<div class="row"><span class="dot" style="background:${colour(l)}"></span>${t}</div>`).join('')
+    + KEY.map(([l, t]) => `<div class="row"><span class="dot" style="background:${colour(l)}"></span>${t}</div>`).join('')
     + `<div class="extra">Zoom in to see storm overflows:<br><span class="dot sm" style="background:#c81e1e"></span>discharging<span class="dot sm" style="background:#5b6470"></span>not discharging<span class="dot sm" style="background:#b3bac2"></span>offline</div>`;
   L.DomEvent.disableClickPropagation(el); return el; };
 legend.addTo(map);
@@ -966,7 +1019,7 @@ const listPath = s => spotPath(s.id) + (VIEW.day && daily(s) ? '#day=' + VIEW.da
 const dist = s => VIEW.here ? km(VIEW.here, [s.lat, s.lon]) : null;
 function spotItem(s) {
   const d = dist(s);
-  const meta = [cap(s.kind), s.source === 'designated' ? 'bathing water' : null, d !== null ? `${d < 10 ? d.toFixed(1) : Math.round(d)} km away` : null, waterEst(s)].filter(Boolean).join(' · ');
+  const meta = [cap(s.kind), s.source === 'designated' ? 'bathing water' : null, d !== null ? `${d < 10 ? d.toFixed(1) : Math.round(d)} km away` : null, waterEst(s), rainMeta(s)].filter(Boolean).join(' · ');
   return `<li><a class="row" href="${esc(listPath(s))}" data-id="${esc(s.id)}"><span class="row-main"><span class="nm">${esc(s.name)}</span>`
     + `<span class="hl ${tone(mapLevel(s))}">${listHeadline(s)}</span><span class="k">${meta}</span></span>${week(s)}</a></li>`;
 }
@@ -992,7 +1045,8 @@ function renderList() {
     + `<div class="planner"><label for="listday">When are you swimming?</label><select id="listday"><option value="">Today and tomorrow · overview</option>${[0,1,2,3,4].map(k => addDays(today(), k)).map(iso => `<option value="${iso}"${VIEW.day === iso ? ' selected' : ''}>${dateLabel(iso)}</option>`).join('')}</select><p class="planner-note">Forecasts, not water tests. Check local advice.</p></div>`
     + `<div class="chips-row" role="group" aria-label="Show"><button type="button" class="chip-btn low" data-low aria-pressed="${VIEW.lowOnly}"><span class="dot" style="background:${colour('low')}"></span><span data-low-t>${lowLabel()}</span></button>`
     + `${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div>`
-    + `<p class="small muted" id="low-note-list"${VIEW.lowOnly ? '' : ' hidden'}>${lowListNote()}</p></section>`;
+    + `<p class="small muted" id="low-note-list"${VIEW.lowOnly ? '' : ' hidden'}>${lowListNote()}</p>`
+    + `<div class="key phone-only" aria-hidden="true">${KEY.map(([l, t]) => `<span><span class="dot" style="background:${colour(l)}"></span>${t}</span>`).join('')}</div></section>`;
   h += notices();
   if (saved.length) h += `<section class="group" id="saved-group" aria-labelledby="saved-h"><h2 class="group-head" id="saved-h">Saved spots</h2><ul class="spots" id="saved-list">${saved.map(spotItem).join('')}</ul></section>`;
   h += `<section class="group" aria-labelledby="all-h"><div class="group-bar"><h2 class="group-head" id="all-h">All spots</h2>`
@@ -1142,7 +1196,7 @@ function renderSaved() {
     + `<button type="button" class="btn" id="share-list">Share this list</button><p class="small muted" id="share-list-msg" aria-live="polite" style="margin:8px 0 0"></p></section>`;
   setPanel(h);
   bindBack(); bindSavedPage(spots, offered); bindAlerts(); bindComparison();
-  for (const s of spots) L.circleMarker([s.lat, s.lon], { radius: 13, color: '#0f5a61', weight: 2.5, fill: false, interactive: false }).addTo(selLayer);
+  for (const s of spots) L.circleMarker([s.lat, s.lon], { radius: 13, color: RING(), weight: 2.5, fill: false, interactive: false }).addTo(selLayer);
   if (spots.length && !PHONE.matches) map.fitBounds(L.latLngBounds(spots.map(s => [s.lat, s.lon])), { padding: [60, 60], maxZoom: 11 });
   placeMap();
 }
@@ -1203,7 +1257,7 @@ function select(id, fly=false, push=true, day=null) {
   if (mapMode()) setMapMode(false);
   render(s);
   selLayer.clearLayers();
-  L.circleMarker([s.lat, s.lon], { radius: 14, color: '#0f5a61', weight: 3, fill: false, interactive: false }).addTo(selLayer);
+  L.circleMarker([s.lat, s.lon], { radius: 14, color: RING(), weight: 3, fill: false, interactive: false }).addTo(selLayer);
   // A phone's small map shows the spot with the overflows that matter most; a desktop's zooms in.
   const pts = [[s.lat, s.lon], ...(s.contributors || []).slice(0, 5).map(c => [c.lat, c.lon])];
   if (PHONE.matches) map.fitBounds(L.latLngBounds(pts), { padding: [24, 24], maxZoom: 13 });
@@ -1252,7 +1306,8 @@ function bindShare(d) {
 }
 function tech(d) {
   const a = d.assumptions || {}, e = a.ecoli_model || {};
-  const rows = [['River speed', a.river_velocity_ms !== undefined ? `${a.river_velocity_ms} m/s` : null],
+  const rows = [['Channel', (d.location || {}).adopted_main_channel ? 'a side channel, traced as the main river for the overflows upstream' : null],
+    ['River speed', a.river_velocity_ms !== undefined ? `${a.river_velocity_ms} m/s` : null],
     ['Lake crossing speed', a.lake_velocity_ms !== undefined ? `${a.lake_velocity_ms} m/s` : null],
     ['Bacteria die-off', a.t90_hours !== undefined ? `90% in ${a.t90_hours} h (T90)` : null],
     ['Searched upstream', a.max_upstream_km !== undefined ? `${a.max_upstream_km} km` : null],
@@ -1309,26 +1364,26 @@ function render(d) {
   const loc = d.location || {};
   const tags = [cap(d.kind), d.source === 'designated' ? 'Environment Agency designated bathing water' : null,
     loc.watercourse ? esc(loc.watercourse) : null, loc.lake_area_km2 ? `${loc.lake_area_km2} km²` : null,
-    loc.adopted_main_channel ? 'side channel, traced as main river' : null,
     d.notes && d.notes !== 'Environment Agency designated bathing water' ? esc(d.notes) : null].filter(Boolean);
   const fromSaved = (history.state || {}).from === 'saved';
   let h = `<a href="${esc(fromSaved ? savedPath() : ROOT.pathname)}" class="back" id="back">← ${fromSaved ? 'Saved spots' : 'All spots'}</a>`;
-  h += `<div class="title-row"><h1 class="spot-name">${esc(d.name)}</h1>${saveButton(d)}</div><div class="chips">${tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>`
-    + `<div class="loc phone-only"><div id="loc-map" aria-hidden="true"></div><button type="button" class="loc-open" id="loc-open" aria-label="Open map at ${esc(d.name)}">Open map</button></div>`;
+  h += `<div class="title-row"><h1 class="spot-name">${esc(d.name)}</h1>${saveButton(d)}</div><div class="chips">${tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>`;
+  // The answer first, then where the spot is: on a small phone the map pushed the level below the fold.
+  const where = `<div class="loc phone-only"><div id="loc-map" aria-hidden="true"></div><button type="button" class="loc-open" id="loc-open" aria-label="Open map at ${esc(d.name)}">Open map</button></div>`;
   const [head, why] = headParts(d);
   const hero = body => `<section class="hero ${headTone(d)}" id="risk-hero"><div class="kicker">Pollution risk</div><div class="headline">${head}</div>`
     + `<div class="head-why">${why ? cap(why) : ''}</div>${body}</section>`;
   if (d.error) {
     DAY = null;   // no days here: a day link opens the spot, and the address loses the day
     if (dayFromURL()) history.replaceState(history.state, '', location.pathname + location.search);
-    h += hero(factors(d) + check(d));
+    h += hero(factors(d) + check(d)) + where;
     h += algae(d.algae) + `<section class="card phone-only"><h2 class="card-h">Where it is</h2><div id="spot-map"></div></section>` + actions(d);
     setPanel(h); bindBack(); bindSave(d); bindShare(d); placeMap(); miniMap(d); return;
   }
   const now = d.now, isLake = loc.mode === 'lake', scope = d.ecoli_scope || {}, total = d.upstream_summary.overflows;
   h += notices();
   // Always say how old it is: the stored copy (sw.js) can answer when the network is slow.
-  h += hero(`${strip(d)}<div id="day-view">${factors(d)}</div><p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p>${check(d)}`);
+  h += hero(`${strip(d)}<div id="day-view">${factors(d)}</div><p class="issued">Forecast issued ${issued()}, ${ago(ageMin())} ago.</p>${check(d)}`) + where;
   if (total) {
     h += `<section class="card"><h2 class="card-h">Right now</h2><div class="now-row"><span class="big${now.discharging_upstream ? ' hot' : ''}">${now.discharging_upstream}</span>`
       + `<div>of ${total} upstream overflow${total === 1 ? '' : 's'} discharging now<div class="small muted">${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h · ${now.monitored_upstream} of ${total} report live${now.monitored_upstream < total ? `. ${total - now.monitored_upstream === 1 ? 'The one that does not' : `The ${total - now.monitored_upstream} that do not`} could be spilling unseen` : ''}</div></div></div></section>`;
@@ -1356,7 +1411,7 @@ function bindBack() { const b = document.getElementById('back'); if (b) b.addEve
 document.addEventListener('click', e => { const a = e.target.closest('a[href^="#"]'); if (!a) return;
   const el = document.getElementById(a.getAttribute('href').slice(1)); if (!el) return;
   e.preventDefault(); if (mapMode()) setMapMode(false); const box = el.closest('details'); if (box) box.open = true;
-  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  el.scrollIntoView({ behavior: SCROLL(), block: 'start' });
   if (el.hasAttribute('tabindex')) el.focus({ preventScroll: true }); });
 // A phone turned or a window resized across the breakpoint: put the map where that layout wants it.
 PHONE.addEventListener('change', () => { if (!PHONE.matches && mapMode()) setMapMode(false); setHeaderHeight(); placeMap(); });

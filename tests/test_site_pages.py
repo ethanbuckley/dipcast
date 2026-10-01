@@ -49,8 +49,12 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     assert '<link rel="canonical" href="https://example.org/swim/">' in home
     assert '<base href="./">' in home.split("</head>")[0]   # pushState to spot/<id>/ must not move its links
     assert "Loading forecasts…" in home
-    for f in ["sw.js", "manifest.webmanifest", "icons/og.png", "verification.html", "privacy.html", "page.css", ".nojekyll"]:
+    for f in ["sw.js", "manifest.webmanifest", "icons/og.png", "verification.html", "privacy.html", "page.css", ".nojekyll", "404.html", "robots.txt"]:
         assert (tmp_path / f).exists(), f
+    # GitHub Pages serves 404.html at any depth, so its links must be absolute; search engines may not keep it.
+    lost = (tmp_path / "404.html").read_text()
+    assert 'href="https://example.org/swim/"' in lost and 'href="https://example.org/swim/page.css"' in lost and 'content="noindex"' in lost
+    assert (tmp_path / "robots.txt").read_text() == "User-agent: *\nAllow: /\nSitemap: https://example.org/swim/sitemap.xml\n"
     sm = (tmp_path / "sitemap.xml").read_text()
     assert sm.count("<url>") == 5 and "<loc>https://example.org/swim/spot/tarn/</loc>" in sm
     assert "<loc>https://example.org/swim/about.html</loc>" in sm
