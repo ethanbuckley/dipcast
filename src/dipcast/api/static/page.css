@@ -4,7 +4,7 @@
    and works offline on its own. Change a token here and there together.
 
    Two typefaces, served from this site (fonts/, SIL Open Font License): Source Serif 4 for the
-   headings and the big numbers, Source Sans 3 for everything else. One corner radius. Hairline
+   editorial headings, Source Sans 3 for figures and everything else. One corner radius. Hairline
    borders, no shadows, no gradients. Labels in normal case. */
 
 @font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400 700; font-display: swap;
@@ -20,35 +20,35 @@
   --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   /* Surfaces and text */
-  --bg: #f4f5f3; --card: #fff; --ink: #1b2328; --muted: #58636b; --faint: #8b949b; --line: #dfe3e1; --hair: rgba(27, 35, 40, .1);
+  --bg: #f4f5f3; --card: #fff; --ink: #1b2328; --muted: #58636b; --faint: #626e76; --line: #dfe3e1; --hair: rgba(27, 35, 40, .1);
   --hover: #f7f8f6; --active: #eef1ee; --field: #fff;
-  /* Brand: the teal of the icon, and the lighter teal for focus rings and on dark backgrounds */
+  /* Brand teal, with a lighter link shade on dark backgrounds. Focus has its own token. */
   --brand: #0f5a61; --brand-deep: #0b474d; --brand-2: #5cc2b5; --brand-tint: #e4f1ef; --link: #0f5a61; --bar: #0f5a61;
   /* Pollution levels. The plain colours mark the map and the day strips; the "k" shades are for
      text, dark enough for 4.5:1 on white and on the card. */
   --low: #2f8f58; --moderate: #d49a06; --high: #d6621a; --veryhigh: #bf2a2a; --unknown: #98a2aa; --clear: #4aa39a;
   --k-low: #1e6a41; --k-moderate: #6f5300; --k-high: #93400f; --k-veryhigh: #961d1d; --k-na: #4f5a62; --k-clear: #0f5a61;
   /* Notices */
-  --notice-bg: #fff6e8; --notice-line: #e5a53a;
+  --control-low: #1e6a41; --focus: #0f5a61; --notice-bg: #fff6e8; --notice-line: #e5a53a;
   --radius: 8px;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #0e1517; --card: #161f23; --ink: #e6ecee; --muted: #a2afb6; --faint: #74828a; --line: #273237; --hair: rgba(230, 236, 238, .12);
+    --bg: #0e1517; --card: #161f23; --ink: #e6ecee; --muted: #a2afb6; --faint: #a2afb6; --line: #273237; --hair: rgba(230, 236, 238, .12);
     --hover: #1b262b; --active: #203037; --field: #121b1f;
     --brand-tint: #14302f; --link: #7fd3c7; --bar: #0b474d;
     --unknown: #6b7780;
     --k-low: #7ad9a2; --k-moderate: #ecd06a; --k-high: #f3a676; --k-veryhigh: #f08a8a; --k-na: #a2afb6; --k-clear: #7fd3c7;
-    --notice-bg: #3a2a16; --notice-line: #b8862b;
+    --focus: #7fd3c7; --notice-bg: #3a2a16; --notice-line: #b8862b;
   }
 }
 
 * { box-sizing: border-box; }
-html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; font-optical-sizing:auto; }
 body { margin: 0; font: 400 17px/1.55 var(--font-text); color: var(--ink); background: var(--bg); }
 a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 2px; }
 a:hover { text-decoration-thickness: 2px; }
-:focus-visible { outline: 2px solid var(--brand-2); outline-offset: 2px; border-radius: 4px; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
 b, strong { font-weight: 600; }
 code { font: 0.92em var(--font-mono); }
 
@@ -57,10 +57,18 @@ code { font: 0.92em var(--font-mono); }
 .brand { display: inline-flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font: 600 21px/1 var(--font-display); letter-spacing: -.005em; }
 .brand svg { display: block; width: 28px; height: 28px; border-radius: 7px; }
 .top nav { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; margin-left: auto; }
-.top nav a { color: rgba(255, 255, 255, .86); text-decoration: none; font-size: 15px; font-weight: 600; line-height: 1.2; padding: 8px 10px; border-radius: 6px; }
+.top nav a { color: rgba(255, 255, 255, .86); text-decoration: none; font-size: 15px; font-weight: 600; line-height: 1.2; min-height:44px; display:inline-flex; align-items:center; padding: 8px 10px; border-radius: 6px; }
 .top nav a:hover { color: #fff; background: rgba(255, 255, 255, .12); }
 .top nav a[aria-current=page] { color: #fff; box-shadow: inset 0 -2px 0 #fff; border-radius: 0; }
 .top :focus-visible { outline-color: #fff; }
+
+/* On a phone the brand and the four links each get a complete row. */
+@media (max-width: 540px) {
+  .top { gap:6px; padding:10px 16px 4px; }
+  .top nav { width:100%; margin:0; gap:0; justify-content:space-between; }
+  .top nav a { min-height:44px; display:flex; align-items:center; padding:8px; }
+  main.doc { padding-top:28px; }
+}
 
 /* Prose pages */
 main.doc { max-width: 720px; margin: 0 auto; padding: 36px 20px 56px; }
@@ -79,7 +87,7 @@ p.lead { font-size: 19px; line-height: 1.5; color: var(--muted); margin: 0 0 24p
 
 /* A summary box, for a page's answer in a few lines. */
 .summary { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); padding: 16px 20px 6px; margin: 0 0 8px; }
-.summary h2 { font-size: 20px; margin: 0 0 10px; }
+main.doc .summary h2 { font-size: 20px; margin: 0 0 10px; }
 .summary ul { margin: 0 0 10px; padding-left: 20px; }
 .summary li { margin: 8px 0; }
 
@@ -115,14 +123,14 @@ select { -webkit-appearance: none; appearance: none; padding-right: 36px;
          background-repeat: no-repeat; background-position: right 12px center; }
 textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
 .hint { font-size: 15px; color: var(--muted); margin: 6px 0 0; }
-.btn, button.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 9px 16px; font: 600 16px/1.2 var(--font-text);
+.btn, button.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 16px; font: 600 16px/1.2 var(--font-text);
        color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; cursor: pointer; }
 .btn:hover { background: var(--hover); }
 .btn.primary { color: #fff; background: var(--brand); border-color: var(--brand); }
 .btn.primary:hover { background: var(--brand-deep); border-color: var(--brand-deep); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; }
 .panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); padding: 16px 20px; margin: 24px 0 0; }
-.panel h2 { margin-top: 0; }
+main.doc .panel h2 { margin-top: 0; }
 .panel label:first-of-type { margin-top: 12px; }
 [hidden] { display: none !important; }
 
