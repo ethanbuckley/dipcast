@@ -55,8 +55,8 @@ code { font: 0.92em var(--font-mono); }
 
 /* The header every page shares: the mark, the wordmark and the main links on the brand bar. */
 .top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 10px 20px; background: var(--bar); color: #fff; }
-.brand { display: inline-flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font: 600 21px/1 var(--font-display); letter-spacing: -.005em; }
-.brand svg { display: block; width: 28px; height: 28px; border-radius: 7px; }
+.brand { display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; margin: -8px 0; color: #fff; text-decoration: none; font: 600 21px/1 var(--font-display); letter-spacing: -.005em; }   /* a 44 px target that moves nothing */
+.brand svg { display: block; width: 28px; height: 28px; border-radius: 6px; }
 .top nav { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; margin-left: auto; }
 .top nav a { color: rgba(255, 255, 255, .86); text-decoration: none; font-size: 15px; font-weight: 600; line-height: 1.2; min-height:44px; display:inline-flex; align-items:center; padding: 8px 10px; border-radius: 6px; }
 .top nav a:hover { color: #fff; background: rgba(255, 255, 255, .12); }

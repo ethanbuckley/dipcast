@@ -148,6 +148,22 @@ page shows the list's shape in hairline grey rather than a line of text. Leaflet
 no longer carries a second visual language. A control keeps its own corner when focused. Fold
 summaries and stand-alone text buttons are 44 px targets.
 
+### Where instead (third round, 1 October 2026)
+
+A spot that reads moderate or worse on the day shown, or is rated poor, carries a "Lower risk
+nearby" card after its answer: up to three spots within 40 km that are lower that day, nearest
+first, each opening on the same day, with one line under them saying a lower level is not clean
+water. A spot without a level is never offered, and nor is a water rated poor, because advice
+against bathing applies there whatever the level of the spot beside it. In the hero's rows the
+sentence with the figures stays in view and the explanation folds under "What this means"; the
+EA advice and "A forecast, not a water test" stay visible. The list's counts begin with the issue
+time. On the Saved page the cards come first and Compare below them. A redrawn view rises 4 px
+into place over 0.22 s, as a picked day does, and not at all for anyone who asked for less motion.
+The desktop legend is the title, the six levels in two wrapping lines and the overflows' key: about
+half its old height. A spot's four actions are a two-by-two grid. The brand link is a 44 px target
+(padding inside a negative margin, so nothing moves) and the mark's corner is 6 px, the small
+radius.
+
 ### What was kept on purpose
 
 The information architecture (list → spot → day), every word of the terms and privacy notice, the

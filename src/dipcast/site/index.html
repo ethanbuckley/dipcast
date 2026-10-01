@@ -96,15 +96,15 @@
   b, strong { font-weight:600; }
   .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
   .muted { color:var(--muted); } .small { font-size:13.5px; }
-  .msg { margin:8px 0 0; } .tight { margin:0; } .below { margin:0 0 6px; } .after { margin-top:14px; }
+  .msg { margin:8px 0 0; } .tight, .actions.tight { margin:0; } .below { margin:0 0 6px; } .after { margin-top:14px; }
   /* The one icon set: 1.75 px strokes, round caps, the current colour. */
   .ic { display:inline-block; width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; vertical-align:-3px; }
 
   /* The header: the mark, the wordmark and the main links, as on every page of the site. */
   .top { position:sticky; top:0; z-index:1100; display:flex; align-items:center; gap:10px; background:var(--bar); color:#fff;
          padding:calc(9px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 9px calc(16px + env(safe-area-inset-left)); }
-  .brand { display:inline-flex; align-items:center; gap:10px; color:#fff; text-decoration:none; font:600 21px/1 var(--font-display); letter-spacing:-.005em; }
-  .brand svg { display:block; width:28px; height:28px; border-radius:7px; }
+  .brand { display:inline-flex; align-items:center; gap:10px; padding:8px 0; margin:-8px 0; color:#fff; text-decoration:none; font:600 21px/1 var(--font-display); letter-spacing:-.005em; }   /* a 44 px target that moves nothing */
+  .brand svg { display:block; width:28px; height:28px; border-radius:6px; }
   .top nav { margin-left:auto; display:flex; align-items:center; gap:4px; }
   .top nav a, .hbtn { color:rgba(255,255,255,.86); text-decoration:none; font-size:15px; font-weight:600; line-height:1.2; min-height:44px; display:inline-flex; align-items:center; padding:8px 10px; border-radius:6px; border:0; background:transparent; cursor:pointer; }
   .top nav a:hover, .hbtn:hover { color:#fff; background:rgba(255,255,255,.12); }
