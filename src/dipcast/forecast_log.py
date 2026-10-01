@@ -56,8 +56,15 @@ _LOCK = threading.Lock()
 LOCAL_TZ = "Europe/London"
 DECISION_HOUR = 8         # local time: forecasts available by then count for that issue day
 MIN_KNOWN_POLLS = 6       # known-status polls on the target day needed to score a non-event
-MAX_GAP_H = 6.0           # longest unobserved stretch allowed on a scored day
-STRICT_GAP_H = 3.0        # the stricter rule reported alongside, for sensitivity
+# The longest unobserved stretch allowed on a scored day. The rule was written for a poller
+# running every 30 minutes, but GitHub starts the schedule when it can: on 29 and 30 Sep 2026 it
+# ran 4 and 5 times, with daytime gaps of 6.4-6.8 h, so at 6 h no overflow-day could pass and
+# nothing was scored (0 of 80,753 candidates on 1 Oct). Over 17-30 Sep the longest gap was
+# under 6 h on 10 days of 14 and under 8 h on all 14. At 8 h the rule still guards against a
+# second event starting and ending unseen inside one stretch; the next-day rule catches a single
+# late one. The stricter rule reported alongside is the old 6 h, so the change itself is visible.
+MAX_GAP_H = 8.0
+STRICT_GAP_H = 6.0        # the stricter rule reported alongside, for sensitivity
 COVERAGE_FILE = "live_coverage.parquet"
 SLOTS_PER_DAY = 48
 RAIN_BANDS = [0.0, 1.0, 5.0, 10.0, np.inf]   # target-day rain at the overflow's cell, mm

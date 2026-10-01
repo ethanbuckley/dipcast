@@ -126,13 +126,13 @@ def test_verify_live_uses_decision_time_and_coverage(tmp_path, monkeypatch):
                          "latest_event_end": pd.to_datetime([None, None], utc=True),
                          "fetched_at": pd.to_datetime(["2026-09-14 12:00", "2026-09-14 12:00"], utc=True)})
     hist.to_parquet(tmp_path / "live_history.parquet", index=False)
-    # Coverage: A observed every 2 h on the 14th (12 polls, max gap 2 h), every 4 h on the
-    # 15th (gap 4 h: passes the 6 h rule, fails the strict 3 h one), once on the 16th;
+    # Coverage: A observed every 2 h on the 14th (12 polls, max gap 2 h), every 7 h on the
+    # 15th (gap 7 h: passes the 8 h rule, fails the stricter 6 h one), once on the 16th;
     # B observed 12 times but all within 08:00-13:00 (gap from 13:00 to midnight: 11 h).
     cov = pd.DataFrame({"site_id": ["A", "A", "A", "B"],
                         "day": pd.to_datetime(["2026-09-14", "2026-09-15", "2026-09-16", "2026-09-14"]),
                         "n_known": [12, 6, 1, 12], "n_unknown": [0, 0, 0, 0], "n_stale": [0, 0, 0, 0],
-                        "slots": [_mask(range(0, 24, 2)), _mask(range(0, 24, 4)), _mask([6]),
+                        "slots": [_mask(range(0, 24, 2)), _mask(range(0, 24, 7)), _mask([6]),
                                   int(sum(1 << s for s in range(16, 28)))]})
     cov.to_parquet(tmp_path / fl.COVERAGE_FILE, index=False)
     monkeypatch.setattr(fl, "verify_ecoli", lambda as_of: {"n_scored": 0})
@@ -142,8 +142,9 @@ def test_verify_live_uses_decision_time_and_coverage(tmp_path, monkeypatch):
     assert out["missed_deadline"]["n"] == 0
     assert abs(out["overall"]["calibrated"]["brier"] - 0.09) < 1e-9     # (0.3 - 0)^2, not (0.9 - 0)^2
     assert {r["lead"] for r in out["by_lead"]} == {0, 1} and out["in_advance"]["n"] == 1
-    # Strict rule keeps only the 14th (gap 2 h); the 15th's 4 h gap fails it.
+    # Strict rule keeps only the 14th (gap 2 h); the 15th's 7 h gap fails it.
     assert out["coverage_sensitivity"]["default"]["n"] == 2 and out["coverage_sensitivity"]["strict"]["n"] == 1
+    assert out["rules"]["max_gap_h"] == 8.0 and out["rules"]["strict_gap_h"] == 6.0
     assert out["by_version"][0]["version"] == "v-test" and out["by_version"][0]["n"] == 2
 
 
