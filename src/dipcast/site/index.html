@@ -58,7 +58,7 @@
           --control-low:#1e6a41; --focus:#0f5a61; --notice-bg:#fff6e8; --notice-line:#e5a53a;
           --radius:8px;
           /* The app's own: the map, the controls that float on it, and the rain bars. */
-          --map-bg:#e8eceb; --tile-filter:saturate(.35) brightness(1.03); --float:#fff; --veil:rgba(255,255,255,.9); --lift:0 1px 2px rgba(0,0,0,.12), 0 0 0 1px var(--hair);
+          --map-bg:#e8eceb; --tile-filter:saturate(.2) brightness(1.05) contrast(.94); --float:#fff; --veil:rgba(255,255,255,.9); --lift:0 1px 2px rgba(0,0,0,.12), 0 0 0 1px var(--hair);
           --rain:#3d8bd4; --header-h:56px;
           --arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2358636b' stroke-width='2'/%3E%3C/svg%3E"); }
   @media (prefers-color-scheme: dark) {
@@ -84,6 +84,7 @@
     transition:background-color .18s ease, color .18s ease, box-shadow .18s ease, border-color .18s ease; }
   @keyframes rise { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
   #day-view > * { animation:rise .22s ease; }
+  #result.fresh { animation:rise .22s ease; }   /* a new view: setPanel puts the class back each time */
   /* While the forecast loads (main): the shape of the list in hairline grey, breathing slowly. */
   @keyframes breathe { 50% { opacity:.45; } }
   .skel { padding:4px 0 0; }
@@ -139,10 +140,13 @@
   .map-hint { position:absolute; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:0 24px; text-align:center;
               background:rgba(20,33,43,.55); color:#fff; font-weight:600; font-size:16px; opacity:0; transition:opacity .25s; pointer-events:none; }
   .map-hint.show { opacity:1; }
-  /* What floats on the map: white, a hairline and the one small lift that tiles need. */
-  .map-legend { background:var(--float); border-radius:var(--radius); padding:8px 11px; font-size:13px; line-height:1.65; box-shadow:var(--lift); color:var(--ink); }
-  .map-legend .ttl { font-weight:600; }
-  .map-legend .extra { color:var(--muted); margin-top:4px; max-width:210px; line-height:1.45; }
+  /* What floats on the map: white, a hairline and the one small lift that tiles need. The legend
+     keeps to a corner: the six levels wrap in two lines at 264 px (in Source Sans 3 they measure
+     248 and 213 px), and the overflows' key is the instruction and one line of dots under it. */
+  .map-legend { background:var(--float); border-radius:var(--radius); padding:8px 11px; font-size:13px; line-height:1.5; box-shadow:var(--lift); color:var(--ink); }
+  .map-legend .ttl { font-weight:600; margin:0 0 4px; }
+  .map-legend .keys { display:flex; flex-wrap:wrap; gap:4px 10px; max-width:264px; }
+  .map-legend .extra { color:var(--muted); margin-top:8px; line-height:1.45; }
   .dot { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:6px; vertical-align:-1px; box-shadow:0 0 0 1.5px #fff, 0 0 0 2.5px rgba(0,0,0,.18); }
   /* The map's "Low risk only" switch, and the list's chip for the same thing. */
   .low-ctl { display:flex; flex-direction:column; align-items:flex-end; }
@@ -159,7 +163,7 @@
               box-shadow:var(--lift); font-size:13px; line-height:1.4; color:var(--muted); }
   .low-ctl button[aria-pressed=true] + .low-note { display:block; }
   .dot.sm { width:9px; height:9px; margin:0 4px 0 8px; box-shadow:none; }
-  .dot.sm:first-child { margin-left:0; }   /* a key that starts a line */
+  .dot.sm:first-of-type { margin-left:0; }   /* a key that starts a line, after a line break too */
 
   #panel { padding:16px 16px 32px; }
   h1, h2, h3 { font-family:var(--font-display); font-weight:600; letter-spacing:-.005em; }
@@ -180,7 +184,8 @@
   .toolbar .chip-btn { border-radius:var(--radius); font-size:15px; padding:6px 12px; }   /* the select's corner, beside it */
   .planner-note { margin:8px 0 0; font-size:13.5px; color:var(--muted); }
   .best-day b { color:var(--k-low); }
-  .save-hint { display:flex; align-items:center; gap:8px; margin:16px 0 0; font-size:14px; color:var(--muted); }
+  .save-hint { display:flex; align-items:flex-start; gap:8px; margin:16px 0 0; font-size:14px; color:var(--muted); }
+  .save-hint .ic { margin-top:2.5px; }   /* centred on the first line (21 px) when the text wraps */
   /* The padding is room for a focus ring, which the scrolling row would otherwise clip; the margin
      takes it back, so the chips line up with the rows. */
   .chips-row { display:flex; gap:6px; overflow-x:auto; padding:4px; margin:-4px -4px 4px; scrollbar-width:none; }
@@ -212,10 +217,10 @@
   .wk { display:flex; flex-direction:column; align-items:center; gap:3px; }
   .wk i { display:block; width:10px; height:22px; background:var(--unknown); }   /* square, as the day strip's bars */
   .wk i.low { background:var(--low); } .wk i.moderate { background:var(--moderate); } .wk i.high { background:var(--high); } .wk i.veryhigh { background:var(--veryhigh); }
-  .wk b { font-size:10.5px; font-weight:600; line-height:1; color:var(--faint); }
+  .wk b { font-size:13px; font-weight:600; line-height:1; color:var(--faint); }   /* the meta size; W, the widest letter, is 10.4 px, about a bar */
   .wk.first b { color:var(--ink); }
   /* Where nothing upstream can spill, the week shows the rain instead: bars by the 48-hour total. */
-  .week.rain .wk { justify-content:flex-end; height:36px; }
+  .week.rain .wk { justify-content:flex-end; height:40px; }   /* the tallest bar (24 px), the gap and the letter */
   .week.rain .wk i { height:var(--h, 3px); min-height:3px; background:var(--rain); opacity:.85; }
   .empty { padding:16px; color:var(--muted); }
   .count { font-size:13.5px; color:var(--muted); margin:8px 2px 0; }
@@ -247,6 +252,11 @@
   .f-v { font-size:15px; font-weight:700; text-align:right; color:var(--k-na); }
   .f-v.low { color:var(--k-low); } .f-v.moderate { color:var(--k-moderate); } .f-v.high { color:var(--k-high); } .f-v.veryhigh { color:var(--k-veryhigh); } .f-v.clear { color:var(--k-clear); }
   .f-d { grid-column:1 / -1; font-size:15px; line-height:1.45; margin-top:2px; }
+  /* A row's explanation past its first sentence, folded (explain). Closed, the 44 px target reaches
+     into the row's padding, so the fold costs the row a line rather than a target's height. */
+  .f-d details.more > summary { margin-bottom:-12px; }
+  .f-d details.more[open] > summary { margin-bottom:0; }
+  .f-d details.more p { margin:0; }
   /* The five days as one strip: a bordered box of five cells, each with its level as a bar at the top. */
   .days { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); margin:0 0 8px; border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; background:var(--card); }
   .day { display:block; width:100%; min-width:0; margin:0; font:inherit; line-height:1.5; border:0; border-left:1px solid var(--line); border-top:4px solid var(--unknown); border-radius:0; background:transparent; color:var(--k-na); min-height:76px; padding:9px 2px; text-align:center; -webkit-appearance:none; appearance:none; }
@@ -276,13 +286,19 @@
   .card { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin:12px 0; }
   .card-h { font-family:var(--font-text); font-size:18px; line-height:1.25; margin:0 0 2px; }
   .sub { color:var(--muted); font-size:13.5px; margin:0 0 10px; }
+  /* "Lower risk nearby": rows as in the list, ruled, across the card's full width. */
+  ul.near { list-style:none; margin:8px -16px 10px; padding:0; border-bottom:1px solid var(--line); }
+  ul.near li { border-top:1px solid var(--line); }
+  ul.near a.row { padding:11px 16px; }
+  ul.near + .sub { margin:0; }
   .now-row { display:flex; align-items:center; gap:14px; }
   .now-row .big { font:600 40px/1 var(--font-text); color:var(--ink); min-width:34px; text-align:center; font-variant-numeric:tabular-nums; }
   .now-row .big.hot { color:var(--k-veryhigh); }
   .now-row .big.level { font-size:34px; min-width:auto; } .now-row .big small { font:600 15px var(--font-text); color:var(--muted); margin-left:3px; }
   /* The swim log on the Saved page: a row per swim, newest first. */
   ul.swims { list-style:none; margin:0; padding:0; }
-  ul.swims li { display:flex; gap:10px; align-items:baseline; padding:8px 0; border-top:1px solid var(--line); }
+  ul.swims li { display:flex; gap:10px; align-items:baseline; padding:10px 0; border-top:1px solid var(--line); }
+  ul.swims [data-unswim] { padding:10px 0; margin:-10px 0; }   /* a 44 px target within the row's own height */
   ul.swims li:first-child { border-top:0; }
   .swim-when { flex:none; width:96px; font-size:13px; color:var(--muted); } .swim-what { flex:1; min-width:0; overflow-wrap:anywhere; }
   ul.swims .badge { vertical-align:1px; margin-left:4px; }
@@ -307,7 +323,10 @@
   .btn.primary:hover { background:var(--brand-deep); border-color:var(--brand-deep); }
   .btn[hidden] { display:none; }   /* display:inline-flex would otherwise show it */
   .btn.quiet { margin-top:6px; min-height:44px; padding:6px 12px; font-size:14px; }
-  .actions { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 6px; }
+  /* Two equal columns: four buttons make a two by two, not a ragged wrap, on a phone and in the
+     desktop column alike. At most 480 px, so a wide single column does not stretch them. */
+  .actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; max-width:480px; margin:16px 0 6px; }
+  .actions .btn { text-align:center; line-height:1.2; }   /* a label in two lines stays centred and compact */
   /* Folds: a chevron, not a text marker, and a 44 px target. In a card the target reaches into the
      card's padding, so a closed fold is no taller for it. */
   details.fold > summary, details.more > summary, details.comparison > summary { cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; }
@@ -367,6 +386,7 @@
   .compare-table th, .compare-table td { padding:10px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; min-width:150px; }
   .compare-table th { background:var(--hover); }
   .compare-table th a { display:block; min-height:44px; padding:4px 0; }
+  .compare-table td a { display:inline-block; padding:12px 0; margin:-12px 0; }   /* 44 px to tap, in the cell's padding */
   .compare-table th[scope=row] { min-width:100px; }
   .comparison > summary { font:600 18px/1.25 var(--font-text); padding:2px 0; }
 
@@ -416,8 +436,7 @@
     .bottom-nav .n { min-width:20px; padding:0 6px; border-radius:999px; background:var(--brand); color:#fff; font-size:12.5px; line-height:20px; text-align:center; }
     .bottom-nav .n[hidden] { display:none; }
     #spot-map .map-legend { display:none; }
-    .map-legend { padding:5px 8px; line-height:1.5; } .map-legend .ttl, .map-legend .extra { display:none; }
-    .map-legend .row { display:inline-block; margin-right:6px; }
+    .map-legend { padding:5px 8px; } .map-legend .ttl, .map-legend .extra { display:none; }
   }
   /* The smallest phones (320-360 px): nothing may be wider than the screen. */
   @media (max-width: 360px) {
@@ -481,7 +500,7 @@
       </details>
       <details class="more" id="your-data"><summary>Saved spots, offline use and your data</summary>
         <p class="small muted">Saved spots and your swim log are kept in this browser, and sent nowhere unless you turn on alerts on the Saved page (alerts send the list of saved spots, not the log). After a first visit the page and the latest forecast are stored on your device, so the site opens without signal at the water's edge; it then says how old the forecast is. <a href="privacy.html">Privacy notice</a>.</p>
-        <p class="small"><button type="button" class="linkbtn small" id="offline-btn" hidden>Turn off the offline copy</button> <span class="muted" id="offline-msg" aria-live="polite"></span></p>
+        <p class="small"><button type="button" class="linkbtn" id="offline-btn" hidden>Turn off the offline copy</button> <span class="muted" id="offline-msg" aria-live="polite"></span></p>
         <p class="small" id="count-row" hidden><span class="muted">Page views are counted, without cookies.</span> <button type="button" class="linkbtn small" id="count-btn">Don't count my visits</button> <span class="muted" id="count-msg" aria-live="polite"></span></p>
       </details>
       <details class="more" id="home-screen"><summary>Add SwimSignal to your Home Screen</summary>
@@ -787,6 +806,8 @@ function summary(d) {
 // own level for today and tomorrow. Without the split, "low" for spills read as clean water.
 const factorRow = (label, lv, value, detail) => `<div class="factor"><div class="f-l">${label}</div>`
   + `<div class="f-v ${lv ? tone(lv) : 'na'}">${value}</div>${detail ? `<div class="f-d">${detail}</div>` : ''}</div>`;
+// The rest of a row's explanation, after the sentence with its figures: one tap away, word for word.
+const explain = body => `<details class="more"><summary>What this means</summary><p>${body}</p></details>`;
 function factors(d) {
   const rows = [];
   if (d.error) rows.push(factorRow('Sewage spills', null, 'Not covered', esc(d.error)));
@@ -804,8 +825,8 @@ function water(d, days) {
     const ds = days.filter(x => !nil(x.p_ecoli_gt900)), wq = ds.map(x => ecoliBand(d, x)).reduce(higher, null);
     const off = ds.some(ecoliUntested);
     return factorRow('Water quality', wq, wq ? cap(wq) + (off ? '†' : '') : 'No data', !ds.length ? 'No rainfall forecast has arrived, so there is no estimate.'
-      : `Chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml: ${ds.map(x => `<b>${Math.round(x.p_ecoli_gt900 * 100)}%</b> ${dayWord(x.date)}`).join(', ')}. `
-      + `The minimum bathing-water standard lets about one sample in ten be over 900.${off ? ' † The EA takes no samples from October to April, so nothing tests this estimate now: it is shown, but it does not set the level above.' : ''} <a href="#about-ecoli">What this counts</a>`);
+      : `Chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml: ${ds.map(x => `<b>${Math.round(x.p_ecoli_gt900 * 100)}%</b> ${dayWord(x.date)}`).join(', ')}.`
+      + explain(`The minimum bathing-water standard lets about one sample in ten be over 900.${off ? ' † The EA takes no samples from October to April, so nothing tests this estimate now: it is shown, but it does not set the level above.' : ''} <a href="#about-ecoli">What this counts</a>`));
   }
   if (d.error) return '';
   return factorRow('Water quality', null, 'Not estimated', (d.location || {}).mode === 'lake'
@@ -869,7 +890,8 @@ const cells = (d, card = false) => { const on = daily(d), pct = ecoliTested(d), 
 // One line under the strip: what the second figure in each cell is. The † sentence stays whenever a
 // cell carries the mark, since it says why that figure is not in the level.
 const strip = d => cells(d) + `<p class="strip-note">${!daily(d) ? 'No daily forecast here; rain in the previous 48 h.'
-  : (ecoliTested(d) ? 'The level each day; the figure is the chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml.' : 'The level each day, and rain here in the previous 48 h.') + ' Pick a day for its details.'
+  : (ecoliTested(d) ? 'Pick a day for its details. The figure is the chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml.'
+    : 'The level each day, and rain here in the previous 48 h. Pick a day for its details.')
     + (anyUntested(d) ? ' ' + UNTESTED_NOTE : '')}</p>`;
 // The week at a glance in a list row: one bar per day, coloured by level. Where no overflow can
 // reach the spot there is no level to colour, so the bars show the rain instead (40 mm fills one).
@@ -920,7 +942,7 @@ function bestDayNote(spots, yours = false) {
   const b = bestDay(spots, [0, 1, 2, 3, 4].map(k => addDays(today(), k)));
   if (!b || (yours ? b.known < 2 : !b.low)) return '';
   return `Lowest pollution risk this week: <b>${dateLabel(b.date)}</b>${yours ? `, when ${b.low} of your ${b.known} spots are low.` : ''}`
-    + `<span class="pick"${VIEW.day === b.date ? ' hidden' : ''}>${yours ? ' ' : ' · '}<button type="button" class="linkbtn small" data-pick-day="${b.date}">Show ${dateLabel(b.date)}</button></span>`;
+    + `<span class="pick"${VIEW.day === b.date ? ' hidden' : ''}>${yours ? ' ' : ' · '}<button type="button" class="linkbtn small" data-pick-day="${b.date}" aria-label="Show ${dateLabel(b.date)}">Show</button></span>`;
 }
 // The button, with the dot before it, shows while another day is picked: setMapDay keeps it in step.
 const syncBestDay = () => document.querySelectorAll('[data-pick-day]').forEach(b => { b.parentElement.hidden = b.dataset.pickDay === VIEW.day; });
@@ -958,7 +980,7 @@ function swimsCard() {
       + ` <a class="small" href="${swimFeedback(name, x.date)}">How was it?</a></span>`
       + `<button type="button" class="linkbtn small" data-unswim="${esc(x.id)}" data-date="${x.date}" aria-label="Remove ${esc(name)} on ${x.date} from your swim log">Remove</button></li>`; }).join('');
   return `<section class="card" aria-labelledby="swims-h"><h2 class="card-h" id="swims-h">Your swims</h2><p class="sub">Logged from a spot's page with "I swam here today", with the forecast level that day. Kept on this device only.</p><ul class="swims" id="swims">${rows}</ul>`
-    + `<p class="small muted msg"><button type="button" class="linkbtn small" id="clear-swims">Clear the log</button></p></section>`;
+    + `<p class="small muted msg"><button type="button" class="linkbtn" id="clear-swims">Clear the log</button></p></section>`;
 }
 function bindSwims() {
   const ul = document.getElementById('swims'); if (!ul) return;
@@ -1042,11 +1064,13 @@ function dayOverflows(d, j) {
     + `spill chance ${share(p)}, reach ${share(c.weight)}</span></li>`).join('')}</ul>` : '';
 }
 // How good a forecast this far ahead has been, from the build's tests (lead_skill in spots.json).
+// The figures stay in view; how they were measured, and that the rain can change, are folded.
 function howSure(d, j) {
   const k = DATA.lead_skill, r5 = x => Math.round(x * 20) * 5 + '%';
   if (!j || !k) return '';
   return factorRow('How far ahead', null, `${j} day${j === 1 ? '' : 's'}`, `In tests on past years, spill forecasts this far ahead were about ${r5(k.spill[j])} as good as same-day ones`
-    + (ecoliTested(d) ? `, and water-quality ones about ${r5(k.water[j])}` : '') + `, going by how much each beat a guess from the usual rates. The rain forecast behind it can still change.`);
+    + (ecoliTested(d) ? `, and water-quality ones about ${r5(k.water[j])}` : '') + '.'
+    + explain('The comparison goes by how much each beat a guess from the usual rates. The rain forecast behind it can still change.'));
 }
 function dayDetail(d, x) {
   const r = risk(d, x), total = overflows(d), first = x.date === today(), rows = [], j = d.days.indexOf(x);
@@ -1085,6 +1109,7 @@ function showDay(d, iso) {
   // day the list never picked, and the day picked here is the swim day back on the list too.
   if ((VIEW.day || null) !== DAY) setMapDay(DAY);
   document.getElementById('day-view').innerHTML = x ? dayDetail(d, x) : factors(d);
+  const alt = document.getElementById('nearby-host'); if (alt) alt.innerHTML = nearby(d);   // lower than this spot on this day
   document.querySelectorAll('#day-strip [data-day]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.day === DAY)));
   const close = document.getElementById('day-close');
   if (close) close.addEventListener('click', () => { showDay(d, null); document.querySelector(`#day-strip [data-day="${iso}"]`).focus(); });
@@ -1125,7 +1150,7 @@ const KEY = [['low','Low'], ['moderate','Moderate'], ['high','High'], ['very hig
 const legend = L.control({ position: 'bottomleft' });
 legend.onAdd = () => { const el = L.DomUtil.create('div', 'map-legend');
   el.innerHTML = `<div class="ttl">Pollution risk, today and tomorrow</div>`
-    + KEY.map(([l, t]) => `<div class="row"><span class="dot" style="background:${colour(l)}"></span>${t}</div>`).join('')
+    + `<div class="keys">${KEY.map(([l, t]) => `<div class="row"><span class="dot" style="background:${colour(l)}"></span>${t}</div>`).join('')}</div>`
     + `<div class="extra">Zoom in to see storm overflows:<br><span class="dot sm" style="background:#bf2a2a"></span>discharging<span class="dot sm" style="background:#5b6470"></span>not discharging<span class="dot sm" style="background:#b3bac2"></span>offline</div>`;
   L.DomEvent.disableClickPropagation(el); return el; };
 legend.addTo(map);
@@ -1212,7 +1237,11 @@ window.addEventListener('offline', refreshNotices);
 window.addEventListener('online', refreshNotices);
 setInterval(refreshNotices, 60 * 1000);
 // Redraw the panel. The map is parked in its column first, or replacing the HTML would destroy it.
-function setPanel(h) { parkMap(); if (MINI) { MINI.remove(); MINI = null; } document.getElementById('result').innerHTML = h; }
+// The new view rises into place (#result.fresh, the day strip's own motion): the class comes off and
+// goes back on with a layout read between, so the animation runs again each time.
+function setPanel(h) { parkMap(); if (MINI) { MINI.remove(); MINI = null; }
+  const box = document.getElementById('result'); box.innerHTML = h;
+  box.classList.remove('fresh'); void box.offsetWidth; box.classList.add('fresh'); }
 
 // ------------------------------------------------------------------------------ the list
 const FILTERS = { all: 'All', river: 'Rivers', lake: 'Lakes', designated: 'Bathing waters' };
@@ -1221,19 +1250,21 @@ const BOOKMARK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d
 const CHECK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';
 const saveLabel = on => BOOKMARK + (on ? 'Saved' : 'Save');
 const SEARCH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>';
+// The counts over the list, after when the forecast was issued: freshness where the list begins.
 function overview(spots) {
   const rated = spots.filter(s => ORDER[mapLevel(s)] !== undefined);
   const low = rated.filter(s => mapLevel(s) === 'low').length;
   const high = rated.filter(s => rank(mapLevel(s)) >= 2).length;
-  return `${low} low · ${rated.length - low - high} moderate · ${high} high or very high · ${spots.length - rated.length} without a level. ${cap(mapWhen())}.`;
+  return `Updated ${issued()} · ${low} low · ${rated.length - low - high} moderate · ${high} high or very high · ${spots.length - rated.length} without a level. ${cap(mapWhen())}.`;
 }
 // A chosen date must describe the same forecast in the list, on the map and in the detail link.
 const listHeadline = s => VIEW.day ? dayHeadline(s, VIEW.day) : headline(s);
 const listPath = s => spotPath(s.id) + (VIEW.day && daily(s) ? '#day=' + VIEW.day : '');
 const dist = s => VIEW.here ? km(VIEW.here, [s.lat, s.lon]) : null;
+const away = k => `${k < 10 ? k.toFixed(1) : Math.round(k)} km away`;
 function spotItem(s) {
   const d = dist(s);
-  const meta = [cap(s.kind), s.source === 'designated' ? 'bathing water' : null, d !== null ? `${d < 10 ? d.toFixed(1) : Math.round(d)} km away` : null, waterEst(s), rainMeta(s)].filter(Boolean).join(' · ');
+  const meta = [cap(s.kind), s.source === 'designated' ? 'bathing water' : null, d !== null ? away(d) : null, waterEst(s), rainMeta(s)].filter(Boolean).join(' · ');
   return `<li><a class="row" href="${esc(listPath(s))}" data-id="${esc(s.id)}"><span class="row-main"><span class="nm">${esc(s.name)}</span>`
     + `<span class="hl ${tone(mapLevel(s))}">${listHeadline(s)}</span><span class="k">${meta}</span></span>${week(s)}</a></li>`;
 }
@@ -1264,13 +1295,14 @@ function renderList() {
     + `<p class="planner-note" id="low-note-list"${VIEW.lowOnly ? '' : ' hidden'}>${lowListNote()}</p>`;
   h += notices();
   h += saved.length ? `<section class="group" id="saved-group" aria-labelledby="saved-h"><h2 class="group-head" id="saved-h">Saved spots</h2><ul class="spots" id="saved-list">${saved.map(spotItem).join('')}</ul></section>`
-    : `<p class="save-hint">${BOOKMARK}Open a spot and press Save to keep it here.</p>`;
+    : `<p class="save-hint">${BOOKMARK}<span>Open a spot and press Save to keep it here${'geolocation' in navigator
+      ? ', or sort the list by distance: <button type="button" class="linkbtn small" data-near>Near me</button>' : '.'}</span></p>`;
   // The kinds of water are a second row under the heading: they narrow this list, not the day.
   h += `<section class="group" aria-labelledby="all-h"><div class="group-bar"><h2 class="group-head" id="all-h">All spots</h2>`
     + `<div class="sortseg" role="group" aria-label="Sort">${sorts.map(([k, t]) => `<button type="button" data-sort="${k}" aria-pressed="${VIEW.sort === k}">${t}</button>`).join('')}</div></div>`
     + `<div class="chips-row" role="group" aria-label="Show">${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div>`
     + `<p class="overview" id="overview"></p><p class="small muted" id="untested-note" hidden>${UNTESTED_NOTE}</p><p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p><ul class="spots" id="spots"></ul><p class="count" id="count" role="status"></p></section>`;
-  h += `<p class="small muted after">Updated ${issued()} (${ago(ageMin())} ago), several times a day. The coloured bars are the next five days. <a href="#levels">What the levels mean</a>. ${STANDALONE ? '' : '<a href="#home-screen">Add to your Home Screen</a>. '}Missing your spot? <a href="feedback.html?type=spot">Request it</a>.</p>`;
+  h += `<p class="small muted after">Updated several times a day. The coloured bars are the next five days. <a href="#levels">What the levels mean</a>. ${STANDALONE ? '' : '<a href="#home-screen">Add to your Home Screen</a>. '}Missing your spot? <a href="feedback.html?type=spot">Request it</a>.</p>`;
   setPanel(h);
   if (saved.length) bindItems(document.getElementById('saved-list'));
   document.getElementById('listday').addEventListener('change', e => setMapDay(e.target.value));
@@ -1284,6 +1316,7 @@ function renderList() {
     document.querySelectorAll('[data-filter]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
     steady(b, drawSpots); }));
   document.querySelector('[data-low]').addEventListener('click', () => setLowOnly(!VIEW.lowOnly));
+  const nearMe = document.querySelector('[data-near]'); if (nearMe) nearMe.addEventListener('click', () => locate());   // the first-run line's
   document.querySelectorAll('[data-sort]').forEach(b => b.addEventListener('click', () => {
     if (b.dataset.sort === 'near' && !VIEW.here) { locate(); return; }
     setSort(b.dataset.sort); drawSpots(); }));
@@ -1402,7 +1435,6 @@ function renderSaved() {
   else if (INCOMING) h += `<p class="notice quiet" role="status">${INCOMING.length === 1 ? 'The spot in that link is' : 'The spots in that link are'} already saved here.</p>`;
   INCOMING = offered.length ? INCOMING : null;
   h += notices();
-  h += `<div id="compare-host">${compareSection(spots)}</div>`;
   const best = spots.length ? bestDayNote(spots, true) : '';
   if (best) h += `<p class="planner-note best-day">${best}</p>`;
   if (spots.length) h += `<ul class="scards" id="scards">${spots.map(savedCard).join('')}</ul>`
@@ -1412,6 +1444,8 @@ function renderSaved() {
     + `${navigator.standalone ? ' Spots saved in Safari do not appear in the Home Screen app: iPhones keep the two apart, so save them again here.' : ''}</p>`
     + `<a class="btn primary" href="${esc(ROOT.pathname)}" id="find">Find a spot</a></div>`;
   if (gone) h += `<p class="small muted msg">${gone === 1 ? 'A spot you saved is' : `${gone} spots you saved are`} no longer in the forecast. <button type="button" class="linkbtn small" id="forget">Remove ${gone === 1 ? 'it' : 'them'}</button></p>`;
+  // The cards answer first; comparing them, day by day, is for planning, under them.
+  h += `<div id="compare-host">${compareSection(spots)}</div>`;
   if (spots.length) h += alertsCard();
   if (spots.length) h += `<section class="card"><h2 class="card-h">Share this list</h2><p class="sub">A link that opens ${spots.length === 1 ? 'this spot' : `these ${spots.length} spots`} on another phone or browser, or for a friend. It holds which spots they are and nothing else.</p>`
     + `<button type="button" class="btn" id="share-list">Share this list</button><p class="small muted msg" id="share-list-msg" aria-live="polite"></p></section>`;
@@ -1580,6 +1614,29 @@ function overflowCard(d, total) {
   return h + `</ul>${n > SHOW ? `<button type="button" class="btn quiet" id="more-contrib" aria-controls="contrib" aria-expanded="false">Show all ${n}</button>` : ''}`
     + `<p class="small muted msg">Reach: the chance a spill there affects this spot, from die-off over the travel time and dilution by the size of the river network upstream.</p></section>`;
 }
+// "Where instead?": at a spot that is moderate or worse on the day shown (DAY, or else its headline
+// level), or rated poor, up to three spots within 40 km that are lower that day, nearest first. Never
+// offered: a spot without a level (no overflow upstream, no rating), since no level is not a lower
+// one; and a water rated poor, where advice against bathing applies. Its "high" is lower than a very
+// high one: on 1 Oct 2026, without this, the Eden at Armathwaite would have offered Derwent Water at
+// Crow Park.
+const NEAR_KM = 40;
+function nearby(d) {
+  const lv = s => DAY ? dayLevel(s, DAY) : level(s), mine = rank(lv(d));
+  if (mine < 1 && !advisedAgainst(d)) return '';
+  const alts = DATA.spots.filter(s => s.id !== d.id && !advisedAgainst(s) && ORDER[lv(s)] !== undefined && rank(lv(s)) < mine)
+    .map(s => [s, km([d.lat, d.lon], [s.lat, s.lon])]).filter(([, k]) => k <= NEAR_KM).sort((a, b) => a[1] - b[1]).slice(0, 3);
+  if (!alts.length) return '';
+  return `<section class="card" id="nearby" aria-labelledby="nearby-h"><h2 class="card-h" id="nearby-h">Lower risk nearby</h2><ul class="near">`
+    + alts.map(([s, k]) => `<li><a class="row" href="${esc(spotPath(s.id) + (DAY && daily(s) ? '#day=' + DAY : ''))}" data-id="${esc(s.id)}"><span class="row-main">`
+      + `<span class="nm">${esc(s.name)}</span><span class="hl ${tone(lv(s))}">${DAY ? dayHeadline(s, DAY) : headline(s)}</span>`
+      + `<span class="k">${[away(k), cap(s.kind), s.source === 'designated' ? 'bathing water' : null].filter(Boolean).join(' · ')}</span></span></a></li>`).join('')
+    + `</ul><p class="sub">A lower forecast level, not clean water: check the signs there too.</p></section>`;
+}
+// The rows open their spot on the same day. One listener on the box, which showDay refills.
+const bindNearby = () => { const box = document.getElementById('nearby-host'); if (!box) return;
+  box.addEventListener('click', e => { const a = e.target.closest('a[data-id]');
+    if (a && plainClick(e)) { e.preventDefault(); select(a.dataset.id, true, true, DAY); } }); };
 
 function render(d) {
   serverToday = DATA.generated_at.slice(0, 10);
@@ -1609,6 +1666,7 @@ function render(d) {
   h += notices();
   // The answer, one line of context (metaLine: how old the forecast is, today's weather), the days.
   h += hero(`${metaLine(d)}${strip(d)}<div id="day-view">${factors(d)}</div>${check(d)}`) + where;
+  h += `<div id="nearby-host">${nearby(d)}</div>`;   // after the answer, before the detail; showDay keeps it to the day
   if (total) {
     h += `<section class="card"><h2 class="card-h">Right now</h2><div class="now-row"><span class="big${now.discharging_upstream ? ' hot' : ''}">${now.discharging_upstream}</span>`
       + `<div>of ${total} upstream overflow${total === 1 ? '' : 's'} discharging now<div class="small muted">${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h · ${now.monitored_upstream} of ${total} report live${now.monitored_upstream < total ? `. ${total - now.monitored_upstream === 1 ? 'The one that does not' : `The ${total - now.monitored_upstream} that do not`} could be spilling unseen` : ''}</div></div></div></section>`;
@@ -1620,7 +1678,7 @@ function render(d) {
     : `<section class="card"><h2 class="card-h">No monitored overflows upstream</h2><p class="small muted tight">None within ${d.assumptions.max_upstream_km} km upstream. Risk from farms, wildlife and unmonitored sources is not modelled.</p></section>`;
   h += dayTable(d, total, isLake, scope);
   h += actions(d) + tech(d);
-  setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); bindDays(d); miniMap(d);
+  setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); bindNearby(); bindDays(d); miniMap(d);
   const more = document.getElementById('more-contrib');
   if (more) more.addEventListener('click', () => { const t = document.getElementById('contrib'), all = t.classList.toggle('all');
     more.setAttribute('aria-expanded', String(all)); more.textContent = all ? `Show the top 3` : `Show all ${d.contributors.length}`; });
