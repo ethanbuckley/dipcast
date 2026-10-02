@@ -58,11 +58,12 @@ REWRITES = [('href="/feedback"', 'href="feedback.html"'), ('href="/feedback?type
             ('href="/static/fonts/SourceSerif4-latin.woff2"', 'href="fonts/SourceSerif4-latin.woff2"'),
             ("fetch('/api/verification')", "fetch('data/verification.json')")]
 BRAND = "SwimSignal"
-HOME_TITLE = f"{BRAND} · sewage-spill forecasts for swim spots"
-DESCRIPTION = ("Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow "
+# The home page leads with the name, for search; every other page is "Page · SwimSignal" (docs/DESIGN.md, Words).
+HOME_TITLE = f"{BRAND} · pollution risk forecasts for swim spots"
+DESCRIPTION = ("Five-day pollution risk forecasts for river and lake swim spots in England, from live sewage-overflow "
                "data, rainfall forecasts and the river network.")
 SAVED_TITLE = f"Saved spots · {BRAND}"
-SAVED_DESCRIPTION = "A list of river and lake swim spots, each with its five-day sewage-spill forecast."
+SAVED_DESCRIPTION = "A list of river and lake swim spots, each with its five-day pollution risk forecast."
 # Spot ids that get a page of their own at spot/<id>/; index.html uses the same rule. Any other
 # id keeps its ?spot= address: one odd row in spots.csv must not stop the build.
 SPOT_ID = re.compile(r"[A-Za-z0-9_-]+")
@@ -451,7 +452,7 @@ def page_meta(title: str, description: str, url: str, root: str, base: str | Non
         f'<meta property="og:image" content="{escape(root)}icons/og.png">',
         '<meta property="og:image:width" content="1200">',
         '<meta property="og:image:height" content="630">',
-        f'<meta property="og:image:alt" content="{escape(BRAND)}: sewage-spill forecasts for river and lake swim spots">',
+        f'<meta property="og:image:alt" content="{escape(BRAND)}: pollution risk forecasts for river and lake swim spots">',
         '<meta name="twitter:card" content="summary_large_image">',
     ])
 
@@ -464,9 +465,9 @@ def spot_blurb(spot: dict) -> str:
     if spot.get("error") and not str(spot["error"]).startswith("forecast failed"):
         return f"{name}: no monitored storm overflow can reach this {kind} along the river network, so {BRAND} has no spill forecast for it."
     if n == 0:
-        return f"{name}: no monitored storm overflows upstream. {BRAND} forecasts sewage-spill exposure for river and lake swim spots in England."
+        return f"{name}: no monitored storm overflows upstream. {BRAND} gives pollution risk forecasts for river and lake swim spots in England."
     upstream = f" from the {n} monitored storm overflow{'' if n == 1 else 's'} upstream," if n else ""
-    return (f"Five-day sewage-spill forecast for {name},{upstream} using live overflow status, rainfall forecasts "
+    return (f"Five-day pollution risk forecast for {name},{upstream} using live overflow status, rainfall forecasts "
             f"and the river network. Updated several times a day.")
 
 
@@ -475,7 +476,7 @@ def spot_page(template: str, spot: dict, root: str) -> str:
     <head>, and its name in the body for crawlers and for the moment before the script runs."""
     url = f"{root}spot/{spot['id']}/"
     blurb = spot_blurb(spot)
-    page = PAGE_META.sub(lambda m: page_meta(f"{spot['name']}: sewage-spill forecast · {BRAND}", blurb, url, root,
+    page = PAGE_META.sub(lambda m: page_meta(f"{spot['name']}: pollution risk forecast · {BRAND}", blurb, url, root,
                                              base="../../"), template, count=1)
     return page.replace(LOADING, f'<div id="result"><h2 class="spot-name">{escape(spot["name"])}</h2>'
                                  f'<p class="muted">{escape(blurb)} Loading the forecast…</p></div>', 1)
@@ -518,7 +519,7 @@ def not_found_page(root: str) -> str:
         '<p class="lead">A spot changes address when it is renamed or removed, and a link can be copied or typed wrongly.</p>\n'
         f'<ul><li><a href="{r}">All spots</a>, each with its five-day forecast</li><li><a href="{r}saved/">Your saved spots</a></li>'
         f'<li><a href="{r}feedback.html?type=spot">Ask for a spot to be added</a></li></ul></main>\n'
-        f'<footer class="site-foot"><div class="rule"><p>{BRAND} is a free, non-commercial forecast of sewage-overflow risk at river and lake swim spots in England, run by Ethan Buckley. A forecast, not a water test.</p>'
+        f'<footer class="site-foot"><div class="rule"><p>{BRAND} is a free, non-commercial pollution risk forecast for river and lake swim spots in England, run by Ethan Buckley. A forecast, not a water test.</p>'
         f'<p><a href="{r}terms.html">Terms of use</a> · <a href="{r}privacy.html">Privacy</a> · <a href="{r}feedback.html">Feedback</a></p></div></footer></body></html>\n')
 
 

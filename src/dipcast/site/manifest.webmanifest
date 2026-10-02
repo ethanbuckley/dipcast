@@ -1,7 +1,7 @@
 {
   "name": "SwimSignal",
   "short_name": "SwimSignal",
-  "description": "Sewage-pollution risk forecasts for river and lake swim spots in England.",
+  "description": "Pollution risk forecasts for river and lake swim spots in England.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

@@ -1,6 +1,6 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>About · SwimSignal</title>
-<meta name="description" content="SwimSignal is a free five-day forecast of sewage-overflow risk at river and lake swim spots in England: how it works, what it cannot see, who runs it and how to get in touch.">
+<meta name="description" content="SwimSignal is a free five-day pollution risk forecast for river and lake swim spots in England: how it works, what it cannot see, who runs it and how to get in touch.">
 <meta name="theme-color" content="#3d5b5d">
 <link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
@@ -12,10 +12,10 @@
 <main class="doc">
 <h1>About SwimSignal</h1>
 <!-- The two counts and the tracing distance are this build's: scripts/build_site.py (with_counts) rewrites them. -->
-<p class="lead">SwimSignal is a free five-day forecast of sewage-overflow risk at river and lake swim spots in England. It covers <span id="n-spots">89</span> spots, <span id="n-bw">38</span> of them designated bathing waters. It uses the water companies' live storm-overflow data, rainfall forecasts and the river network. It is a forecast, not a water test.</p>
+<p class="lead">SwimSignal is a free five-day pollution risk forecast for river and lake swim spots in England. It covers <span id="n-spots">89</span> spots, <span id="n-bw">38</span> of them designated bathing waters. It uses the water companies' live storm-overflow data, rainfall forecasts and the river network. It is a forecast, not a water test.</p>
 
 <h2>How it works</h2>
-<p>For each spot, SwimSignal traces the river network upstream and finds every monitored storm overflow up to <span id="max-km">60</span> km upstream along it. It takes what those overflows are doing now from the water companies' live feeds. It forecasts how likely each one is to spill on each of the five days, from the rain forecast and the overflow's own spill record. It then allows for how long sewage takes to travel downstream, how fast bacteria die off and how much the river dilutes it, so an overflow 2 km upstream counts for more than one 40 km up a tributary. The result for each day is the exposure index, a 0–100 score of how likely sewage from upstream is to reach the spot. On rivers it also estimates the chance that a water sample would fail the E. coli limit for bathing water, and at designated bathing waters it adds the Environment Agency's rating and its sampler's latest algae check.</p>
+<p>For each spot, SwimSignal traces the river network upstream and finds every monitored storm overflow up to <span id="max-km">60</span> km upstream along it. It takes what those overflows are doing now from the water companies' live feeds. It forecasts how likely each one is to spill on each of the five days, from the rain forecast and the overflow's own spill record. It then allows for how long sewage takes to travel downstream, how fast bacteria die off and how much the river dilutes it, so an overflow 2 km upstream counts for more than one 40 km up a tributary. The result for each day is the exposure index, a 0–100 score of how likely sewage from upstream is to reach the spot. On rivers it also gives an E. coli estimate: the chance that a water sample would fail the E. coli limit for bathing water, and at designated bathing waters it adds the Environment Agency's rating and its sampler's latest algae check.</p>
 <p>Overflows are listed under the names their water companies give them, which use abbreviations: WwTW and STW are a wastewater (sewage) treatment works, CSO a combined sewer overflow and SPS a sewage pumping station.</p>
 
 <h2>What it cannot see</h2>
@@ -28,7 +28,7 @@
 </ul>
 
 <h2>How good it is</h2>
-<p>Forecasts are scored afterwards against what the overflows actually did and against the Environment Agency's water samples. The results are published on the <a href="/verification">accuracy page</a>, including where the forecast was wrong. The water-quality estimate is tested on rivers in the May to September sampling season only. Please take any figures from the accuracy page: they change as new results come in.</p>
+<p>Forecasts are scored afterwards against what the overflows actually did and against the Environment Agency's water samples. The results are published on the <a href="/verification">accuracy page</a>, including where the forecast was wrong. The E. coli estimate is tested on rivers in the May to September sampling season only. Please take any figures from the accuracy page: they change as new results come in.</p>
 
 <h2>Who runs it</h2>
 <p>SwimSignal is a free, non-commercial project run by one person, Ethan Buckley, not a company. It is not run by, connected with or endorsed by the Environment Agency, any water company, Water UK or the Met Office. The <a href="https://github.com/ethanbuckley/swimsignal">code</a> is open source under the MIT licence. See the <a href="/terms">terms of use</a>.</p>
@@ -42,6 +42,6 @@
 <h2>Data</h2>
 <p>Storm overflow data from the water companies via the National Storm Overflow Hub, and data from the Environment Agency, Ordnance Survey, Open-Meteo, the Met Office and OpenStreetMap. <a href="/terms#data">Sources, credits and licences</a>.</p>
 </main>
-<footer class="site-foot"><div class="rule"><p>SwimSignal is a free, non-commercial forecast of sewage-overflow risk at river and lake swim spots in England, run by Ethan Buckley. A forecast, not a water test: check the signs at the water before you swim.</p>
+<footer class="site-foot"><div class="rule"><p>SwimSignal is a free, non-commercial pollution risk forecast for river and lake swim spots in England, run by Ethan Buckley. A forecast, not a water test: check the signs at the water before you swim.</p>
 <p><a href="/terms">Terms of use</a> · <a href="/privacy">Privacy</a> · <a href="/feedback">Feedback</a> · <a href="/terms#data">Data credits</a> · <a href="https://github.com/ethanbuckley/swimsignal">Source code</a> (MIT)</p></div></footer>
 </body></html>
