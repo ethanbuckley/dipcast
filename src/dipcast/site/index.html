@@ -454,9 +454,14 @@
     .bottom-nav [aria-current=page], .bottom-nav [aria-pressed=true] { background:var(--brand-tint); color:var(--link); }
     .bottom-nav .n { min-width:20px; padding:0 6px; border-radius:999px; background:var(--brand); color:#fff; font-size:var(--fs-meta); line-height:20px; text-align:center; }
     .bottom-nav .n[hidden] { display:none; }
-    #spot-map .map-legend { display:none; }
+    /* A spot's Upstream map: no legend, and none of the list's controls (the day, low risk only),
+       which covered the ringed spot at the top of so small a map. */
+    #spot-map .map-legend, #spot-map .low-ctl { display:none; }
     .map-legend { padding:5px 8px; }
   }
+  /* A map too narrow for the legend and the credit side by side (a phone, a narrow window): the legend
+     sits above the credit's line rather than over it, and clear of the right edge. */
+  @media (max-width: 1100px) { .leaflet-bottom.leaflet-left .map-legend { margin:0 10px 30px; } }
   /* The smallest phones (320-360 px): nothing may be wider than the screen. */
   @media (max-width: 360px) {
     .top nav a, .hbtn { padding:7px 8px; }
@@ -582,6 +587,7 @@ const mapEl = document.getElementById('map'), mapWrap = document.getElementById(
 // to scroll, so one finger moves the map there.
 const TOUCH = matchMedia('(pointer: coarse)').matches;
 const map = L.map('map', { zoomControl: true, dragging: !TOUCH }).setView([53.6, -2.0], 6);
+map.attributionControl.setPrefix(false);   // the map's credit is OpenStreetMap's, as on the small map; the terms credit Leaflet
 const tiles = () => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19,
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' });
 tiles().addTo(map);
@@ -989,7 +995,7 @@ const weatherRow = (d, iso) => { const w = weatherOn(d, iso); if (!w) return '';
 function bestDayNote(spots, yours = false) {
   const b = bestDay(spots, [0, 1, 2, 3, 4].map(k => addDays(today(), k)));
   if (!b || (yours ? b.known < 2 : !b.low)) return '';
-  return `Lowest pollution risk this week: <b>${dateLabel(b.date)}</b>${yours ? `, when ${b.low} of your ${b.known} spots are low.` : ''}`
+  return `Lowest pollution risk this week: <b>${dateLabel(b.date)}</b>${yours ? `, when ${b.low} of your ${b.known} spots ${b.low === 1 ? 'is' : 'are'} low.` : ''}`
     + `<span class="pick"${VIEW.day === b.date ? ' hidden' : ''}>${yours ? ' ' : ' · '}<button type="button" class="linkbtn small" data-pick-day="${b.date}" aria-label="Show ${dateLabel(b.date)}">Show</button></span>`;
 }
 // The button, with the dot before it, shows while another day is picked: setMapDay keeps it in step.
