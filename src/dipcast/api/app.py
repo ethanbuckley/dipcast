@@ -1,13 +1,15 @@
-"""HTTP API and static map. Run: uv run uvicorn dipcast.api.app:app --reload"""
+"""HTTP API and the prose pages. Run: uv run uvicorn dipcast.api.app:app --reload"""
 
 from __future__ import annotations
 
 import logging
+import os
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from dipcast import __version__, config
@@ -22,6 +24,10 @@ logging.getLogger("dipcast").setLevel(logging.INFO)
 if not logging.getLogger().handlers:
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 NO_CACHE = {"Cache-Control": "no-cache"}
+# The map is the static site's (src/dipcast/site/, written by scripts/build_site.py), so "/" sends
+# a visitor there: the address the build uses (DIPCAST_SITE_URL), or the live site.
+_site = os.environ.get("DIPCAST_SITE_URL", "").strip()
+SITE_URL = _site.rstrip("/") + "/" if re.match(r"https?://[^/\s]+", _site) else "https://swimsignal.co.uk/"
 
 
 def _warm_up() -> None:
@@ -91,7 +97,7 @@ def health():
 
 @app.get("/")
 def index():
-    return FileResponse(STATIC / "index.html", headers=NO_CACHE)
+    return RedirectResponse(SITE_URL, status_code=307)
 
 
 @app.get("/about")

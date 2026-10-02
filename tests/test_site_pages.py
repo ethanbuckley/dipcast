@@ -345,3 +345,17 @@ def test_weather_context_is_attached_per_spot_and_a_failed_call_leaves_none():
         raise RuntimeError("open-meteo request failed")
     fresh = [{"id": "a", "name": "A", "lat": 54.0, "lon": -2.0}]
     assert bs.attach_weather(fresh, request=broken) == 0 and "weather" not in fresh[0]
+
+
+def test_the_api_server_sends_its_home_page_to_the_site_and_keeps_the_prose_pages():
+    # The API's own map page (static/index.html) was outside the design system and is gone: the
+    # map is the static site's. Without the lifespan (no `with`), nothing is warmed up or scheduled.
+    from fastapi.testclient import TestClient
+
+    from dipcast.api import app as api
+    c = TestClient(api.app)
+    r = c.get("/", follow_redirects=False)
+    assert r.status_code == 307 and r.headers["location"] == api.SITE_URL and api.SITE_URL.startswith("https://")
+    assert not (api.STATIC / "index.html").exists()
+    for path in ("/about", "/verification", "/terms", "/privacy", "/feedback", "/testing", "/static/page.css", "/static/fonts/SourceSans3-latin.woff2"):
+        assert c.get(path).status_code == 200, path
