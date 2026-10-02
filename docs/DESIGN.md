@@ -173,7 +173,10 @@ the five days, so freshness is read at the point of deciding. While the forecast
 page shows the list's shape in hairline grey rather than a line of text. Leaflet's own controls
 (zoom, attribution, popups, tooltips) use the tokens, the one radius and the map lift, so the map
 no longer carries a second visual language. A control keeps its own corner when focused. Fold
-summaries and stand-alone text buttons are 44 px targets.
+summaries and stand-alone text buttons are 44 px targets. (Since 2 October.) Every map's credit is
+OpenStreetMap's alone; the terms credit Leaflet. On a map too narrow for the legend and the credit
+side by side, the legend sits above the credit's line. A phone's Upstream map shows neither the
+legend nor the list's controls, which covered the ringed spot.
 
 ### Where instead (third round, 1 October 2026)
 
