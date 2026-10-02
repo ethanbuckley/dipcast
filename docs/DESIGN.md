@@ -68,6 +68,12 @@ largest headings, and no uppercase labels anywhere.
   the two sets. A spot with no monitored overflow upstream is teal `#4aa39a`, not grey: it is a
   calm answer, not a missing one. Grey `#98a2aa` means no level. An overflow discharging now is
   the very-high brick.
+- The map: OpenStreetMap's tiles with the land in grey and the water (sea, lakes, rivers) in a
+  muted blue, `#bccfd8`, about as light as the grey it replaced (L* 82 against 83; chroma 8). Its
+  hue (235°) is 48° from the teal marker's, which keeps a paper ring, and the open spot's dark
+  teal ring has 4.9:1 against it. CSS filters change every colour alike, so the tiles go through
+  an SVG filter in `index.html` (`#tiles`) that finds OpenStreetMap's water by its colour. That
+  blue is not a token: the filter's numbers cannot read one.
 - A level colours the headline and a 6 px rule on the hero. The written level in bold sans-serif
   carries the meaning even when colour is hard to see; the rule is a supporting cue. It never fills
   a surface: the washed-tint card was the dashboard look, and five of them in a column were a wall
@@ -226,8 +232,8 @@ anything, seventeen type sizes, a Leaflet-demo map, and no motif. So:
   a serif heading, the content. The list and the Nearby rows lost their container and kept their
   dividers. The Saved page's spots are entries between hairlines, the name in the serif, then the
   headline and the strip. A list someone shared keeps a box while it is on offer.
-- **A warm paper page** (`#f6f4ee`), so the white hero lifts without a border and the grey map
-  reads as a different material.
+- **A warm paper page** (`#f6f4ee`), so the white hero lifts without a border and the map reads
+  as a different material.
 - **A light header**: the paper, the mark and the wordmark in teal, ink links, a hairline. The
   phone's bar at the bottom is unchanged.
 - **Six type sizes** (13, 15, 17, 20, 30, 36) as tokens, the spot's name and page titles at 36 (30
@@ -235,10 +241,14 @@ anything, seventeen type sizes, a Leaflet-demo map, and no motif. So:
   to the first section, 32 between sections, 8 and 12 within them.
 - **Natural level colours**, moss, ochre, rust and brick, with darker text shades that pass AA on
   the paper and on white.
-- **A grey map**: the tiles in greyscale, so the markers are the only colour on it; markers a size
-  larger with a 2 px paper ring; the legend the six keys in one line, with the overflows' key
-  below it only while overflows are on the map. Still OpenStreetMap, which the privacy notice
-  names.
+- **A grey map, then blue water**: the tiles in greyscale, so the markers are the only strong
+  colours on it; markers a size larger with a 2 px paper ring; the legend the six keys in one
+  line, with the overflows' key below it only while overflows are on the map. Still
+  OpenStreetMap, which the privacy notice names. The same day the water came back as a muted blue
+  (Colour, above): grey, the lakes had matched the woods and the fells around them, and at street
+  level Derwent Water could hardly be told from the land. Faded OpenStreetMap colours were tried
+  and dropped, because they bring back the green parks and the coloured roads that competed with
+  the markers; so was a paper-coloured land, which turns the fells brown.
 - **The river line** from the mark as the one decorative element.
 - **Quieter controls**: the chips and the sort control lost their borders (words in the text's
   weight, the chosen one filled); the day strip lost its outer box.
