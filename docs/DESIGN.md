@@ -95,6 +95,18 @@ largest headings, and no uppercase labels anywhere.
 - One caveat per view, in the place it is read: the intro says "Forecasts, not water tests" once;
   the hero's last line says to check the signs at the water. The rest of the explanation lives
   under "About these forecasts" and on the About and Accuracy pages.
+- A row says one sentence and folds the rest (fifth round): the hero's rows keep the sentence with
+  the figures in view and put the rest under "What this means", word for word. What the strip's
+  cells show folds into the water row, or the spills row where there is no water estimate; under
+  the strip only the † sentence stays, and only while a cell carries a †. The EA rating keeps its
+  advice in view and folds how it is rated and the years before.
+- "About these forecasts" is in full on the list only. A spot's page and the Saved page give it one
+  line, "About these forecasts · How accurate is it?", which opens it in place; so does any link to
+  a part of it (the levels, what E. coli counts, your data).
+- Kept in view, once per view, whatever else folds: "A forecast, not a water test: check the signs
+  at the water before you swim", every Environment Agency advice sentence, the issue time, the
+  data credits in the foot, and every sentence of the terms and the privacy notice. Consent text
+  (the alerts) folds under what it is about, before the button, and keeps every sentence.
 - Names agree everywhere: the home page is **Explore**, the verification page is **Accuracy**.
   Page titles are "Page · SwimSignal".
 

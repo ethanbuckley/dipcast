@@ -362,6 +362,7 @@
   dl.tech dt { color:var(--muted); } dl.tech dd { margin:0; overflow-wrap:anywhere; }
   .notice { border:1px solid var(--notice-line); background:var(--notice-bg); border-radius:var(--radius); padding:10px 14px; margin:12px 0; font-size:var(--fs-note); }
   .notice.quiet { border-color:var(--line); background:var(--card); }
+  details.consent { margin:-4px 0 8px; } details.consent p { margin:0 0 8px; color:var(--muted); }
 
   /* Saved spots: an entry per spot between hairlines, the whole entry opening the spot. */
   .page-h { font-size:var(--fs-title); line-height:1.1; letter-spacing:-.01em; margin:8px 0; }
@@ -403,7 +404,12 @@
   .compare-table th[scope=row] { min-width:100px; }
   .comparison > summary { font:600 var(--fs-head)/1.25 var(--font-display); }
 
-  .about { margin-top:40px; padding-top:16px; border-top:1px solid var(--line); font-size:var(--fs-note); }
+  .about, .about-line { margin-top:40px; padding-top:16px; border-top:1px solid var(--line); font-size:var(--fs-note); }
+  /* "About these forecasts" in full on the list. A spot's page and the Saved page give it one line,
+     which opens it in place, as a link to any part of it does (about-open). */
+  .about-line { margin-bottom:0; }
+  body.view-list .about-line, body.about-open .about-line, body:not(.view-list):not(.about-open) .about { display:none; }
+  #about:focus { outline:none; }
   .about h2 { font-size:var(--fs-head); line-height:1.25; margin:0 0 8px; }   /* serif (h2), the size of every section heading */
   .about dl { margin:6px 0 0; } .about dt { font-weight:600; margin-top:10px; } .about dd { margin:2px 0 0; color:var(--muted); }
   .about dl.levels dt { display:flex; align-items:center; gap:8px; }
@@ -486,7 +492,8 @@
   <div id="map-wrap"><div id="map" role="region" aria-label="Map of swim spots"></div></div>
   <main id="panel" tabindex="-1">
     <div id="result"><p class="muted">Loading forecasts…</p></div>
-    <section class="about" id="about">
+    <p class="about-line" id="about-line"><a href="#about">About these forecasts</a> · <a href="verification.html">How accurate is it?</a></p>
+    <section class="about" id="about" tabindex="-1">
       <h2>About these forecasts</h2>
       <p>For each spot, SwimSignal traces the river upstream, finds every monitored storm overflow whose water reaches it, and combines what those overflows are doing now with how likely each is to spill over the next five days, allowing for travel time, bacterial die-off and dilution. It is a forecast, not a water test: "low" is not a guarantee of clean water, and inclusion of a spot is not a statement that it is safe to swim there. <a href="verification.html">How accurate is it?</a></p>
       <details class="more" id="levels"><summary>What the levels mean</summary>
@@ -775,15 +782,17 @@ let syncTimer = null;
 const syncSoon = () => { clearTimeout(syncTimer); syncTimer = setTimeout(() => syncAlerts().catch(() => {}), 1000); };
 function alertsCard() {
   if (!DATA.push) return '';
-  // What consent needs to be informed (ICO): who gets what, for what, and how to take it back.
-  const why = 'A notification when one of your saved spots turns high or very high, at most once a day for each. An alert can be late or not come at all, so no alert does not mean the water is clean. '
-    + 'Turning alerts on sends your browser\'s push address and the list of your saved spots, and nothing else about you, to SwimSignal\'s alert service. Alerts reach you through your browser maker\'s push service (Google, Apple, Mozilla or Microsoft), encrypted so it cannot read them. '
-    + 'You can turn them off here at any time, which deletes what the alert service holds. <a href="privacy.html">Privacy notice</a>.';
+  // What consent needs to be informed (ICO): who gets what, for what, and how to take it back. All of
+  // it stays, word for word, one tap away and before the button; the first sentence is in view.
+  const what = 'A notification when one of your saved spots turns high or very high, at most once a day for each.';
+  const sends = 'Turning alerts on sends your browser\'s push address and the list of your saved spots, and nothing else about you, to SwimSignal\'s alert service. Alerts reach you through your browser maker\'s push service (Google, Apple, Mozilla or Microsoft), encrypted so it cannot read them. '
+    + 'You can turn them off here at any time, which deletes what the alert service holds. An alert can be late or not come at all, so no alert does not mean the water is clean. <a href="privacy.html">Privacy notice</a>.';
   const body = canPush() && offlineOff() ? `<p class="small tight">Alerts need the offline copy, which is turned off in this browser. <a href="#your-data">Turn it back on</a> to use them.</p>`
     : canPush() ? `<button type="button" class="btn" id="alerts-btn" disabled>Turn on alerts</button>`
     : IOS && !navigator.standalone ? `<p class="small tight">On iPhone and iPad, alerts work only in the Home Screen app: tap <b>Share</b>, then <b>Add to Home Screen</b>, open SwimSignal from there and save your spots in it.</p>`
     : `<p class="small tight">This browser cannot show notifications from websites.</p>`;
-  return `<section class="sec" aria-labelledby="alerts-h"><h2 class="sec-h" id="alerts-h">Alerts</h2><p class="sub">${why}</p>${body}<p class="small muted msg" id="alerts-msg" aria-live="polite"></p></section>`;
+  return `<section class="sec" aria-labelledby="alerts-h"><h2 class="sec-h" id="alerts-h">Alerts</h2><p class="sub">${what}</p>`
+    + `<details class="more consent"><summary>What turning alerts on sends</summary><p class="small">${sends}</p></details>${body}<p class="small muted msg" id="alerts-msg" aria-live="polite"></p></section>`;
 }
 async function bindAlerts() {
   const b = document.getElementById('alerts-btn'), m = document.getElementById('alerts-msg'); if (!b) return;
@@ -797,8 +806,9 @@ async function bindAlerts() {
   });
 }
 
-// One plain sentence or four: what is happening now, the worst day ahead and why, when it eases,
-// and whether it rises again after that.
+// One plain sentence or four, as a list: what is happening now, the worst day ahead and why, when it
+// eases, and whether it rises again after that. The first stays in view; the rest fold (firstThen),
+// since the strip above already shows each day's level.
 function summary(d) {
   const days = d.days.slice(0, 5), known = days.filter(hasData), n = d.now.discharging_upstream, out = [];
   const total = d.upstream_summary.overflows;
@@ -806,11 +816,11 @@ function summary(d) {
   // read as clean water. Say what the forecast does not cover, and when the rain is heaviest.
   if (!total) {
     const wet = days.filter(x => x.rain_48h_mm >= 10).reduce((a, b) => !a || b.rain_48h_mm > a.rain_48h_mm ? b : a, null);
-    return 'No monitored storm overflows upstream, so this forecast has nothing to flag. It does not cover runoff from farms, roads or wildlife, which rain also washes in'
-      + (wet ? `. The wettest day ahead is ${dayWord(wet.date).replace(/^on /, '')}, with about ${Math.round(wet.rain_48h_mm)}&nbsp;mm of rain in the 48 hours before.` : '.');
+    return ['No monitored storm overflows upstream, so this forecast has nothing to flag.', 'It does not cover runoff from farms, roads or wildlife, which rain also washes in.',
+      ...(wet ? [`The wettest day ahead is ${dayWord(wet.date).replace(/^on /, '')}, with about ${Math.round(wet.rain_48h_mm)}&nbsp;mm of rain in the 48 hours before.`] : [])];
   }
   if (n) out.push(`${n} upstream overflow${n === 1 ? ' is' : 's are'} discharging now; exposure right now is ${d.now.label}.`);
-  if (!known.length) return out.concat('No rainfall forecast has arrived, so there is no forecast for the days ahead.').join(' ');
+  if (!known.length) return out.concat('No rainfall forecast has arrived, so there is no forecast for the days ahead.');
   const peak = known.reduce((a, b) => ORDER[b.label] > ORDER[a.label] ? b : a);
   // Why a day is raised: the overflows upstream. Rain at the spot can be light while the hills
   // upstream are wet, so "Very high tomorrow, after about 3 mm of rain" read as a contradiction.
@@ -830,7 +840,7 @@ function summary(d) {
   // Without this, "Low again on Thursday" read as the all-clear when Friday rose again.
   const rises = eases ? days.slice(days.indexOf(eases) + 1).find(x => hasData(x) && ORDER[x.label]) : null;
   if (rises) out.push(`${cap(rises.label)}${rises.label === peak.label ? ' again' : ''} ${dayWord(rises.date)}.`);
-  return out.join(' ');
+  return out;
 }
 // What the headline rests on, a row each: the spills, the water and the EA's rating, each with its
 // own level for today and tomorrow. Without the split, "low" for spills read as clean water.
@@ -838,17 +848,26 @@ const factorRow = (label, lv, value, detail) => `<div class="factor"><div class=
   + `<div class="f-v ${lv ? tone(lv) : 'na'}">${value}</div>${detail ? `<div class="f-d">${detail}</div>` : ''}</div>`;
 // The rest of a row's explanation, after the sentence with its figures: one tap away, word for word.
 const explain = body => `<details class="more"><summary>What this means</summary><p>${body}</p></details>`;
+// A row's first sentence in view and the rest folded, with anything more (more) at the fold's end.
+const firstThen = ([first, ...rest], more = '') => { const body = [...rest, more].filter(Boolean).join(' ');
+  return first + (body ? explain(body) : ''); };
+// What the strip's cells show, in the fold of the row they go with: the water row where E. coli is
+// estimated, else the spills row. Under the strip itself only the † sentence stays (strip).
+const stripNote = d => !daily(d) ? 'The days above show the rain here in the previous 48 h; there is no daily forecast.'
+  : ecoliTested(d) ? 'The figure under each day above is this chance. Pick a day for its details.'
+  : 'The days above show each day\'s level and the rain here in the previous 48 h. Pick a day for its details.';
 function factors(d) {
-  const rows = [];
+  const rows = [], note = ecoliTested(d) ? '' : stripNote(d);
   if (d.error) rows.push(factorRow('Sewage spills', null, 'Not covered', esc(d.error)));
-  else if (!overflows(d)) rows.push(factorRow('Sewage spills', null, 'None monitored', summary(d)));
+  else if (!overflows(d)) rows.push(factorRow('Sewage spills', null, 'None monitored', firstThen(summary(d), note)));
   else { const sp = [ORDER[d.now.label] !== undefined ? d.now.label : null, ...d.days.slice(0, 2).map(x => hasData(x) ? x.label : null)].reduce(higher, null);
-    rows.push(factorRow('Sewage spills upstream', sp, sp ? cap(sp) : 'No data', summary(d))); }
-  return `<div class="factors">${rows.join('')}${water(d, d.days.slice(0, 2))}${standing(d)}</div>`;
+    rows.push(factorRow('Sewage spills upstream', sp, sp ? cap(sp) : 'No data', firstThen(summary(d), note))); }
+  return `<div class="factors">${rows.join('')}${water(d, d.days.slice(0, 2), ecoliTested(d) ? stripNote(d) : '')}${standing(d)}</div>`;
 }
 // The calibrated number, over the days given: it counts bacteria from any source, so rain can
 // raise it when the spills are low. Rivers with overflows upstream only, the case it was tested on.
-function water(d, days) {
+// note: what the strip's figure is, for the summary's water row (factors), not a picked day's.
+function water(d, days, note = '') {
   if (ecoliTested(d)) {
     // The row keeps the figure's own band in any month; out of season it is marked † and the
     // sentence says it does not set the level (levels.js, ecoliLevel).
@@ -857,7 +876,7 @@ function water(d, days) {
     // The value is a risk, said so: beside "Water quality", a bare "Very high" read as very good water.
     return factorRow('Water quality', wq, wq ? `${cap(wq)} risk` + (off ? '†' : '') : 'No data', !ds.length ? 'No rainfall forecast has arrived, so there is no estimate.'
       : `Chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml: ${ds.map(x => `<b>${Math.round(x.p_ecoli_gt900 * 100)}%</b> ${dayWord(x.date)}`).join(', ')}.`
-      + explain(`The minimum bathing-water standard lets about one sample in ten be over 900.${off ? ' † The EA takes no samples from October to April, so nothing tests this estimate now: it is shown, but it does not set the level above.' : ''} <a href="#about-ecoli">What this counts</a>`));
+      + explain(`${note ? note + ' ' : ''}The minimum bathing-water standard lets about one sample in ten be over 900.${off ? ' † The EA takes no samples from October to April, so nothing tests this estimate now: it is shown, but it does not set the level above.' : ''} <a href="#about-ecoli">What this counts</a>`));
   }
   if (d.error) return '';
   return factorRow('Water quality', null, 'Not estimated', (d.location || {}).mode === 'lake'
@@ -872,9 +891,10 @@ function standing(d) {
   // Advice that changes within a season (a pollution incident, an algal bloom) is on the EA's page
   // only: its service refuses the build's machines and does not answer other sites' pages.
   const live = cl.url ? ` <a href="${esc(cl.url)}">The EA's page</a> has its latest samples and any short-term advice against bathing, after pollution or algae, which this page does not include.` : '';
+  // The advice stays in view; how the rating is made, and the years before it, fold.
   if (c) rows.push(factorRow(`Environment Agency rating, ${cl.year}`, CLASS_LEVEL[c], cap(c),
-    (c === 'poor' ? '<b>Advice against bathing applies here</b> while the rating is poor, and should be shown on signs at the water. ' : '')
-    + `From its lab samples over up to four seasons${ratingHistory(cl)}.${live}`));
+    ((c === 'poor' ? '<b>Advice against bathing applies here</b> while the rating is poor, and should be shown on signs at the water.' : '') + live).trim()
+    + explain(`From its lab samples over up to four seasons${ratingHistory(cl)}.`)));
   else if (d.classification) rows.push(factorRow('Environment Agency rating', null, 'Not yet rated', `A designated bathing water too new to have a rating.${live}`));
   return rows.join('');
 }
@@ -918,12 +938,9 @@ const cells = (d, card = false) => { const on = daily(d), pct = ecoliTested(d), 
     const r = pct ? (nil(x.p_ecoli_gt900) ? '–' : Math.round(x.p_ecoli_gt900 * 100) + '%' + (untested(x) ? '†' : '')) : nil(x.rain_48h_mm) ? '–' : Math.round(x.rain_48h_mm) + ' mm';
     const attrs = !on ? '' : ` type="button" data-day="${x.date}"` + (card ? ` data-spot="${esc(d.id)}" tabindex="-1"` : ' aria-pressed="false" aria-controls="day-view"');
     return `<${tag} class="day ${lv ? tone(lv) : ''}"${attrs}><span class="d">${shortDay(x.date)}</span><span class="l"${lv === 'moderate' ? ' data-short="Mod."' : ''}>${!on ? '–' : lv ? cap(lv) : 'No data'}</span><span class="r">${r}</span></${tag}>`; }).join('') + `</div>`; };
-// One line under the strip: what the second figure in each cell is. The † sentence stays whenever a
-// cell carries the mark, since it says why that figure is not in the level.
-const strip = d => cells(d) + `<p class="strip-note">${!daily(d) ? 'No daily forecast here; rain in the previous 48 h.'
-  : (ecoliTested(d) ? 'Pick a day for its details. The figure is the chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml.'
-    : 'The level each day, and rain here in the previous 48 h. Pick a day for its details.')
-    + (anyUntested(d) ? ' ' + UNTESTED_NOTE : '')}</p>`;
+// Under the strip, only the † sentence, while a cell carries the mark: it says why that figure is not
+// in the level. What the cells show folds into a row below (stripNote).
+const strip = d => cells(d) + (anyUntested(d) ? `<p class="strip-note">${UNTESTED_NOTE}</p>` : '');
 // The week at a glance in a list row: one bar per day, coloured by level. Where no overflow can
 // reach the spot there is no level to colour, so the bars show the rain instead (40 mm fills one).
 const week = s => {
@@ -1329,7 +1346,7 @@ function bindItems(ul) {
     e.preventDefault(); select(a.dataset.id, true, true, VIEW.day); }));
 }
 function setView(v) {
-  document.body.classList.remove('view-list', 'view-saved', 'view-spot'); document.body.classList.add('view-' + v);
+  document.body.classList.remove('view-list', 'view-saved', 'view-spot', 'about-open'); document.body.classList.add('view-' + v);
   const b = document.getElementById('savedbtn');
   if (v === 'saved') b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current');
   syncNav();
@@ -1357,7 +1374,7 @@ function renderList() {
     + `<div class="sortseg" role="group" aria-label="Sort">${sorts.map(([k, t]) => `<button type="button" data-sort="${k}" aria-pressed="${VIEW.sort === k}">${t}</button>`).join('')}</div></div>`
     + `<div class="chips-row" role="group" aria-label="Show">${Object.entries(FILTERS).map(([k, t]) => `<button type="button" class="chip-btn" data-filter="${k}" aria-pressed="${VIEW.filter === k}">${t}</button>`).join('')}</div>`
     + `<p class="overview" id="overview"></p><p class="small muted" id="untested-note" hidden>${UNTESTED_NOTE}</p><p class="small muted" id="geo" aria-live="polite">${esc(VIEW.geoMsg)}</p><ul class="spots" id="spots"></ul><p class="count" id="count" role="status"></p></section>`;
-  h += `<p class="small muted after">Updated several times a day. The coloured bars are the next five days. <a href="#levels">What the levels mean</a>. ${STANDALONE ? '' : '<a href="#home-screen">Add to your Home Screen</a>. '}Missing your spot? <a href="feedback.html?type=spot">Request it</a>.</p>`;
+  h += `<p class="small muted after">Updated several times a day. <a href="#levels">What the levels mean</a>.</p>`;
   setPanel(h);
   if (saved.length) bindItems(document.getElementById('saved-list'));
   document.getElementById('listday').addEventListener('change', e => setMapDay(e.target.value));
@@ -1486,8 +1503,8 @@ function renderSaved() {
   const spots = [...SAVED].map(id => DATA.spots.find(s => s.id === id)).filter(Boolean), gone = SAVED.size - spots.length;
   const offered = (INCOMING || []).map(id => DATA.spots.find(s => s.id === id)).filter(s => s && !SAVED.has(s.id));
   let h = `<a href="${esc(ROOT.pathname)}" class="back" id="back">All spots</a><h1 class="page-h">Saved spots</h1>`
-    + `<p class="lede">${spots.length ? `The next five days at ${spots.length === 1 ? 'your spot' : `your ${spots.length} spots`}, kept` : 'Spots you save show here, kept'} `
-    + `${navigator.standalone ? 'in this Home Screen app' : 'in this browser'}${DATA.push ? ', and by the alert service only if you turn alerts on' : ' only'}${navigator.standalone ? ': Safari keeps a list of its own' : ''}.</p>`;
+    + `<p class="lede">${spots.length ? `The next five days at ${spots.length === 1 ? 'your spot' : `your ${spots.length} spots`}` : 'Spots you save show here'}, `
+    + `kept ${navigator.standalone ? 'in this Home Screen app, not in Safari' : 'in this browser'}.</p>`;
   if (offered.length) h += `<section class="offer" aria-labelledby="inc-h"><h2 class="sec-h" id="inc-h">A shared list</h2><p class="sub">Someone sent you ${offered.length === 1 ? 'a spot' : `${offered.length} spots`} to follow:</p>${listOf(offered)}`
     + `<div class="actions tight"><button type="button" class="btn primary" id="inc-save">Save ${offered.length === 1 ? 'it' : `all ${offered.length}`}</button><button type="button" class="btn" id="inc-skip">Not now</button></div></section>`;
   else if (INCOMING) h += `<p class="notice quiet" role="status">${INCOMING.length === 1 ? 'The spot in that link is' : 'The spots in that link are'} already saved here.</p>`;
@@ -1761,11 +1778,13 @@ function bindBack() { const b = document.getElementById('back'); if (b) b.addEve
   else { keepPlace(); history.pushState(null, '', ROOT.pathname); renderList(); scrollTop(); } }); }   // a shared link: stay on the site
 
 // In-page links (#about, #levels) must not follow <base> off a spot's own page to the home page.
-// A target made focusable (the skip link's #panel) takes the focus as well, so the next Tab
-// starts there: cancelling the link cancels the browser's own move.
+// A target made focusable (the skip link's #panel, #about) takes the focus as well, so the next Tab
+// starts there: cancelling the link cancels the browser's own move. A spot's page and the Saved page
+// show "About these forecasts" as one line; a link into it opens it in place (about-open).
 document.addEventListener('click', e => { const a = e.target.closest('a[href^="#"]'); if (!a) return;
   const el = document.getElementById(a.getAttribute('href').slice(1)); if (!el) return;
   e.preventDefault(); if (mapMode()) setMapMode(false); const box = el.closest('details'); if (box) box.open = true;
+  if (el.closest('#about')) document.body.classList.add('about-open');
   el.scrollIntoView({ behavior: SCROLL(), block: 'start' });
   if (el.hasAttribute('tabindex')) el.focus({ preventScroll: true }); });
 // "/" puts the focus in the search from anywhere on the list. Only where there is a search (not a
