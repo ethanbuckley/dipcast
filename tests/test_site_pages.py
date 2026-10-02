@@ -124,6 +124,17 @@ def test_site_url_follows_the_repository_unless_set(monkeypatch):
     assert bs.site_url() == "https://ethanbuckley.github.io/swimcast/"
 
 
+def test_the_page_draws_the_spill_levels_at_the_cut_offs_the_build_labels_them_by():
+    # The page's scales and bars place a day by SPILL_CUTS (levels.js); the labels in spots.json come
+    # from transport.risk_label. A change to one without the other would put "High" on a moderate bar.
+    from dipcast.model.transport import risk_label
+    rules = (ROOT / "src" / "dipcast" / "site" / "levels.js").read_text()
+    cuts = [float(x) for x in re.search(r"const SPILL_CUTS = \[([^\]]+)\]", rules).group(1).split(",")]
+    levels = ["low", "moderate", "high", "very high"]
+    for i, c in enumerate(cuts):
+        assert risk_label(c - 1e-9) == levels[i] and risk_label(c) == levels[i + 1], c
+
+
 def test_the_page_and_the_build_use_one_id_rule():
     # Not a check of spots.csv: an odd id only loses its own page (it keeps ?spot=), and a failing
     # test here would stop every build and leave the whole site stale.
