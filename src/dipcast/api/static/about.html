@@ -11,11 +11,12 @@
 <nav aria-label="Site"><a href="/">Explore</a><a href="/verification">Accuracy</a><a aria-current="page" href="/about">About</a><a href="/feedback">Feedback</a></nav></header>
 <main class="doc">
 <h1>About SwimSignal</h1>
-<!-- The two counts are this build's: scripts/build_site.py (with_counts) rewrites them. -->
+<!-- The two counts and the tracing distance are this build's: scripts/build_site.py (with_counts) rewrites them. -->
 <p class="lead">SwimSignal is a free five-day forecast of sewage-overflow risk at river and lake swim spots in England. It covers <span id="n-spots">89</span> spots, <span id="n-bw">38</span> of them designated bathing waters. It uses the water companies' live storm-overflow data, rainfall forecasts and the river network. It is a forecast, not a water test.</p>
 
 <h2>How it works</h2>
-<p>For each spot, SwimSignal traces the river network upstream and finds every monitored storm overflow whose water can reach it. It takes what those overflows are doing now from the water companies' live feeds. It forecasts how likely each one is to spill on each of the five days, from the rain forecast and the overflow's own spill record. It then allows for how long sewage takes to travel downstream, how fast bacteria die off and how much the river dilutes it, so an overflow 2 km upstream counts for more than one 40 km up a tributary. On rivers it also estimates the chance that a water sample would fail the E. coli limit for bathing water, and at designated bathing waters it adds the Environment Agency's rating and its sampler's latest algae check.</p>
+<p>For each spot, SwimSignal traces the river network upstream and finds every monitored storm overflow up to <span id="max-km">60</span> km upstream along it. It takes what those overflows are doing now from the water companies' live feeds. It forecasts how likely each one is to spill on each of the five days, from the rain forecast and the overflow's own spill record. It then allows for how long sewage takes to travel downstream, how fast bacteria die off and how much the river dilutes it, so an overflow 2 km upstream counts for more than one 40 km up a tributary. The result for each day is the exposure index, a 0–100 score of how likely sewage from upstream is to reach the spot. On rivers it also estimates the chance that a water sample would fail the E. coli limit for bathing water, and at designated bathing waters it adds the Environment Agency's rating and its sampler's latest algae check.</p>
+<p>Overflows are listed under the names their water companies give them, which use abbreviations: WwTW and STW are a wastewater (sewage) treatment works, CSO a combined sewer overflow and SPS a sewage pumping station.</p>
 
 <h2>What it cannot see</h2>
 <ul>

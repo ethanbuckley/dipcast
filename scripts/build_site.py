@@ -290,11 +290,14 @@ def data_credits(root: str) -> dict:
         "attribution": (
             "Storm overflow status from Anglian Water Services, Northumbrian Water, Severn Trent Water, South West Water, "
             "Southern Water (© 2026), Thames Water, United Utilities, Wessex Water (© 2024) and Yorkshire Water, via the "
-            "National Storm Overflow Hub, CC BY 4.0. Environment Agency data © Environment Agency copyright and/or "
+            "National Storm Overflow Hub, CC BY 4.0; overflow identifiers matched with the Stream ID lookup, via Stream, "
+            "CC BY 4.0. Environment Agency data © Environment Agency copyright and/or "
             "database right, OGL v3.0; river levels: this uses Environment Agency flood and river level data from the "
             "real-time data API (Beta). Contains OS data © Crown copyright and database right 2026. Weather data by "
             "Open-Meteo.com, CC BY 4.0, from Met Office forecasts © Crown copyright, CC BY-SA 4.0: rainfall figures "
-            "stay under CC BY-SA 4.0."),
+            "stay under CC BY-SA 4.0. The models were trained on ERA5-Land reanalysis: contains modified Copernicus "
+            "Climate Change Service information 2026; neither the European Commission nor ECMWF is responsible for any "
+            "use that may be made of the Copernicus information or data it contains."),
         "modified": ("Combined, filtered and modelled by SwimSignal. The forecasts, levels and scores are SwimSignal's own "
                      "estimates, not the data providers'. None of the providers endorses SwimSignal."),
         "licences": LICENCES,
@@ -489,9 +492,11 @@ def saved_page(template: str, root: str) -> str:
 
 
 def with_counts(html: str, results: list[dict]) -> str:
-    """The About page's spot counts, from this build's spots, so they cannot go stale."""
+    """The About page's spot counts, from this build's spots, and how far upstream the tracing
+    goes, from the config, so they cannot go stale."""
     n_bw = sum(r.get("source") == "designated" for r in results)
     html = re.sub(r'(<span id="n-spots">)\d+(</span>)', rf"\g<1>{len(results)}\g<2>", html, count=1)
+    html = re.sub(r'(<span id="max-km">)\d+(</span>)', rf"\g<1>{config.MAX_UPSTREAM_KM:g}\g<2>", html, count=1)
     return re.sub(r'(<span id="n-bw">)\d+(</span>)', rf"\g<1>{n_bw}\g<2>", html, count=1)
 
 

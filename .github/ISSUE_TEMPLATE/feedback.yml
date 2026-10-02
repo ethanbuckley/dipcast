@@ -44,10 +44,13 @@ body:
   - type: dropdown
     id: alerts
     attributes:
-      label: Would a message when your spot's forecast turns moderate or worse be useful?
+      label: Did you use alerts?
+      description: A notification on your phone or computer when a saved spot's forecast turns high or very high. You turn them on on the Saved page.
       options:
-        - "Yes, by email"
-        - "Yes, as a phone notification"
+        - "Yes, and they came when I expected"
+        - "Yes, but one came late"
+        - "Yes, but one never came"
+        - "I tried, but could not turn them on"
         - "No"
   - type: textarea
     id: other
