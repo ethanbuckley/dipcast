@@ -11,19 +11,23 @@ const FORECAST = SCOPE + 'data/spots.json';
 
 function worker(fetch, stored = {}) {
   const entries = new Map(Object.entries(stored));
-  const handlers = {}, notifications = [];
+  const handlers = {}, notifications = [], opened = [], added = [];
   const cache = {
     match: async key => entries.get(key)?.clone(),
     put: async (key, res) => { entries.set(key, res); },
+    add: async req => { added.push(req); },
   };
+  // A worker resolves a relative address against its own; Node's Request needs it absolute.
+  class ScopedRequest extends Request { constructor(u, init) { super(typeof u === 'string' ? new URL(u, SCOPE).href : u, init); } }
   const context = vm.createContext({
-    fetch, URL, Response, Request,
-    caches: { open: async () => cache },
-    self: { registration: { scope: SCOPE, showNotification: async (title, options) => notifications.push({ title, ...options }) }, location: new URL(SCOPE), addEventListener(type, handler) { handlers[type] = handler; } },
+    fetch, URL, Response, Request: ScopedRequest,
+    caches: { open: async name => { opened.push(name); return cache; } },
+    self: { registration: { scope: SCOPE, showNotification: async (title, options) => notifications.push({ title, ...options }) }, location: new URL(SCOPE),
+            skipWaiting: async () => {}, addEventListener(type, handler) { handlers[type] = handler; } },
     setTimeout() {},   // every case here settles through the network, so the 4 s race never fires
   });
   vm.runInContext(readFileSync(join(__dirname, '../src/dipcast/site/sw.js'), 'utf8'), context);
-  return { context, entries, notifications, push: async data => { let pending; handlers.push({ data: { json: () => data }, waitUntil(p) { pending = p; } }); await pending; } };
+  return { context, entries, notifications, handlers, opened, added, push: async data => { let pending; handlers.push({ data: { json: () => data }, waitUntil(p) { pending = p; } }); await pending; } };
 }
 
 test('a reload asks the server, past the browser cache, and replaces the stored forecast', async () => {
@@ -84,4 +88,39 @@ test('a legacy notification still works and a null payload cannot crash the hand
   await w.push(null);
   assert.equal(w.notifications[0].title, 'Legacy');
   assert.equal(w.notifications[1].title, 'SwimSignal');
+});
+
+// A fetch event as the browser sends it: what the worker answered, or undefined if it left the
+// request to the browser.
+function fetchEvent(w, url, mode = 'cors') {
+  let answer;
+  w.handlers.fetch({ request: { url, method: 'GET', mode }, respondWith(p) { answer = p; } });
+  return answer;
+}
+
+test('nothing from another site is handled: the map library is this site\'s own', () => {
+  const w = worker(async () => new Response('x'));
+  assert.equal(fetchEvent(w, 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'), undefined);
+  assert.equal(fetchEvent(w, 'https://tile.openstreetmap.org/7/63/41.png'), undefined);
+  assert.equal(fetchEvent(w, SCOPE + 'data/overflows.geojson'), undefined);
+});
+
+test('the map library is the stored copy first, as the fonts are; the site\'s own scripts the network first', async () => {
+  const lib = SCOPE + 'vendor/leaflet/leaflet.js', levels = SCOPE + 'levels.js?v=dev';
+  const w = worker(async () => new Response('from the network'), { [lib]: new Response('stored'), [levels]: new Response('stored') });
+  assert.equal(await (await fetchEvent(w, lib)).text(), 'stored');
+  assert.equal(await (await fetchEvent(w, levels)).text(), 'from the network');
+});
+
+test('the cache is named by the build and filled from the server, with the scripts at the build\'s stamp', async () => {
+  const w = worker(async () => new Response('x'));
+  let done;
+  w.handlers.install({ waitUntil(p) { done = p; } });
+  await done;
+  assert.deepEqual(w.opened, ['dipcast-dev']);   // the build writes its stamp over 'dev'
+  const urls = w.added.map(r => r.url);
+  assert.ok(urls.includes(SCOPE + 'levels.js?v=dev') && urls.includes(SCOPE + 'experience.js?v=dev'), urls.join(' '));
+  assert.ok(urls.includes(SCOPE + 'vendor/leaflet/leaflet.js') && urls.includes(SCOPE + 'vendor/leaflet/leaflet.css'), urls.join(' '));
+  assert.ok(urls.every(u => u.startsWith(SCOPE)), urls.join(' '));
+  assert.ok(w.added.every(r => r.cache === 'no-cache'));
 });

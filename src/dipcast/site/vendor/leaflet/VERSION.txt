@@ -1,0 +1,13 @@
+Leaflet 1.9.4 (https://leafletjs.com), BSD 2-Clause licence: LICENSE, beside this file.
+
+Served from this site so that no third party receives a request for it (docs/DESIGN.md, "The map
+library"). Downloaded unchanged on 2 October 2026 from https://unpkg.com/leaflet@1.9.4/:
+dist/leaflet.js, dist/leaflet.css, dist/images/*.png and LICENSE.
+
+index.html pins the two files by hash (integrity="..."), and tests/test_design_tokens.py checks
+that these files still match it:
+  leaflet.js   sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=
+  leaflet.css  sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=
+
+To upgrade: replace every file here from the new version's dist/, update the two hashes in
+index.html and here, and check the map at 320, 375 and 1440 px.

@@ -35,8 +35,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SwimSignal">
-<!-- Pinned by hash, so a changed file on the CDN is refused rather than run. -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<!-- The map library, Leaflet 1.9.4, served from this site (vendor/leaflet/, with its licence) so
+     that no third party receives a request for it, as for the fonts. Pinned by hash: a changed file
+     is refused rather than run (tests/test_design_tokens.py checks the hashes against the files). -->
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=">
 <style>
   /* The design system: docs/DESIGN.md. The tokens and the header are the same as page.css, the
      prose pages' stylesheet, repeated here so that the app paints before any stylesheet arrives
@@ -677,7 +679,7 @@
   <button type="button" id="nav-map" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></svg>Map</button>
   <a href="saved/" id="nav-saved" aria-label="Saved spots"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>Saved<span class="n" id="nav-saved-n" hidden></span></a>
 </nav>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="vendor/leaflet/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="></script>
 <script src="experience.js"></script>
 <script src="levels.js"></script>   <!-- the levels and headlines: shared with the build and the alerts -->
 <script>

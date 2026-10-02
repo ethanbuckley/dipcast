@@ -270,13 +270,23 @@ def test_feedback_and_experience_are_built_for_nested_github_pages(tmp_path):
     assert 'href="/' not in feedback
     assert "hello@swimsignal.co.uk" in feedback and "Send by email" in feedback
     home = (tmp_path / "index.html").read_text()
-    assert '<script src="experience.js">' in home
+    stamp = bs.shell_stamp()
+    assert re.fullmatch(r"[0-9a-f]{8}", stamp)
+    # The page asks for its scripts at the build's stamp, as the offline copy stores them.
+    assert f'<script src="experience.js?v={stamp}">' in home and f'<script src="levels.js?v={stamp}">' in home
     assert (tmp_path / "experience.js").exists()
-    assert 'feedback.html' in (tmp_path / "sw.js").read_text()
+    sw = (tmp_path / "sw.js").read_text()
+    assert 'feedback.html' in sw and f"const BUILD = '{stamp}';" in sw and "const CACHE = `dipcast-${BUILD}`;" in sw
+    assert "`levels.js?v=${BUILD}`" in sw and "unpkg" not in sw and "unpkg" not in home
+    # The map library from this site, at the paths the page and the worker ask for.
+    for f in ("vendor/leaflet/leaflet.js", "vendor/leaflet/leaflet.css", "vendor/leaflet/LICENSE", "vendor/leaflet/images/layers.png"):
+        assert (tmp_path / f).exists(), f
+    assert 'href="vendor/leaflet/leaflet.css"' in home and 'src="vendor/leaflet/leaflet.js"' in home
     assert 'SwimSignal' in (tmp_path / "manifest.webmanifest").read_text()
-    # Rebranding preserves the installed application's URL and saved-spot storage.
+    # Rebranding preserves the installed application's URL and saved-spot storage; the cache keeps its
+    # dipcast- prefix, which the worker and the page's "Turn off the offline copy" clear by.
     assert '"start_url": "./"' in (tmp_path / "manifest.webmanifest").read_text()
-    assert "dipcast-v1" in (tmp_path / "sw.js").read_text()
+    assert "k.startsWith('dipcast-')" in sw
 
 
 def test_river_levels_are_an_observation_beside_the_forecast():

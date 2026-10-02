@@ -1,24 +1,34 @@
 // The page and the latest forecast kept on the device, so the site opens without signal at the
 // water's edge; the page then says how old the forecast is (index.html, freshness()).
 //
-// Pages, data and the site's own scripts (levels.js must match the page it came with): the network
-// first, the stored copy if the network fails or takes over 4 s (a slow answer still refreshes the
-// stored copy when it arrives). Icons, the picture behind the pages and the map library: the stored
-// copy first, refreshed in the background, and so are the fonts. Map tiles are OpenStreetMap's and the overflow layer is
-// 6 MB, so neither is stored here.
+// Pages, data and the site's own scripts: the network first, the stored copy if the network fails
+// or takes over 4 s (a slow answer still refreshes the stored copy when it arrives). Icons, the
+// picture behind the pages, the fonts and the map library (vendor/): the stored copy first,
+// refreshed in the background. Everything is this site's own: map tiles are OpenStreetMap's and
+// the page-view counter Cloudflare's, so neither is stored, nor is the 6 MB overflow layer.
+//
+// BUILD is a hash of the files this worker stores, which scripts/build_site.py (shell_stamp) writes
+// in on every build. A changed font, icon or script therefore changes this file, the browser
+// installs the new worker, and it fills a new cache, so nothing is served stale for a visit; the
+// old cache is deleted when it takes over. The page asks for levels.js and experience.js with
+// ?v=BUILD too, so a page and its scripts come from one build: a page from the network never runs
+// with a stored older levels.js, and a stored page never with a newer one.
 //
 // To retire this worker, publish a sw.js that unregisters itself: a deleted file leaves the
 // installed worker running on visitors' devices.
-const CACHE = 'dipcast-v1';
+const BUILD = 'dev';
+const CACHE = `dipcast-${BUILD}`;
 const TIMEOUT_MS = 4000;
-const SHELL = ['./', 'levels.js', 'experience.js', 'feedback.html', 'page.css', 'data/spots.json', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/fells.webp',
+const SHELL = ['./', `levels.js?v=${BUILD}`, `experience.js?v=${BUILD}`, 'feedback.html', 'page.css', 'data/spots.json', 'manifest.webmanifest',
+  'icons/icon.svg', 'icons/icon-192.png', 'icons/fells.webp',
   'fonts/SourceSans3-latin.woff2', 'fonts/SourceSans3-italic-latin.woff2', 'fonts/SourceSerif4-latin.woff2',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
+  'vendor/leaflet/leaflet.css', 'vendor/leaflet/leaflet.js'];
 
 self.addEventListener('install', e => {
-  // One missing file must not stop the rest being stored.
+  // One missing file must not stop the rest being stored. no-cache: a new build's cache is filled
+  // from the server, not from the browser's copies of the last build's files.
   e.waitUntil(caches.open(CACHE)
-    .then(c => Promise.all(SHELL.map(u => c.add(new Request(u, { mode: 'cors', credentials: 'omit' })).catch(() => null))))
+    .then(c => Promise.all(SHELL.map(u => c.add(new Request(u, { mode: 'cors', credentials: 'omit', cache: 'no-cache' })).catch(() => null))))
     .then(() => self.skipWaiting()));
 });
 
@@ -32,9 +42,10 @@ self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
   const url = new URL(req.url), here = url.origin === self.location.origin;
-  if (!here && url.hostname !== 'unpkg.com') return;           // tiles, the page-view counter: not ours to keep
-  if (here && url.pathname.endsWith('/data/overflows.geojson')) return;
-  const fresh = req.mode === 'navigate' || (here && /\.(html|json|js|css)$/.test(url.pathname));   // the stylesheet changes with the pages
+  if (!here) return;                                            // tiles, the page-view counter: not ours to keep
+  if (url.pathname.endsWith('/data/overflows.geojson')) return;
+  // The stylesheet changes with the pages; a library in vendor/ changes only with its version.
+  const fresh = req.mode === 'navigate' || (/\.(html|json|js|css)$/.test(url.pathname) && !url.pathname.includes('/vendor/'));
   e.respondWith(fresh ? networkFirst(req) : storedFirst(req));
 });
 
