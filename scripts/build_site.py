@@ -502,8 +502,7 @@ def not_found_page(root: str) -> str:
     return (
         '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">\n'
         f'<title>Page not found · {BRAND}</title><meta name="robots" content="noindex">\n'
-        '<meta name="theme-color" media="(prefers-color-scheme: light)" content="#0f5a61">'
-        '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0b474d">\n'
+        '<meta name="theme-color" content="#f6f4ee">\n'
         f'<link rel="icon" href="{r}icons/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="{r}icons/apple-touch-icon.png">\n'
         f'<link rel="stylesheet" href="{r}page.css">\n'
         f'<link rel="preload" href="{r}fonts/SourceSans3-latin.woff2" as="font" type="font/woff2" crossorigin>'

@@ -4,8 +4,9 @@
    and works offline on its own. Change a token here and there together.
 
    Two typefaces, served from this site (fonts/, SIL Open Font License): Source Serif 4 for the
-   editorial headings, Source Sans 3 for figures and everything else. One corner radius. Hairline
-   borders, no shadows, no gradients. Labels in normal case. */
+   editorial headings, Source Sans 3 for figures and everything else. A warm paper page, at most
+   one white surface on it, hairlines for the rest. One corner radius, no shadows, no gradients,
+   six type sizes. Labels in normal case. Light only: the site is read outdoors. */
 
 @font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400 700; font-display: swap;
              src: url(fonts/SourceSans3-latin.woff2) format("woff2"); }
@@ -15,37 +16,30 @@
              src: url(fonts/SourceSerif4-latin.woff2) format("woff2"); }
 
 :root {
-  color-scheme: light dark;
+  color-scheme: light;
   --font-text: "Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  /* Surfaces and text */
-  --bg: #f4f5f3; --card: #fff; --ink: #1b2328; --muted: #58636b; --faint: #626e76; --line: #dfe3e1; --hair: rgba(27, 35, 40, .1);
-  --hover: #f7f8f6; --active: #eef1ee; --field: #fff;
-  /* Brand teal, with a lighter link shade on dark backgrounds. Focus has its own token. */
-  --brand: #0f5a61; --brand-deep: #0b474d; --brand-2: #5cc2b5; --brand-tint: #e4f1ef; --link: #0f5a61; --bar: #0f5a61;
-  /* Pollution levels. The plain colours mark the map and the day strips; the "k" shades are for
-     text, dark enough for 4.5:1 on white and on the card. */
-  --low: #2f8f58; --moderate: #d49a06; --high: #d6621a; --veryhigh: #bf2a2a; --unknown: #98a2aa; --clear: #4aa39a;
-  --k-low: #1e6a41; --k-moderate: #6f5300; --k-high: #93400f; --k-veryhigh: #961d1d; --k-na: #4f5a62; --k-clear: #0f5a61;
+  /* Surfaces and text: the paper, one white surface, ink, hairlines. */
+  --bg: #f6f4ee; --card: #fff; --ink: #1b2328; --muted: #5a6166; --faint: #676b6e; --line: #e0dbd0; --hair: rgba(27, 35, 40, .1);
+  --hover: #efebe2; --active: #e8e3d8; --field: #fff;
+  /* Brand teal, the one accent. Focus has its own token. */
+  --brand: #0f5a61; --brand-deep: #0b474d; --brand-tint: #e4f1ef; --link: #0f5a61;
+  /* Pollution levels in one natural palette: moss, ochre, rust and brick. The plain colours mark the
+     map, the day strips and the rules; the "k" shades are for text, 4.5:1 or more on the paper and on white. */
+  --low: #3b7d4f; --moderate: #b7791f; --high: #c2552a; --veryhigh: #a32d2d; --unknown: #98a2aa; --clear: #4aa39a;
+  --k-low: #326a43; --k-moderate: #855817; --k-high: #a04623; --k-veryhigh: #992a2a; --k-na: #4f5a62; --k-clear: #0f5a61;
   /* Notices */
-  --control-low: #1e6a41; --focus: #0f5a61; --notice-bg: #fff6e8; --notice-line: #e5a53a;
+  --control-low: #326a43; --focus: #0f5a61; --notice-bg: #fff6e8; --notice-line: #e5a53a;
   --radius: 8px;
+  /* Six type sizes: meta, notes, body, section headings, the headline level, titles (30 on phones). */
+  --fs-meta: 13px; --fs-note: 15px; --fs-body: 17px; --fs-head: 20px; --fs-level: 30px; --fs-title: 36px;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0e1517; --card: #161f23; --ink: #e6ecee; --muted: #a2afb6; --faint: #a2afb6; --line: #273237; --hair: rgba(230, 236, 238, .12);
-    --hover: #1b262b; --active: #203037; --field: #121b1f;
-    --brand-tint: #14302f; --link: #7fd3c7; --bar: #0b474d;
-    --unknown: #6b7780;
-    --k-low: #7ad9a2; --k-moderate: #ecd06a; --k-high: #f3a676; --k-veryhigh: #f08a8a; --k-na: #a2afb6; --k-clear: #7fd3c7;
-    --focus: #7fd3c7; --notice-bg: #3a2a16; --notice-line: #b8862b;
-  }
-}
+@media (max-width: 540px) { :root { --fs-title: 30px; } }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; font-optical-sizing:auto; }
-body { margin: 0; font: 400 17px/1.55 var(--font-text); color: var(--ink); background: var(--bg); }
+body { margin: 0; font: 400 var(--fs-body)/1.55 var(--font-text); color: var(--ink); background: var(--bg); }
 a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 2px; }
 a:hover { text-decoration-thickness: 2px; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
@@ -53,15 +47,15 @@ a:focus-visible { border-radius: 4px; }   /* a rounded ring on text links; contr
 b, strong { font-weight: 600; }
 code { font: 0.92em var(--font-mono); }
 
-/* The header every page shares: the mark, the wordmark and the main links on the brand bar. */
-.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 10px 20px; background: var(--bar); color: #fff; }
-.brand { display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; margin: -8px 0; color: #fff; text-decoration: none; font: 600 21px/1 var(--font-display); letter-spacing: -.005em; }   /* a 44 px target that moves nothing */
+/* The header every page shares: on the paper, the mark and the wordmark in teal, the main links in
+   ink and a hairline below. */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 10px 20px; background: var(--bg); color: var(--ink); border-bottom: 1px solid var(--line); }
+.brand { display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; margin: -8px 0; color: var(--brand); text-decoration: none; font: 600 var(--fs-head)/1 var(--font-display); letter-spacing: -.005em; }   /* a 44 px target that moves nothing */
 .brand svg { display: block; width: 28px; height: 28px; border-radius: 6px; }
 .top nav { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; margin-left: auto; }
-.top nav a { color: rgba(255, 255, 255, .86); text-decoration: none; font-size: 15px; font-weight: 600; line-height: 1.2; min-height:44px; display:inline-flex; align-items:center; padding: 8px 10px; border-radius: 6px; }
-.top nav a:hover { color: #fff; background: rgba(255, 255, 255, .12); }
-.top nav a[aria-current=page] { color: #fff; box-shadow: inset 0 -2px 0 #fff; border-radius: 0; }
-.top :focus-visible { outline-color: #fff; }
+.top nav a { color: var(--ink); text-decoration: none; font-size: var(--fs-note); font-weight: 600; line-height: 1.2; min-height:44px; display:inline-flex; align-items:center; padding: 8px 10px; border-radius: 6px; }
+.top nav a:hover { background: var(--hover); }
+.top nav a[aria-current=page] { box-shadow: inset 0 -2px 0 var(--brand); border-radius: 0; }
 
 /* On a phone the brand and the four links each get a complete row. */
 @media (max-width: 540px) {
@@ -73,47 +67,48 @@ code { font: 0.92em var(--font-mono); }
 /* Prose pages. The spacing of paragraphs and lists is a default with no specificity (:where), so
    that a component's own spacing (the lede, the summary box, a note, a form hint) applies over it. */
 main.doc { max-width: 720px; margin: 0 auto; padding: 36px 20px 56px; }
-main.doc h1 { font: 600 34px/1.15 var(--font-display); letter-spacing: -.01em; margin: 0 0 10px; }
-main.doc h2 { font: 600 23px/1.25 var(--font-display); margin: 40px 0 10px; }
-main.doc h3 { font: 600 19px/1.3 var(--font-display); margin: 28px 0 8px; }
-main.doc h4 { font: 600 16px/1.4 var(--font-text); margin: 22px 0 6px; color: var(--muted); }
+main.doc h1 { font: 600 var(--fs-title)/1.1 var(--font-display); letter-spacing: -.01em; margin: 0 0 12px; }
+main.doc h2 { font: 600 var(--fs-head)/1.25 var(--font-display); margin: 40px 0 8px; }
+main.doc h3 { font: 600 var(--fs-body)/1.3 var(--font-display); margin: 28px 0 8px; }
+main.doc h4 { font: 600 var(--fs-note)/1.4 var(--font-text); margin: 24px 0 6px; color: var(--muted); }
 main.doc h2 + p, main.doc h3 + p { margin-top: 0; }
 main.doc h2, main.doc section[id] { scroll-margin-top: 16px; }   /* a linked heading lands below the top edge */
 :where(main.doc) p, :where(main.doc) ul, :where(main.doc) ol { margin: 0 0 14px; }
 :where(main.doc) ul, :where(main.doc) ol { padding-left: 22px; }
 :where(main.doc) li { margin: 6px 0; }
 :where(main.doc) ul ul { margin: 6px 0 0; }
-p.lead { font-size: 19px; line-height: 1.5; color: var(--muted); margin: 0 0 24px; }
+p.lead { font-size: var(--fs-head); line-height: 1.45; color: var(--muted); margin: 0 0 24px; }
 .muted { color: var(--muted); }
-.small { font-size: 15px; }
-.dateline { font-size: 15px; color: var(--muted); margin: -8px 0 20px; }
-/* Phones: less space above the heading. The smallest phones (320-360 px, the app page's step): a
-   smaller heading and lede, so that the longest heading takes two lines, not three. */
+.small { font-size: var(--fs-note); }
+.dateline { font-size: var(--fs-note); color: var(--muted); margin: -8px 0 20px; }
+/* Phones: less space above the heading, and the title at 30 px (the token, above). The smallest
+   phones (320-360 px, the app page's step): the lede at the body size, so it takes fewer lines. */
 @media (max-width: 540px) { main.doc { padding-top: 28px; padding-left: 16px; padding-right: 16px; } }   /* the header's gutter */
-@media (max-width: 360px) { main.doc h1 { font-size: 28px; } p.lead { font-size: 17px; } }
+@media (max-width: 360px) { p.lead { font-size: var(--fs-body); } }
 
-/* A summary box, for a page's answer in a few lines. Boxed text is 16 px, as in a notice. */
-.summary { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); padding: 16px 20px 6px; margin: 0 0 8px; font-size: 16px; }
-main.doc .summary h2 { font-size: 20px; margin: 0 0 10px; }
+/* A summary box, for a page's answer in a few lines: the one white surface on its page, lifted off
+   the paper by its colour alone. */
+.summary { border-radius: var(--radius); background: var(--card); padding: 16px 20px 6px; margin: 0 0 8px; }
+main.doc .summary h2 { margin: 0 0 8px; }
 .summary ul { margin: 0 0 10px; }
 .summary li { margin: 8px 0; }
 
 /* Notices: something to read before the rest. */
-.notice { border: 1px solid var(--notice-line); background: var(--notice-bg); border-radius: var(--radius); padding: 12px 16px; margin: 12px 0 16px; font-size: 16px; }
+.notice { border: 1px solid var(--notice-line); background: var(--notice-bg); border-radius: var(--radius); padding: 12px 16px; margin: 12px 0 16px; }
 .notice.quiet { border-color: var(--line); background: var(--card); }
 
 /* Tables: a rule under the header and between rows, numbers right-aligned and in tabular figures. */
-table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 10px 0 6px; }
+table { width: 100%; border-collapse: collapse; font-size: var(--fs-note); margin: 10px 0 6px; }
 /* A table wider than a phone scrolls on its own, not the page, between two hairlines that keep it
    one object while it is cut off at the edge. The -webkit- line gives iOS 12 and earlier momentum. */
 .tw { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 10px 0 6px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
 .tw table { margin: 0; }
 th, td { text-align: left; padding: 8px 10px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
-th { color: var(--muted); font-weight: 600; font-size: 14px; }
+th { color: var(--muted); font-weight: 600; }
 thead th, tr:first-child th { border-bottom-color: var(--ink); }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
 tr:last-child td { border-bottom: 0; }
-caption { text-align: left; font-size: 15px; color: var(--muted); padding: 0 0 8px; }
+caption { text-align: left; font-size: var(--fs-note); color: var(--muted); padding: 0 0 8px; }
 
 /* Folded detail: a chevron, not a text marker. */
 details.fold { border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin: 16px 0; }
@@ -125,28 +120,28 @@ details.fold[open] > summary::after { transform: rotate(-135deg); }
 details.fold > :not(summary) { margin-bottom: 14px; }
 
 /* Forms (the feedback page) and buttons */
-label { display: block; font-weight: 600; font-size: 16px; margin: 20px 0 6px; }
-input, select, textarea { font: inherit; font-size: 17px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); background: var(--field); }
+label { display: block; font-weight: 600; margin: 20px 0 6px; }
+input, select, textarea { font: inherit; font-size: var(--fs-body); width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); background: var(--field); }
 select { -webkit-appearance: none; appearance: none; padding-right: 36px;
-         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2358636b' stroke-width='2'/%3E%3C/svg%3E");
+         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235a6166' stroke-width='2'/%3E%3C/svg%3E");
          background-repeat: no-repeat; background-position: right 12px center; }
 textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
-.hint { font-size: 15px; color: var(--muted); margin: 6px 0 0; }
-.btn, button.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 16px; font: 600 16px/1.2 var(--font-text);
+.hint { font-size: var(--fs-note); color: var(--muted); margin: 6px 0 0; }
+.btn, button.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 16px; font: 600 var(--fs-note)/1.2 var(--font-text);
        color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; cursor: pointer; }
 .btn:hover { background: var(--hover); }
 .btn.primary { color: #fff; background: var(--brand); border-color: var(--brand); }
 .btn.primary:hover { background: var(--brand-deep); border-color: var(--brand-deep); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; }
-.panel { border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); padding: 16px 20px; margin: 24px 0 0; }
+.panel { border-radius: var(--radius); background: var(--card); padding: 16px 20px; margin: 24px 0 0; }   /* the one white surface, as .summary */
 main.doc .panel h2 { margin-top: 0; }
 .panel label:first-of-type { margin-top: 12px; }
 [hidden] { display: none !important; }
 
 /* The foot of every prose page: the one line about what the site is, and the small links. */
-.site-foot { max-width: 720px; margin: 0 auto; padding: 0 20px 48px; font-size: 14px; line-height: 1.5; color: var(--muted); }
+.site-foot { max-width: 720px; margin: 0 auto; padding: 0 20px 48px; font-size: var(--fs-meta); line-height: 1.5; color: var(--muted); }
 .site-foot .rule { border-top: 1px solid var(--line); padding-top: 16px; }
 .site-foot p { margin: 0 0 8px; }
 .site-foot a { color: var(--muted); }
 .site-foot a:hover { color: var(--link); }
-.note { font-size: 15px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; margin-top: 36px; }
+.note { font-size: var(--fs-note); color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; margin-top: 40px; }
