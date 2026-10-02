@@ -61,9 +61,10 @@ anywhere.
 
 - A warm paper page `#f6f4ee`, one white surface `#fff`, ink `#1b2328`, muted `#5a6166` (5.7:1 on
   the paper), hairlines `#e0dbd0`. Light only (fifth round): nothing is hard-coded in a rule.
-- Brand teal `#0f5a61` (the icon's), the one accent: the mark and the wordmark in the header,
-  links, the primary button, a chosen filter, focus rings. The low-risk filter uses the moss text
-  shade `#326a43` with white text.
+- Brand teal `#0f5a61` (the icon's), the one accent: the mark, links, the primary button, a chosen
+  filter, focus rings. The low-risk filter uses the moss text shade `#326a43` with white text.
+- The header is a slate bar, `#3d5b5d` (`--bar`, seventh round), a darker shade of the picture's
+  nearest fells: white on it is 7.4:1, and the links' 86% white (`--bar-ink`) 5.6:1.
 - The four levels keep their meaning and are the only strong colours on a page, in one natural
   palette: moss, ochre, rust and brick. Marks (map, day strips, bars, rules): low `#3b7d4f`,
   moderate `#b7791f`, high `#c2552a`, very high `#a32d2d`. Text (headlines, values): `#326a43`,
@@ -102,6 +103,11 @@ anywhere.
 
 - Labels are sentences or phrases in normal case: "Sewage spills upstream", "Water quality",
   "Saved spots", "All spots".
+- A level says "risk" wherever it heads a line (seventh round): "Very high risk today: sewage
+  spills", "Low risk by Tuesday", "High risk" in the answer and on a saved card, the map's
+  tooltips, a picked day's rows. A bare "Very high" read as very high what. The word stands alone
+  only under a heading that names it: the five days ("Pollution risk, next five days"), the
+  day-by-day table's "Risk" column, the map's key.
 - One caveat per view, in the place it is read: the intro says "Forecasts, not water tests" once;
   the hero's last line says to check the signs at the water. The rest of the explanation lives
   under "About these forecasts" and on the About and Accuracy pages.
@@ -133,18 +139,17 @@ days, spills, water, right now, river level, rain, sun, rating, algae, map, near
 Inline SVG, so they inherit `currentColor` and need no file. The brand mark is inlined in every
 header for the same reason: it needs no path to resolve at any depth.
 
-One decorative element, the river line: the mark's river, turned to run across, 120 by 20 px in a
-1.75 px teal stroke (`RIVER` in the page script). It sits under the list's heading, on the empty
-states (no saved spots, no spot matching a search) and under the name on the link-preview card,
-and nowhere else. The card (`icons/og.png`, drawn by `scripts/make_share_image.py`) is the site's
-first screen in small: the paper, the mark, the name in teal over the river line, the tagline in
-ink and one line in the muted grey.
+From the fifth round to the seventh the one decorative element was the river line, the mark's
+river turned to run across, under the list's heading and on the empty states. Ethan had it taken
+off the pages on 2 October 2026: the picture of the fells is the motif now. The link-preview card
+(`icons/og.png`, drawn by `scripts/make_share_image.py`) still draws it under the name, on the
+paper, as the site's first screen looked in the fifth round.
 
 ### Layout
 
-- **Header**, shared by every page: on the paper, the mark and the serif wordmark in teal, the
-  main links (Explore, Accuracy, About, Feedback; the app adds Saved) in ink, and a hairline below.
-  The current page is underlined in teal.
+- **Header**, shared by every page: the slate bar (seventh round), the mark, the serif wordmark and
+  the main links (Explore, Accuracy, About, Feedback; the app adds Saved) in white. The current page
+  is underlined in white.
 - **App, desktop:** map left, a 460 px column right. **App, phone:** list first, the map one tap
   away in the bar at the bottom, a spot's page with its own small map. Unchanged.
 - **Prose pages:** one 720 px column, serif headings, 17 px text, a summary box where a page has an
@@ -160,7 +165,7 @@ ink and one line in the muted grey.
 Each prose page's `<head>` carries, in this order:
 
 - the title, "Page · SwimSignal", and a meta description (Terms and Privacy have none);
-- `theme-color`, the header's paper, `#f6f4ee`, so the browser's own bar runs on from it (one
+- `theme-color`, the header's slate, `#3d5b5d`, so the browser's own bar runs on from it (one
   value: the site is light only);
 - the icon, `icons/icon.svg`, and the Home Screen icon, `icons/apple-touch-icon.png`;
 - the stylesheet, `page.css`;
@@ -173,8 +178,10 @@ rewrites each one for the static site (`REWRITES`). The API server has its own c
 icons in `src/dipcast/api/static/icons/`, taken from the site's `src/dipcast/site/icons/`, and a
 test checks that they still match. The 404 page, which the build writes, has the same head with
 absolute links, `noindex` and no description. The app page's head is its own, in `index.html`: it
-adds the manifest and the Home Screen tags. The Home Screen app's status bar is `default` (dark
-text): `black-translucent` would put white text over the paper header.
+adds the manifest and the Home Screen tags. The Home Screen app's status bar is
+`black-translucent`: the page draws under it, its white text sits on the slate, and the header's
+top padding takes in the safe area. (From the fifth round to the seventh it was `default`, dark
+text, over the paper header.)
 
 ### What a swimmer wants first (second round, 1 October 2026)
 
@@ -314,13 +321,19 @@ What makes Apple's page clean, and what was taken from it:
   the reader has asked for less transparency.
 - **Saved as Apple's places**: each spot's name, its level with "risk" (20 px bold), what set it
   and where the week goes, and the week as small bars. The list shows the same cards on one tile.
+- **A slate bar on top.** Shown the old teal bar, a sky with no bar and a slate bar beside the
+  paper header, Ethan chose the slate: a darker shade of the picture's nearest fells, so it frames
+  the sky and echoes the fells under the answer, where the old teal swallowed the mark's teal
+  square and competed with the level colours. The river line came off the pages at the same time
+  (Icons).
 
-What it reverses, knowingly: one white surface per page (round five) becomes tiles, as Apple's
-page is; the level's headline grows from 30 px bold to the title's size, semibold. Uppercase
-labels, borders, shadows and gradients stay out: a tile's label is normal case, and a bar's bands are
-steps. Overflow names that arrive in capitals ("LITTLE SALKELD WwTW") are set in normal case
-(`nameCase`). The daily E. coli figures left the five days for the water tile (today and
-tomorrow) and the day-by-day table. The prose pages keep the paper.
+What it reverses, knowingly: one white surface per page (round five) becomes tiles, as Apple's page
+is; the level's headline grows from 30 px bold to the title's size, semibold; the light header
+(round five) becomes a dark bar again, slate rather than teal. Uppercase labels, borders, shadows
+and gradients stay out: a tile's label is normal case, and a bar's bands are steps. Overflow names
+that arrive in capitals ("LITTLE SALKELD WwTW") are set in normal case (`nameCase`). The daily E.
+coli figures left the five days for the water tile (today and tomorrow) and the day-by-day table.
+The prose pages keep the paper.
 
 ### What was kept on purpose
 

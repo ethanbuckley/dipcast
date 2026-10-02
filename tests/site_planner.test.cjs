@@ -9,7 +9,7 @@ const spot = {upstream_summary:{overflows:2}, location:{mode:'river'}, now:{labe
 test('the chosen day describes its own risk rather than tomorrow’s worse forecast', () => {
   assert.equal(dayHeadline(spot,'2026-09-30'),'Low forecast risk');
   assert.equal(dayLevel(spot,'2026-09-30'),'low');
-  assert.equal(dayHeadline(spot,'2026-10-01'),'Very high: sewage spills');
+  assert.equal(dayHeadline(spot,'2026-10-01'),'Very high risk: sewage spills');
 });
 test('a missing day never becomes low', () => {
   assert.equal(dayHeadline(spot,'2026-10-04'),'No forecast for this day');
@@ -29,11 +29,11 @@ test('out of season the water-quality estimate is shown but does not set the lev
   assert.equal(dayLevel(winter, '2026-09-30'), 'low');
   assert.equal(dayHeadline(winter, '2026-09-30'), 'Low forecast risk');
   assert.equal(level(winter), 'low');
-  assert.equal(headline(winter), 'Low for the next five days');
+  assert.equal(headline(winter), 'Low risk for the next five days');
   const summer = {...winter, days: winter.days.map(x => ({...x, in_validated_season:true}))};
   assert.equal(dayLevel(summer, '2026-09-30'), 'very high');
-  assert.equal(dayHeadline(summer, '2026-09-30'), 'Very high: very poor water quality');
-  assert.equal(headline(summer), 'Very high today: very poor water quality');
+  assert.equal(dayHeadline(summer, '2026-09-30'), 'Very high risk: very poor water quality');
+  assert.equal(headline(summer), 'Very high risk today: very poor water quality');
   const unmarked = {...winter, days: winter.days.map(({in_validated_season, ...x}) => x)};   // forecasts built before the flag existed
   assert.equal(dayLevel(unmarked, '2026-09-30'), 'very high');
 });
