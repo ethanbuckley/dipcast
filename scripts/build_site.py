@@ -295,6 +295,8 @@ def placement_check(results: list[dict], max_snap_m: float = MAX_SNAP_M) -> list
             reasons.append(f"{d:.0f} m from the river network")
         if loc.get("mode") not in (None, "river"):
             reasons.append(f"placed as a {loc.get('mode')}")
+        elif loc.get("form") not in (None, "inlandRiver", "tidalRiver"):
+            reasons.append(f"snapped to a {loc.get('form')} link")
         if reasons:
             out.append({"id": r.get("id"), "river": river, "watercourse": wc, "snap_distance_m": d,
                         "reason": ", ".join(reasons)})
@@ -383,12 +385,12 @@ def attach_river_levels(results: list[dict], lookup=None, workers: int = 8, now=
     is spots.csv's `river`, else the snapped watercourse. A "latest" reading over
     flows.MAX_READING_AGE_H old is not the level now (Salisbury's was 708 h old on 2 Oct 2026): it
     is kept as `last_level_m` with `stale: true` and its age, and `level_m`, `index` and `label`
-    are cleared so that it is never shown as the current level. Returns how many spots got a
+    become None and `label` "unknown" (flows.reading_fields), so it is never shown as the current level. Returns how many spots got a
     current reading; a failure leaves a spot without, and nothing here can stop a build."""
     from concurrent.futures import ThreadPoolExecutor
     from datetime import UTC, datetime
 
-    from dipcast.ingest.flows import MAX_READING_AGE_H, nearest_level_station
+    from dipcast.ingest.flows import MAX_READING_AGE_H, nearest_level_station, reading_fields
     from dipcast.network.names import same_river
     lookup = lookup or nearest_level_station
     now = now or datetime.now(UTC)
@@ -404,16 +406,9 @@ def attach_river_levels(results: list[dict], lookup=None, workers: int = 8, now=
             return None
         if st is None or st.level_m is None:
             return None
-        age = st.age_hours(now)
-        out = {"station": st.station, "river": st.river, "level_m": st.level_m, "typical_low_m": st.typical_low,
-               "typical_high_m": st.typical_high, "index": None if st.index is None else round(st.index, 2),
-               "label": st.label, "observed_at": st.observed_at, "rloi": st.rloi,
-               "distance_km": round(_km(r["lat"], r["lon"], st.lat, st.lon), 1),
-               "same_river": same_river(river, st.river) if river else None,
-               "age_hours": None if age is None else round(age, 1), "stale": st.is_stale(now, MAX_READING_AGE_H)}
-        if out["stale"]:
-            out.update(last_level_m=out["level_m"], level_m=None, index=None, label="unknown")
-        return out
+        return {**reading_fields(st, now, MAX_READING_AGE_H), "rloi": st.rloi,
+                "distance_km": round(_km(r["lat"], r["lon"], st.lat, st.lon), 1),
+                "same_river": same_river(river, st.river) if river else None}
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         states = list(pool.map(one, results))

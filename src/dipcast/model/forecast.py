@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from dipcast import config
-from dipcast.ingest.flows import nearest_level_station
+from dipcast.ingest.flows import nearest_level_station, reading_fields
 from dipcast.ingest.rainfall import cells_for_sites, fetch_forecast
 from dipcast.model import ecoli
 from dipcast.model.features import ALL_FEATURES, build_site_days, daily_rain_features
@@ -243,12 +243,7 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
     old_reading = state is not None and state.is_stale()
     # A days-old level says nothing about today's speed: the default velocity instead.
     v = river_velocity(state.index if state is not None and not old_reading else None)
-    out["river_state"] = None if state is None else {
-        "station": state.station, "river": state.river, "level_m": state.level_m,
-        "typical_low_m": state.typical_low, "typical_high_m": state.typical_high,
-        "index": None if state.index is None else round(state.index, 2),
-        "label": state.label, "observed_at": state.observed_at, "stale": old_reading,
-    }
+    out["river_state"] = None if state is None else reading_fields(state)   # a stale one has no level_m
     out["assumptions"]["river_velocity_ms"] = round(v, 2)
     ov = upstream_overflows(net, pin, ov_all, velocity_ms=v, max_km=max_km)
     now_risk, now_contrib = live_now_risk(ov, now)

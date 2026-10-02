@@ -110,8 +110,11 @@ spots were traced up a side beck or a lake and showed no overflows upstream;
 Crook o' Lune, for one, sat 262 m from Escow Beck and 672 m from the Lune. With
 no such link the nearest is kept and the build logs a warning. Each build then
 checks every river spot and adds one line to `build.warnings` in `spots.json`
-listing any whose snapped watercourse shares no word with its river, or that
-sits more than 250 m from it (`build_site.placement_check`). A spot moved
+listing any whose snapped watercourse shares no word with its river, that sits
+more than 250 m from it, that has no `river`, that was placed as a lake or an
+isolated lake, or that snapped to a canal (`build_site.placement_check`).
+Qualifiers such as "Great", "West" and "and" do not count as shared words, so
+the Great Ouse does not match Great Agill Beck. A spot moved
 from a mapped side channel to the main one (`adopted_main_channel`) is judged
 by name only, since its distance is the side channel's offset.
 
@@ -686,9 +689,10 @@ column, so Symonds Yat now asks for a gauge on the River Wye, not on
 "Afon Gwy". The EA's "latest" reading can be weeks old: on 2 Oct Salisbury's
 was 708 h old and Temple Sowerby's 77 h. A reading more than 24 h old is not
 shown as the level now. It keeps the station and the time, moves the value to
-`last_level_m`, sets `stale: true` with `age_hours`, and clears `level_m`,
-`index` and `label`. The API's own forecast ignores such a reading when it
-scales travel speed. The EA's API is OGL and asks for the
+`last_level_m`, sets `stale: true` with `age_hours`, sets `level_m` and
+`index` to null and `label` to "unknown" (`flows.reading_fields`). The API's
+own forecast publishes the reading the same way and does not use it to scale
+travel speed. The EA's API is OGL and asks for the
 line "this uses Environment Agency flood and river level data from the
 real-time data API (Beta)", which the footer, the terms and the data credits
 carry. Open-Meteo's daily high, sunrise and sunset (three daily variables over

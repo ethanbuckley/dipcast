@@ -171,3 +171,50 @@ def test_the_spots_own_river_picks_the_gauge():
               "location": {"watercourse": "Afon Gwy"}}]
     bs.attach_river_levels(spots, lookup=lambda lat, lon, d, river: asked.append(river), workers=1)
     assert asked == ["River Wye"]
+
+
+def test_qualifiers_do_not_make_two_rivers_the_same():
+    assert river_words("River Great Ouse") == {"ouse"}
+    assert not same_river("River Great Ouse", "Great Agill Beck")
+    assert river_words("Kennet and Avon Canal") == {"kennet", "avon"}   # "and" and "canal" are not names
+    assert same_river("East Dart River", "River Dart") and river_words("New River") == {"new"}
+    from dipcast.network.names import QUALIFIERS
+    from dipcast.overflows import GENERIC
+    assert QUALIFIERS <= GENERIC   # one list, shared with the outfall snapper
+
+
+def test_a_name_borrowed_from_downstream_does_not_count_as_on_the_river():
+    """Spitchwick, 2 Oct 2026: the nearest link was an unnamed side stream flowing into the Dart, so
+    it showed as "River Dart" with nothing upstream. The hint moves it onto the named river."""
+    net = _net(LUNE[:3] + [("T1", None, None, "t0", "n2", [(351000, 461500), (351000, 460000)])])
+    lon, lat = PIN
+    plain = transport.locate_pin(net, lon, lat, kind_hint="river")
+    assert plain.snap.link_id == "T1" and plain.watercourse == "River Lune"   # borrowed from downstream
+    assert transport.upstream_overflows(net, plain, OVERFLOWS, velocity_ms=0.5).empty
+    pin = transport.locate_pin(net, lon, lat, kind_hint="river", river_hint="River Lune")
+    assert pin.snap.link_id == "L3" and pin.placement == "moved to river"
+    assert len(transport.upstream_overflows(net, pin, OVERFLOWS, velocity_ms=0.5)) == 1
+
+
+def test_reading_fields_clear_a_stale_level_for_the_api_too():
+    """forecast_point (the API) publishes a gauge reading through the same helper as the site."""
+    from dipcast.ingest.flows import RiverState, reading_fields
+    now = datetime(2026, 10, 2, 21, 0, tzinfo=UTC)
+    st = RiverState(station="Temple Sowerby", river="River Eden", lat=54.65, lon=-2.6, level_m=0.222,
+                    typical_low=0.2, typical_high=1.6, observed_at="2026-09-29T16:00:00Z")
+    old = reading_fields(st, now)
+    assert old["stale"] is True and old["age_hours"] == 77.0 and old["last_level_m"] == 0.222
+    assert old["level_m"] is None and old["index"] is None and old["label"] == "unknown"
+    st.observed_at = "2026-10-02T20:00:00Z"
+    fresh = reading_fields(st, now)
+    assert fresh["stale"] is False and fresh["level_m"] == 0.222 and fresh["label"] == "low"
+    assert "last_level_m" not in fresh
+    assert "reading_fields(state)" in (ROOT / "src" / "dipcast" / "model" / "forecast.py").read_text()
+
+
+def test_placement_check_flags_a_spot_on_a_canal():
+    bs = _build_site()
+    r = {"id": "warleigh", "kind": "river", "river": "River Avon", "days": [{}],
+         "location": {"mode": "river", "watercourse": "Kennet and Avon Canal", "snap_distance_m": 40, "form": "canal"}}
+    (m,) = bs.placement_check([r])
+    assert m["reason"] == "snapped to a canal link"

@@ -11,8 +11,13 @@ from __future__ import annotations
 
 import re
 
+# Words that qualify a name rather than tell rivers apart: "River Great Ouse" must not match
+# "Great Agill Beck", nor "River Avon" the "Kennet and Avon Canal" by "and". Shared with the
+# outfall snapper (overflows.GENERIC). "New" is left out so that the New River keeps a word.
+QUALIFIERS = {"great", "little", "east", "west", "north", "south", "upper", "lower", "old",
+              "and", "of", "on", "at", "in", "to", "from"}
 GENERIC = {"river", "afon", "beck", "brook", "water", "the", "stream", "burn", "canal", "lake", "mere",
-           "tarn", "reservoir"}
+           "tarn", "reservoir"} | QUALIFIERS
 
 # Welsh word -> English word, for the rivers OS Open Rivers itself names both ways
 # (watercourse_name / watercourse_name_alternative). "Taf" is left out: OS gives it

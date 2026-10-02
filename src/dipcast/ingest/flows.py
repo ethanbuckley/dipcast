@@ -110,6 +110,21 @@ def nearest_level_station(lat: float, lon: float, dist_km: int = 15, river: str 
     return st
 
 
+def reading_fields(st: RiverState, now: datetime | None = None, max_age_h: float = MAX_READING_AGE_H) -> dict:
+    """A gauge reading as the site and the API publish it. A reading over `max_age_h` old (or
+    with no time) is not the level now: its value moves to `last_level_m`, and `level_m` and
+    `index` become None and `label` "unknown", so that nothing shows it as current."""
+    age = st.age_hours(now)
+    stale = age is None or age > max_age_h
+    out = {"station": st.station, "river": st.river, "level_m": st.level_m, "typical_low_m": st.typical_low,
+           "typical_high_m": st.typical_high, "index": None if st.index is None else round(st.index, 2),
+           "label": st.label, "observed_at": st.observed_at,
+           "age_hours": None if age is None else round(age, 1), "stale": stale}
+    if stale:
+        out.update(last_level_m=out["level_m"], level_m=None, index=None, label="unknown")
+    return out
+
+
 # The distinctive words of a watercourse name, Welsh names read as English ("Afon Gwy" -> {wye}).
 _river_words = river_words
 

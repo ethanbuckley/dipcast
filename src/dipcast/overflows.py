@@ -10,6 +10,7 @@ import pandas as pd
 from shapely.geometry import Point
 
 from dipcast import config
+from dipcast.network.names import QUALIFIERS
 from dipcast.network.rivers import _TO_BNG, RiverNetwork
 
 log = logging.getLogger(__name__)
@@ -21,10 +22,9 @@ MARINE = re.compile(r"\b(?:sea|channel|solent|estuary|estuarine|harbour|harbor|f
                     r"marine|ocean|sound|beach|foreshore|mudflat|saltmarsh|creek|haven|offshore)\b", re.IGNORECASE)
 WIDE_SNAP_M = 1_500.0
 GENERIC = {"river", "brook", "beck", "stream", "dyke", "dike", "drain", "water", "burn", "canal", "trib",
-           "tributary", "of", "the", "ditch", "cut", "sewer", "main", "new", "old", "north", "south", "east",
-           "west", "little", "great", "upper", "lower", "unnamed", "culverted", "via", "and", "to", "from",
-           "a", "an", "at", "in", "on", "onto", "land", "stw", "cso", "outfall", "ordinary", "watercourse",
-           "surface", "freshwater", "controlled", "waters", "mill", "leat", "branch", "arm", "sluice"}
+           "tributary", "the", "ditch", "cut", "sewer", "main", "new", "unnamed", "culverted", "via",
+           "a", "an", "onto", "land", "stw", "cso", "outfall", "ordinary", "watercourse",
+           "surface", "freshwater", "controlled", "waters", "mill", "leat", "branch", "arm", "sluice"} | QUALIFIERS
 
 
 def _tokens(name) -> set[str]:
