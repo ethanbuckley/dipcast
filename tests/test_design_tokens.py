@@ -15,9 +15,34 @@ STATIC = CSS.parent
 APP_ONLY = {"--tile-filter", "--header-h", "--nav-h"}
 
 
+def styles(path: Path) -> str:
+    """Every <style> block of a page, joined."""
+    return "\n".join(re.findall(r"<style[^>]*>(.*?)</style>", path.read_text(), flags=re.DOTALL))
+
+
 def app_css() -> str:
-    s = APP.read_text()
-    return s[s.index("<style>") + 7: s.index("</style>")]
+    return styles(APP)
+
+
+def parts(value: str) -> list[str]:
+    """A value's space-separated parts, with anything in brackets kept whole."""
+    out, depth, cur = [], 0, ""
+    for c in value:
+        depth += (c == "(") - (c == ")")
+        if c.isspace() and depth == 0:
+            if cur:
+                out.append(cur)
+            cur = ""
+        else:
+            cur += c
+    return out + ([cur] if cur else [])
+
+
+RADIUS_OK = re.compile(r"0|50%|999px|inherit|var\(--radius(-mark|-ring)?\)|calc\([^;]*var\(--radius(-mark|-ring)?\)[^;]*\)")
+# Properties that take a colour, for the named-colour check (a word like "teal" may be a font name elsewhere).
+COLOUR_PROPS = re.compile(r"(-webkit-)?(color|background(-color)?|border(-(top|right|bottom|left|block|inline)(-(start|end))?)?(-color)?|outline(-color)?|fill|stroke|"
+                          r"box-shadow|text-shadow|text-decoration(-color)?|caret-color|accent-color|column-rule(-color)?)")
+NAMED = re.compile(r"\b(white|black|red|green|blue|gr[ae]y|silver|orange|yellow|purple|navy|teal|maroon|olive|lime|aqua|fuchsia|pink|brown|gold|beige|ivory|tan)\b", re.IGNORECASE)
 
 
 def tokens(css: str) -> dict[tuple[str, str], str]:
@@ -70,27 +95,31 @@ def test_the_app_and_the_prose_pages_share_one_set_of_tokens():
     for k in names(app):
         assert app[k] == prose[k], (k, app[k], prose[k])
     # "30 on phones", at one step in both.
-    assert app[("@media (max-width: 540px)", "--fs-title")] == "30px"
+    assert app[("@media (max-width: 800px)", "--fs-title")] == "30px"
 
 
 def test_rules_use_the_tokens():
-    sheets = {"index.html": app_css(), "page.css": CSS.read_text()}
-    v = (STATIC / "verification.html").read_text()
-    sheets["verification.html"] = v[v.index("<style>") + 7: v.index("</style>")]
+    sheets = {"index.html": app_css(), "page.css": CSS.read_text(), "verification.html": styles(STATIC / "verification.html")}
     for name, css in sheets.items():
         body = rules(css)
         # One radius (and the mark's and a link's focus ring, as tokens); circles and round badges.
-        for value in re.findall(r"border-radius\s*:\s*([^;}]+)", body):
-            parts = value.replace("!important", "").split()
-            assert all(p in {"0", "50%", "999px"} or re.fullmatch(r"var\(--radius(-mark|-ring)?\)", p) for p in parts), (name, value)
+        # The shorthand and the longhands (border-top-left-radius, border-start-end-radius...).
+        for value in re.findall(r"border(?:-(?:top|bottom|start|end)-(?:left|right|start|end))?-radius\s*:\s*([^;}]+)", body):
+            assert all(RADIUS_OK.fullmatch(p) for p in parts(value.replace("!important", ""))), (name, value)
         # Six sizes: no font size written as a number.
         assert not re.search(r"font-size\s*:\s*[\d.]+(px|rem|em)", body), name
         assert not re.search(r"\bfont\s*:\s*(?:[a-z]+\s+|\d{3}\s+)*[\d.]+(px|rem|em)\b", body), name   # the size, not the line height
-        # No colour written in a rule: a mask's black is its alpha, not a colour.
+        # No colour written in a rule: a mask's black is its alpha, not a colour; url(#id) names an
+        # SVG element, and rgba(0,0,0,0) is "transparent".
         for decl in re.findall(r"[\w-]+\s*:[^;{}]*", body):
-            if decl.split(":")[0].strip() in {"mask", "-webkit-mask"}:
+            prop = decl.split(":")[0].strip()
+            if prop in {"mask", "-webkit-mask"}:
                 continue
-            assert not re.search(r"#[0-9a-fA-F]{3,6}\b|rgba?\(", decl), (name, decl)
+            v = re.sub(r"url\(\s*['\"]?#[^)]*\)", "", decl)
+            v = re.sub(r"rgba\(\s*0\s*,\s*0\s*,\s*0\s*,\s*0\s*\)", "", v)
+            assert not re.search(r"#[0-9a-fA-F]{3,8}\b|\b(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(", v), (name, decl)
+            if COLOUR_PROPS.fullmatch(prop):
+                assert not NAMED.search(v.split(":", 1)[1]), (name, decl)
 
 
 def test_the_mark_is_the_icons_teal_and_the_browser_bar_the_headers_slate():

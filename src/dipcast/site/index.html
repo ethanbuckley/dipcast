@@ -575,8 +575,8 @@
     #spot-map .map-legend, #spot-map .low-ctl { display:none; }
     .map-legend { padding:5px 8px; }
   }
-  /* Phones: titles and the answer's level at 30 px. The same step as page.css. */
-  @media (max-width: 540px) { :root { --fs-title:30px; } }
+  /* Phones (the phone layout, to 800 px): titles and the answer's level at 30 px. The same step in page.css. */
+  @media (max-width: 800px) { :root { --fs-title:30px; } }
   /* A map too narrow for the legend and the credit side by side (a phone, a narrow window): the legend
      sits above the credit's line rather than over it, and clear of the right edge. */
   @media (max-width: 1100px) { .leaflet-bottom.leaflet-left .map-legend { margin:0 10px 30px; } }

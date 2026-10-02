@@ -29,11 +29,11 @@ main.doc .toc h2 { font:600 var(--fs-note)/1.3 var(--font-text); color:var(--mut
 td.bars { width:38%; padding-top:10px; }
 .bar { display:block; min-width:110px; height:6px; background:var(--track); position:relative; margin:0 0 4px; }
 .bar::after { content:""; position:absolute; inset:0; width:var(--w, 0%); background:var(--link); }
-/* Observed in ink, not a level's colour: a level colours only a level (docs/DESIGN.md). */
-.bar.o::after { background:var(--ink); }
+/* Observed in the muted grey, not a level's colour: a level colours only a level (docs/DESIGN.md). */
+.bar.o::after { background:var(--muted); }
 .bar-key { font-size:var(--fs-note); color:var(--muted); margin:4px 0 0; }
 .bar-key i { display:inline-block; width:10px; height:6px; background:var(--link); margin:0 4px 1px 0; }
-.bar-key i.o { background:var(--ink); margin-left:12px; }
+.bar-key i.o { background:var(--muted); margin-left:12px; }
 </style></head><body>
 <header class="top"><a class="brand" href="/"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#0f5a61"/><path d="M430-20C330 110 470 230 300 290S110 380 190 540" fill="none" stroke="#5CC2B5" stroke-width="70" stroke-linecap="round"/><circle cx="318" cy="138" r="38" fill="#F08A4B"/><circle cx="165" cy="358" r="46" fill="none" stroke="#fff" stroke-width="22"/></svg>SwimSignal</a>
 <nav aria-label="Site"><a href="/">Explore</a><a aria-current="page" href="/verification">Accuracy</a><a href="/about">About</a><a href="/feedback">Feedback</a></nav></header>

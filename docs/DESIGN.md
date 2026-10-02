@@ -54,8 +54,8 @@ meta (used sparingly: a row's kind, the week's letters, a tile's label, the foot
 controls, a row's headline, a tile's sentence), 17 body (the app and the prose pages alike), 20
 section headings (and the wordmark, a prose page's lede and h2, a saved spot's level), 30 a figure
 (a tile's, a headline without a level), 36 the spot's name, page titles and the answer's level, 30
-on phones (540 px wide or less, the same step in both files; until 2 October the app dropped it at
-its 800 px layout step and the prose pages at 540). A prose page's h3 is the body size in the
+on phones (800 px wide or less, where the app's phone layout begins, and the same step on the prose
+pages; until 2 October the prose pages dropped it at 540 px). A prose page's h3 is the body size in the
 serif. Line height 1.5 for text (both files; `page.css` had 1.55), 1.1 to 1.25 for headings. No
 letter-spacing except −0.01em on the 36 px headings (`--fs-title`: page titles, the spot's name, the
 answer's level, the Accuracy figures), and no uppercase labels anywhere. (Until 2 October the
@@ -421,6 +421,8 @@ risk headlines, readable day cells with aligned levels, plain place metadata ins
 chips, a visible issue time, and 44 px controls. Secondary text and keyboard focus use shades that
 stay legible on the page. The accuracy figures sit on the page between rules, rather than in four
 more cards; their numbers use tabular sans-serif digits. Reliability bars draw the forecast in the link shade and the
-observed in ink (until 2 October the observed bar was the high level's rust, a level colour on something that is not a
-level). On phones the prose header
+observed in the muted grey (until 2 October the observed bar was the high level's rust, a level colour on something that is not a
+level; then briefly ink, which beside the teal read as two near-black strips). Teal and grey differ in hue more than
+in lightness (1.26:1; ink was 2.02:1), so the order, forecast above observed, and the key carry the difference too;
+the grey is 4.45:1 on the empty track. On phones the prose header
 gives all four navigation links a single full-width row.
