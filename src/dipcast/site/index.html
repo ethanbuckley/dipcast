@@ -78,7 +78,7 @@
      on focus; the 4 px only rounds the ring round a link or a summary, which have none. */
   :focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:4px; }
   /* A little motion where something changes under the finger; none for anyone who asked for none. */
-  .day, .btn, .chip-btn, .hbtn, .save, a.row, .sortseg button, .bottom-nav a, .bottom-nav button, .low-ctl button, .f-v, .dd-l {
+  .day, .btn, .chip-btn, .hbtn, .save, a.row, .sortseg button, .bottom-nav a, .bottom-nav button, .low-ctl button, .f-v {
     transition:background-color .18s ease, color .18s ease, box-shadow .18s ease, border-color .18s ease; }
   @keyframes rise { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
   #day-view > * { animation:rise .22s ease; }
@@ -289,9 +289,6 @@
   /* One day, picked in the strip, in the place of the summary of today and tomorrow. */
   .dd-head { display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin:12px 0 0; }
   .dd-t { font-size:var(--fs-head); line-height:1.3; margin:0; }
-  .dd-l { font-size:var(--fs-body); line-height:1.3; font-weight:700; margin:4px 0 0; color:var(--k-na); }
-  .dd-l.low { color:var(--k-low); } .dd-l.moderate { color:var(--k-moderate); } .dd-l.high { color:var(--k-high); } .dd-l.veryhigh { color:var(--k-veryhigh); } .dd-l.clear { color:var(--k-clear); }
-  .dd-l + .factors { margin-top:8px; }
   ul.dd-ovs { list-style:none; margin:8px 0 0; padding:0; font-size:var(--fs-note); line-height:1.4; }
   ul.dd-ovs li { display:flex; gap:8px; margin-top:4px; } ul.dd-ovs .sdot { width:10px; height:10px; margin-top:5px; }
   /* The hero's one line of context: when the forecast was issued, then today's weather at the spot. */
@@ -1150,7 +1147,7 @@ function howSure(d, j) {
     + explain('The comparison goes by how much each beat a guess from the usual rates. The rain forecast behind it can still change.'));
 }
 function dayDetail(d, x) {
-  const r = risk(d, x), total = overflows(d), first = x.date === today(), rows = [], j = d.days.indexOf(x);
+  const total = overflows(d), first = x.date === today(), rows = [], j = d.days.indexOf(x);
   const when = (first ? 'Today, ' : x.date === addDays(today(), 1) ? 'Tomorrow, ' : '')
     + new Date(x.date + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'});
   if (!hasData(x)) rows.push(factorRow('Sewage spills upstream', null, 'No data', 'The rainfall forecast for this day has not arrived, so there is no figure.'));
@@ -1164,7 +1161,6 @@ function dayDetail(d, x) {
   rows.push(weatherRow(d, x.date));
   rows.push(howSure(d, j));
   return `<div class="dd-head"><h2 class="dd-t">${when}</h2><button type="button" class="linkbtn" id="day-close">Close</button></div>`
-    + `<p class="dd-l ${r.level ? tone(r.level) : 'na'}">${r.level ? cap(r.level) + (rank(r.level) > 0 ? ': ' + because(r) : '') : 'No level'}</p>`
     + `<div class="factors">${rows.join('')}${standing(d)}</div>`;
 }
 // The open day is in the address (spot/<id>/#day=2026-10-01), so a link can open it. After the #,
@@ -1488,7 +1484,7 @@ function savedCard(s) {
 const listOf = spots => `<ul class="inc-list">${spots.slice(0, 5).map(s => `<li>${esc(s.name)}</li>`).join('')}${spots.length > 5 ? `<li>and ${spots.length - 5} more</li>` : ''}</ul>`;
 const COMPARE = { ids: null, day: null, open: false };
 function compareSection(spots) {
-  if (spots.length < 2) return '<section class="sec"><h2 class="sec-h">Compare your spots</h2><p class="sub">Save at least two spots to compare their forecasts and evidence for the same day.</p></section>';
+  if (spots.length < 2) return '';   // nothing to compare until two spots are saved
   const ids = comparisonIds(COMPARE.ids || spots.slice(0,2).map(s => s.id), spots);
   COMPARE.ids = ids;
   const dates = [0,1,2,3,4].map(k => addDays(today(),k));
@@ -1542,7 +1538,7 @@ function renderSaved() {
   const best = spots.length ? bestDayNote(spots, true) : '';
   if (best) h += `<p class="planner-note best-day">${best}</p>`;
   if (spots.length) h += `<ul class="scards" id="scards">${spots.map(savedCard).join('')}</ul>`
-    + `<p class="small muted msg">Updated ${issued()} (${ago(ageMin())} ago). Tap a spot for its full forecast, or a day for that day. <a href="#levels">What the levels mean</a>. Forecasts, not water tests: check the signs at the water before you swim.${spots.some(anyUntested) ? ' ' + UNTESTED_NOTE : ''}</p>`;
+    + `<p class="small muted msg">Updated ${issued()} (${ago(ageMin())} ago). <a href="#levels">What the levels mean</a>. Forecasts, not water tests: check the signs at the water before you swim.${spots.some(anyUntested) ? ' ' + UNTESTED_NOTE : ''}</p>`;
   else h += `<div class="empty-saved">${RIVER}<h2 class="sec-h">No saved spots yet</h2>`
     + `<p class="sub">Open a spot and press <b>Save</b>. It then shows here with the days ahead.`
     + `${navigator.standalone ? ' Spots saved in Safari do not appear in the Home Screen app: iPhones keep the two apart, so save them again here.' : ''}</p>`
