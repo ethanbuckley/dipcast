@@ -14,21 +14,22 @@ concurrency:
   group: site
   cancel-in-progress: false
 
+# Each job asks for what it uses; GH_TOKEN is given only to the steps that run gh, so the
+# tests and the build (which run code from the repository) never hold a token in their env.
 permissions:
-  contents: write     # release assets for state, heartbeat commit
-  pages: write
-  id-token: write
+  contents: read
 
 env:
   DIPCAST_STATE: ${{ github.workspace }}/state
   DIPCAST_CACHE: ${{ github.workspace }}/state/cache   # rainfall cache persists with the state
   PYTHONUNBUFFERED: "1"
-  GH_TOKEN: ${{ github.token }}
 
 jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    permissions:
+      contents: write     # release assets for state, heartbeat commit
     steps:
       - uses: actions/checkout@v4
 
@@ -52,11 +53,25 @@ jobs:
 
       - name: Fetch state from the rolling release if the cache was cold
         if: steps.state-cache.outputs.cache-matched-key == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p state
-          gh release download state -D state --clobber || echo "no state release yet"
+          # Only a missing release means a first run. Any other failure stops the build: an empty
+          # state would start a new forecast log, and the publish step would then replace the
+          # release's copy with it.
+          if ! out=$(gh release view state --json name 2>&1); then
+            case "$out" in
+              *"release not found"*) echo "no state release yet"; exit 0 ;;
+            esac
+            echo "::error title=state release::could not read the state release: $out"
+            exit 1
+          fi
+          gh release download state -D state --clobber
 
       - name: Fetch the river network (113 MB, too large for git)
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           test -f data/processed/river_network.pkl || gh release download data-v1 -p river_network.pkl -D data/processed
 
@@ -78,6 +93,8 @@ jobs:
 
       - name: Publish state to the rolling release (durable copy, when over 12 hours old)
         continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # GitHub runs the schedule a few times a day at irregular times, so a fixed clock window
           # was missed for a week at a time. Publish when the release copy of any of these files is
@@ -101,6 +118,19 @@ jobs:
             ' "${files[@]#state/}" <<<"$assets") || stale="(could not read the release's assets)"
           if [ "$GITHUB_EVENT_NAME" = "workflow_dispatch" ] || [ -n "$stale" ]; then
             echo "Publishing ${#files[@]} files. Over $max_h h old or missing in the release: ${stale:-none (manual run)}"
+            # The forecast log only grows. A copy with fewer logged forecasts than the release's
+            # means this run started from a lost or partial state: refuse rather than replace it.
+            count='import sys, duckdb; print(duckdb.connect(sys.argv[1], read_only=True).execute("SELECT count(*) FROM forecast_overflows").fetchone()[0])'
+            if jq -e '.assets | any(.name == "dipcast.duckdb")' <<<"$assets" >/dev/null; then
+              gh release download state -p dipcast.duckdb -D "$RUNNER_TEMP/release-state" --clobber
+              old_n=$(uv run python -c "$count" "$RUNNER_TEMP/release-state/dipcast.duckdb")
+              new_n=$(uv run python -c "$count" state/dipcast.duckdb)
+              echo "forecast_overflows rows: release $old_n, this run $new_n"
+              if [ "$new_n" -lt "$old_n" ]; then
+                echo "::error title=state release::this run's forecast log has $new_n rows, the release's $old_n; not replacing it"
+                exit 1
+              fi
+            fi
             gh release upload state "${files[@]}" --clobber
             gh release edit state --notes "$notes"
           else
@@ -140,6 +170,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write        # to deploy to Pages
+      id-token: write     # to prove the deployment comes from this workflow
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
