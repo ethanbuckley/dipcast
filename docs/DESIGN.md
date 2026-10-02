@@ -164,6 +164,27 @@ half its old height. A spot's four actions are a two-by-two grid. The brand link
 (padding inside a negative margin, so nothing moves) and the mark's corner is 6 px, the small
 radius.
 
+### The way back (fourth round, 1 October 2026)
+
+Back returns to the place it left. The list and the Saved page keep their scroll, and the row that
+had the focus, whenever they are left (for a spot, for each other, by Back or Forward) or covered
+by the full map, and get both back once on the way back: a reader at row 60 of 89 is not sent to
+row 1, and the next Tab carries on from the row they opened. Explore and a fresh load still start
+at the top. On a phone, a spot opened from a marker on the full map goes back to the map at the
+view it had; its back link reads "Map", and closing the map forgets it. Every spot with a forecast
+has a "Nearby" card: the three nearest spots within 40 km, whatever their level, each row giving
+its headline. A spot that reads moderate or worse that day, or is rated poor, keeps "Lower risk
+nearby", with only lower spots and the line that a lower level is not clean water. On a desktop,
+"/" puts the focus in the search and Escape empties it.
+
+Two wording rules came out of this round. A level word stands beside the thing at risk, never
+beside the thing measured: the water-quality row says "Very high risk", and a list row "E. coli
+risk 63%", because beside "Water quality" a bare "Very high" read as very good water. The
+Environment Agency's classification words (excellent, good, sufficient, poor) are used only for
+the Agency's own rating. And a button says what happens: the feedback form's button is "Send by
+email", which opens the reader's email app with the message, with the copy of the text beneath
+as the fallback; it was "Prepare email" followed by a second step.
+
 ### What was kept on purpose
 
 The information architecture (list → spot → day), every word of the terms and privacy notice, the

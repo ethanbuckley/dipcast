@@ -129,7 +129,12 @@
   .leaflet-container .leaflet-bar a.leaflet-disabled { background:var(--bg); color:var(--unknown); }
   .leaflet-container .leaflet-bar a:first-child { border-radius:var(--radius) var(--radius) 0 0; }
   .leaflet-container .leaflet-bar a:last-child { border-bottom:0; border-radius:0 0 var(--radius) var(--radius); }
-  @media (pointer: coarse) { .leaflet-container .leaflet-bar a { width:44px; height:44px; line-height:44px; } }
+  /* An overflow's popup closes from its corner: the site's type and colours, and a 44 px target on
+     touch, with the text kept clear of it. */
+  .leaflet-container a.leaflet-popup-close-button { font:400 20px/24px var(--font-text); color:var(--muted); }
+  .leaflet-container a.leaflet-popup-close-button:hover, .leaflet-container a.leaflet-popup-close-button:focus { color:var(--ink); }
+  @media (pointer: coarse) { .leaflet-container .leaflet-bar a { width:44px; height:44px; line-height:44px; }
+    .leaflet-container a.leaflet-popup-close-button { width:44px; height:44px; line-height:44px; } .leaflet-popup-content { margin-right:44px; } }
   .leaflet-container .leaflet-control-attribution { font-size:11px; color:var(--muted); background:var(--veil); padding:2px 6px; border-radius:6px 0 0 0; }
   .leaflet-popup-content-wrapper { border-radius:var(--radius); }
   .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:var(--float); color:var(--ink); box-shadow:var(--lift); }
@@ -286,11 +291,14 @@
   .card { background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin:12px 0; }
   .card-h { font-family:var(--font-text); font-size:18px; line-height:1.25; margin:0 0 2px; }
   .sub { color:var(--muted); font-size:13.5px; margin:0 0 10px; }
-  /* "Lower risk nearby": rows as in the list, ruled, across the card's full width. */
+  /* "Nearby" and "Lower risk nearby": rows as in the list, ruled, across the card's full width. With
+     no note under them (Nearby) the last row is the card's foot, clipped to its corners. */
   ul.near { list-style:none; margin:8px -16px 10px; padding:0; border-bottom:1px solid var(--line); }
   ul.near li { border-top:1px solid var(--line); }
   ul.near a.row { padding:11px 16px; }
   ul.near + .sub { margin:0; }
+  ul.near:last-child { margin-bottom:-16px; border-bottom:0; }
+  #nearby { overflow:hidden; }
   .now-row { display:flex; align-items:center; gap:14px; }
   .now-row .big { font:600 40px/1 var(--font-text); color:var(--ink); min-width:34px; text-align:center; font-variant-numeric:tabular-nums; }
   .now-row .big.hot { color:var(--k-veryhigh); }
@@ -476,7 +484,7 @@
         <p class="small muted">A day's level is the highest of these. A spot's page shows each one.</p>
         <dl>
           <dt>Sewage spills</dt><dd>The exposure index (0–100): the modelled chance that a spill from an overflow upstream reaches the spot. Low under 15, moderate 15 to 40, high 40 to 70, very high 70 or more.</dd>
-          <dt>Water quality</dt><dd>On rivers with overflows upstream: the chance a water sample would show E. coli over 900 per 100 ml, from any source, runoff after rain included. Low under 10%, moderate 10 to 25%, high 25 to 50%, very high over 50%. The minimum bathing-water standard lets about one sample in ten be over 900. In the May to September season only: from October to April, when the EA takes no samples, the estimate is shown marked † but does not set the level.</dd>
+          <dt>Water quality</dt><dd>On rivers with overflows upstream: the chance a water sample would show E. coli over 900 per 100 ml, from any source, runoff after rain included. Low risk under 10%, moderate 10 to 25%, high 25 to 50%, very high over 50%. The minimum bathing-water standard lets about one sample in ten be over 900. In the May to September season only: from October to April, when the EA takes no samples, the estimate is shown marked † but does not set the level.</dd>
           <dt>Environment Agency rating</dt><dd>At a designated bathing water, the EA's yearly rating from up to four seasons of lab samples. When it is poor, advice against bathing applies all season, so the level is at least high on every day. Where there is no daily forecast, the rating sets the level: excellent or good low, sufficient moderate, poor high.</dd>
           <dt>Algae</dt><dd>At a designated bathing water, the EA sampler's last look, if under two weeks old: enough algae to be objectionable makes the level at least high, some at intervals at least moderate.</dd>
           <dt>Not included</dt><dd>The EA's short-term advice against bathing after a pollution incident or an algal bloom. A bathing water's page links to the EA's page, which has it.</dd>
@@ -579,11 +587,24 @@ function placeMap() {
   map.invalidateSize();
 }
 const setHeaderHeight = () => document.documentElement.style.setProperty('--header-h', document.getElementById('top').getBoundingClientRect().height + 'px');
-function setMapMode(on) {
+// view: [lat, lon, zoom], the full map as it was when a spot was opened from it (select), for Back;
+// otherwise the map opens on all the spots. While it covers the list or the Saved page their place
+// is kept (PLACE), since the hidden page cannot hold its scroll, and found again when it closes.
+function setMapMode(on, view = null) {
+  const was = mapMode();
+  if (on && !was) keepPlace();
   document.body.classList.toggle('map-mode', on);
   const b = document.getElementById('mapbtn'); b.setAttribute('aria-pressed', String(on)); b.textContent = on ? (current ? 'Back' : 'List') : 'Map';
   syncNav(); setHeaderHeight(); placeMap();
-  if (on && DATA) fitAll(); else if (!on) loadOverflows().catch(() => ovLayer.clearLayers());
+  if (on && view) map.setView([view[0], view[1]], view[2], { animate: false });
+  else if (on && DATA) fitAll(); else if (!on) loadOverflows().catch(() => ovLayer.clearLayers());
+  if (was && !on) {
+    // Closed, so Back to this page no longer opens it. (A spot opened from the map closes it after
+    // its own entry is pushed, so the page under the map keeps its view.)
+    const st = history.state || {};
+    if (st.mapView) { const { mapView, ...rest } = st; history.replaceState(rest, ''); }
+    if (shown) restorePlace();
+  }
 }
 document.getElementById('mapbtn').addEventListener('click', () => setMapMode(!mapMode()));
 // The phone's bar at the bottom. Explore and Saved add a history entry only when they change the
@@ -598,7 +619,7 @@ function syncNav() {
 }
 function openList() {
   if (mapMode()) setMapMode(false);
-  if (!document.body.classList.contains('view-list')) { history.pushState(null, '', ROOT.pathname); renderList(); }
+  if (!document.body.classList.contains('view-list')) { keepPlace(); history.pushState(null, '', ROOT.pathname); renderList(); }
   scrollTop();
 }
 document.getElementById('nav-map').addEventListener('click', () => setMapMode(!mapMode()));
@@ -824,7 +845,8 @@ function water(d, days) {
     // sentence says it does not set the level (levels.js, ecoliLevel).
     const ds = days.filter(x => !nil(x.p_ecoli_gt900)), wq = ds.map(x => ecoliBand(d, x)).reduce(higher, null);
     const off = ds.some(ecoliUntested);
-    return factorRow('Water quality', wq, wq ? cap(wq) + (off ? '†' : '') : 'No data', !ds.length ? 'No rainfall forecast has arrived, so there is no estimate.'
+    // The value is a risk, said so: beside "Water quality", a bare "Very high" read as very good water.
+    return factorRow('Water quality', wq, wq ? `${cap(wq)} risk` + (off ? '†' : '') : 'No data', !ds.length ? 'No rainfall forecast has arrived, so there is no estimate.'
       : `Chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml: ${ds.map(x => `<b>${Math.round(x.p_ecoli_gt900 * 100)}%</b> ${dayWord(x.date)}`).join(', ')}.`
       + explain(`The minimum bathing-water standard lets about one sample in ten be over 900.${off ? ' † The EA takes no samples from October to April, so nothing tests this estimate now: it is shown, but it does not set the level above.' : ''} <a href="#about-ecoli">What this counts</a>`));
   }
@@ -881,7 +903,7 @@ const anyUntested = d => ecoliTested(d) && d.days.slice(0, 5).some(untested);
 const UNTESTED_NOTE = '† Untested outside May to September, when the EA takes no samples, so it does not set the level.';
 // Out of season the water-quality figure is not in the level, so a list row names it, marked †.
 const waterEst = s => { if (!ecoliTested(s)) return ''; const x = VIEW.day ? s.days.find(y => y.date === VIEW.day) : s.days[0];
-  return x && untested(x) ? `water-quality estimate ${Math.round(x.p_ecoli_gt900 * 100)}%†` : ''; };
+  return x && untested(x) ? `E.&nbsp;coli risk ${Math.round(x.p_ecoli_gt900 * 100)}%†` : ''; };
 const cells = (d, card = false) => { const on = daily(d), pct = ecoliTested(d), tag = on ? 'button' : 'div';
   return `<div class="days"${on && !card ? ' id="day-strip" role="group" aria-label="Pick a day"' : ''}>` + d.days.slice(0, 5).map(x => { const lv = on ? risk(d, x).level : null;
     const r = pct ? (nil(x.p_ecoli_gt900) ? '–' : Math.round(x.p_ecoli_gt900 * 100) + '%' + (untested(x) ? '†' : '')) : nil(x.rain_48h_mm) ? '–' : Math.round(x.rain_48h_mm) + ' mm';
@@ -1109,7 +1131,7 @@ function showDay(d, iso) {
   // day the list never picked, and the day picked here is the swim day back on the list too.
   if ((VIEW.day || null) !== DAY) setMapDay(DAY);
   document.getElementById('day-view').innerHTML = x ? dayDetail(d, x) : factors(d);
-  const alt = document.getElementById('nearby-host'); if (alt) alt.innerHTML = nearby(d);   // lower than this spot on this day
+  const alt = document.getElementById('nearby-host'); if (alt) alt.innerHTML = nearby(d);   // the spots nearby, on this day
   document.querySelectorAll('#day-strip [data-day]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.day === DAY)));
   const close = document.getElementById('day-close');
   if (close) close.addEventListener('click', () => { showDay(d, null); document.querySelector(`#day-strip [data-day="${iso}"]`).focus(); });
@@ -1120,7 +1142,27 @@ function bindDays(d) {
   if (DAY && days.length) showDay(d, DAY);
   else if (DAY) showDay(d, null);   // no day to pick here (no overflows upstream): the summary, and a plain address
 }
-const scrollTop = () => { if (PHONE.matches) window.scrollTo(0, 0); else document.getElementById('panel').scrollTop = 0; };
+// A phone scrolls the window; a desktop scrolls the column beside the map.
+const scrollTop = (y = 0) => { if (PHONE.matches) window.scrollTo(0, y); else document.getElementById('panel').scrollTop = y; };
+const scrollPos = () => PHONE.matches ? window.scrollY : document.getElementById('panel').scrollTop;
+// Where the list and the Saved page were when last left (for a spot, for each other, or by Back or
+// Forward) or covered by the full map, by view, so that coming back finds the same place: a reader at
+// row 60 of 89 is not sent to row 1. With the link that had the focus, if one did (a keyboard, or a
+// click that focuses), so the next Tab carries on from it rather than from the top. Used once, on
+// the way back (popstate, or the map closing); Explore and a fresh load start at the top.
+const PLACE = {};
+const focusKey = () => { const a = document.activeElement, box = a && a.dataset && a.dataset.id ? a.closest('#result ul[id]') : null;
+  return box ? `#${box.id} [data-id="${CSS.escape(a.dataset.id)}"]` : null; };
+// Before a history entry is pushed, and as Back or Forward leaves a page (popstate). Under the full
+// map the page cannot hold its scroll (it is hidden), so its place was kept when the map opened.
+const keepPlace = () => { if (shown && !mapMode()) PLACE[shown] = { y: scrollPos(), focus: focusKey() }; };
+function restorePlace() {
+  if (mapMode()) return;   // still under the full map: found when it closes
+  const p = PLACE[shown]; delete PLACE[shown];
+  scrollTop(p ? p.y : 0);
+  const el = p && p.focus ? document.querySelector(p.focus) : null;
+  if (el) el.focus({ preventScroll: true });
+}
 // Redraw without moving el on the screen, where the page can scroll that far: the list's kinds sit
 // below the Saved group, which a picked kind hides, and the chip would jump from under the finger.
 const steady = (el, redraw) => { const y = el.getBoundingClientRect().top; redraw(); const dy = el.getBoundingClientRect().top - y;
@@ -1310,7 +1352,10 @@ function renderList() {
   // Only the list redraws as you type; redrawing the box itself dropped the focus after one letter.
   document.getElementById('q').addEventListener('input', e => { VIEW.q = e.target.value; drawSpots(); });
   // The keyboard's Search key: there is no form to submit, so close the keyboard to show the results.
-  document.getElementById('q').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+  // Escape empties the search, as a browser's own does, and leaves the focus in it for the next.
+  document.getElementById('q').addEventListener('keydown', e => {
+    if (e.key === 'Enter') e.target.blur();
+    else if (e.key === 'Escape' && e.target.value) { e.preventDefault(); e.target.value = ''; VIEW.q = ''; drawSpots(); } });
   document.querySelectorAll('[data-filter]').forEach(b => b.addEventListener('click', () => {
     VIEW.filter = b.dataset.filter;
     document.querySelectorAll('[data-filter]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
@@ -1479,7 +1524,7 @@ function bindSavedPage(spots, offered) {
   });
   const find = $('find');
   if (find) find.addEventListener('click', e => { if (!plainClick(e)) return; e.preventDefault();
-    history.pushState(null, '', ROOT.pathname); renderList(); scrollTop(); document.getElementById('q').focus(); });
+    keepPlace(); history.pushState(null, '', ROOT.pathname); renderList(); scrollTop(); document.getElementById('q').focus(); });
   const forget = $('forget');
   if (forget) forget.addEventListener('click', () => { setSaved([...SAVED].filter(id => DATA.spots.some(s => s.id === id))); renderSaved(); });
   if ($('inc-save')) $('inc-save').addEventListener('click', () => {
@@ -1498,17 +1543,24 @@ function bindSavedPage(spots, offered) {
 }
 function openSaved() {
   if (mapMode()) setMapMode(false);
-  if (!onSavedPage()) history.pushState({ view: 'saved', from: shown }, '', savedPath());
+  if (!onSavedPage()) { keepPlace(); history.pushState({ view: 'saved', from: shown }, '', savedPath()); }
   renderSaved(); scrollTop();
 }
 document.getElementById('savedbtn').addEventListener('click', e => { if (!DATA || !plainClick(e)) return; e.preventDefault(); openSaved(); });
 
 // ------------------------------------------------------------------------------ one spot
 // Opening a spot is a history entry, so a phone's back button returns to the list, not off the site.
-// day: a date to open in its strip (a Saved card's day), else the summary.
+// day: a date to open in its strip (a Saved card's day), else the summary. From a marker on a phone's
+// full map, the entry under the map keeps the map's view (mapView) and the spot's says from 'map', so
+// Back, or the spot's back link, returns to the map as it was rather than to the list.
 function select(id, fly=false, push=true, day=null) {
   const s = DATA.spots.find(x => x.id === id); if (!s) return; current = s; DAY = day;
-  if (push) history.pushState({ spot: id, from: shown }, '', spotPath(id));
+  const fromMap = mapMode();
+  if (push) {
+    keepPlace();
+    if (fromMap) { const c = map.getCenter(); history.replaceState({ ...history.state, mapView: [c.lat, c.lng, map.getZoom()] }, ''); }
+    history.pushState({ spot: id, from: fromMap ? 'map' : shown }, '', spotPath(id));
+  }
   shown = null;
   if (mapMode()) setMapMode(false);
   render(s);
@@ -1520,10 +1572,15 @@ function select(id, fly=false, push=true, day=null) {
   else if (fly) map.setView([s.lat, s.lon], Math.max(map.getZoom(), 12));
   scrollTop();
 }
+// Back (or Forward): the list or the Saved page where it was left, and the full map again if a spot
+// was opened from it here. The page on screen is still the one being left, so its place is kept
+// first; the view is read first too, since opening the spot below closes the map.
 window.addEventListener('popstate', () => { if (!DATA) return;
-  const id = spotFromURL();
+  keepPlace();
+  const id = spotFromURL(), view = (history.state || {}).mapView;
   if (id && DATA.spots.some(s => s.id === id)) select(id, true, false, dayFromURL());
-  else { if (onSavedPage()) renderSaved(); else renderList(); scrollTop(); } });
+  else { if (onSavedPage()) renderSaved(); else renderList(); restorePlace(); }
+  if (view && PHONE.matches) setMapMode(true, view); });
 // A list link opened on the Saved page itself changes only the part after the #.
 window.addEventListener('hashchange', () => { if (!DATA || !/^#spots=/.test(location.hash)) return; readIncoming(); renderSaved(); scrollTop(); });
 
@@ -1614,24 +1671,24 @@ function overflowCard(d, total) {
   return h + `</ul>${n > SHOW ? `<button type="button" class="btn quiet" id="more-contrib" aria-controls="contrib" aria-expanded="false">Show all ${n}</button>` : ''}`
     + `<p class="small muted msg">Reach: the chance a spill there affects this spot, from die-off over the travel time and dilution by the size of the river network upstream.</p></section>`;
 }
-// "Where instead?": at a spot that is moderate or worse on the day shown (DAY, or else its headline
-// level), or rated poor, up to three spots within 40 km that are lower that day, nearest first. Never
-// offered: a spot without a level (no overflow upstream, no rating), since no level is not a lower
-// one; and a water rated poor, where advice against bathing applies. Its "high" is lower than a very
-// high one: on 1 Oct 2026, without this, the Eden at Armathwaite would have offered Derwent Water at
-// Crow Park.
+// "Nearby": up to three other spots within 40 km, nearest first, each opening on the day shown (DAY,
+// or else the headline). At a spot that is moderate or worse that day, or rated poor, it becomes
+// "Lower risk nearby" and offers only spots lower that day. Never offered then: a spot without a level
+// (no overflow upstream, no rating), since no level is not a lower one; and a water rated poor, where
+// advice against bathing applies. Its "high" is lower than a very high one: on 1 Oct 2026, without
+// this, the Eden at Armathwaite would have offered Derwent Water at Crow Park. Anywhere else the
+// nearest three, whatever their level: each row's headline says what it is.
 const NEAR_KM = 40;
 function nearby(d) {
-  const lv = s => DAY ? dayLevel(s, DAY) : level(s), mine = rank(lv(d));
-  if (mine < 1 && !advisedAgainst(d)) return '';
-  const alts = DATA.spots.filter(s => s.id !== d.id && !advisedAgainst(s) && ORDER[lv(s)] !== undefined && rank(lv(s)) < mine)
+  const lv = s => DAY ? dayLevel(s, DAY) : level(s), mine = rank(lv(d)), lower = mine >= 1 || advisedAgainst(d);
+  const alts = DATA.spots.filter(s => s.id !== d.id && (!lower || (!advisedAgainst(s) && ORDER[lv(s)] !== undefined && rank(lv(s)) < mine)))
     .map(s => [s, km([d.lat, d.lon], [s.lat, s.lon])]).filter(([, k]) => k <= NEAR_KM).sort((a, b) => a[1] - b[1]).slice(0, 3);
   if (!alts.length) return '';
-  return `<section class="card" id="nearby" aria-labelledby="nearby-h"><h2 class="card-h" id="nearby-h">Lower risk nearby</h2><ul class="near">`
+  return `<section class="card" id="nearby" aria-labelledby="nearby-h"><h2 class="card-h" id="nearby-h">${lower ? 'Lower risk nearby' : 'Nearby'}</h2><ul class="near">`
     + alts.map(([s, k]) => `<li><a class="row" href="${esc(spotPath(s.id) + (DAY && daily(s) ? '#day=' + DAY : ''))}" data-id="${esc(s.id)}"><span class="row-main">`
       + `<span class="nm">${esc(s.name)}</span><span class="hl ${tone(lv(s))}">${DAY ? dayHeadline(s, DAY) : headline(s)}</span>`
       + `<span class="k">${[away(k), cap(s.kind), s.source === 'designated' ? 'bathing water' : null].filter(Boolean).join(' · ')}</span></span></a></li>`).join('')
-    + `</ul><p class="sub">A lower forecast level, not clean water: check the signs there too.</p></section>`;
+    + `</ul>${lower ? '<p class="sub">A lower forecast level, not clean water: check the signs there too.</p>' : ''}</section>`;
 }
 // The rows open their spot on the same day. One listener on the box, which showDay refills.
 const bindNearby = () => { const box = document.getElementById('nearby-host'); if (!box) return;
@@ -1647,8 +1704,10 @@ function render(d) {
   const tags = [cap(d.kind), d.source === 'designated' ? 'Environment Agency designated bathing water' : null,
     loc.watercourse ? esc(loc.watercourse) : null, loc.lake_area_km2 ? `${loc.lake_area_km2} km²` : null,
     d.notes && d.notes !== 'Environment Agency designated bathing water' ? esc(d.notes) : null].filter(Boolean);
-  const fromSaved = (history.state || {}).from === 'saved';
-  let h = `<a href="${esc(fromSaved ? savedPath() : ROOT.pathname)}" class="back" id="back">${fromSaved ? 'Saved spots' : 'All spots'}</a>`;
+  // The back link names where it goes: Saved, the full map a marker was tapped on (bindBack goes
+  // back to either), or all the spots.
+  const from = (history.state || {}).from;
+  let h = `<a href="${esc(from === 'saved' ? savedPath() : ROOT.pathname)}" class="back" id="back">${from === 'saved' ? 'Saved spots' : from === 'map' ? 'Map' : 'All spots'}</a>`;
   h += `<div class="title-row"><h1 class="spot-name">${esc(d.name)}</h1>${saveButton(d)}</div><div class="chips">${tags.map(t => `<span class="chip">${t}</span>`).join('')}</div>`;
   // The answer first, then where the spot is: on a small phone the map pushed the level below the fold.
   const where = `<div class="loc phone-only"><div id="loc-map" aria-hidden="true"></div><button type="button" class="loc-open" id="loc-open" aria-label="Open map at ${esc(d.name)}">Open map</button></div>`;
@@ -1685,8 +1744,8 @@ function render(d) {
   placeMap();
 }
 function bindBack() { const b = document.getElementById('back'); if (b) b.addEventListener('click', e => { if (!plainClick(e)) return; e.preventDefault();
-  if (history.state && history.state.from) history.back();   // came from the list or Saved: back to it
-  else { history.pushState(null, '', ROOT.pathname); renderList(); scrollTop(); } }); }   // a shared link: stay on the site
+  if (history.state && history.state.from) history.back();   // came from the list, Saved or the map: back to it, where it was (popstate)
+  else { keepPlace(); history.pushState(null, '', ROOT.pathname); renderList(); scrollTop(); } }); }   // a shared link: stay on the site
 
 // In-page links (#about, #levels) must not follow <base> off a spot's own page to the home page.
 // A target made focusable (the skip link's #panel) takes the focus as well, so the next Tab
@@ -1696,6 +1755,13 @@ document.addEventListener('click', e => { const a = e.target.closest('a[href^="#
   e.preventDefault(); if (mapMode()) setMapMode(false); const box = el.closest('details'); if (box) box.open = true;
   el.scrollIntoView({ behavior: SCROLL(), block: 'start' });
   if (el.hasAttribute('tabindex')) el.focus({ preventScroll: true }); });
+// "/" puts the focus in the search from anywhere on the list. Only where there is a search (not a
+// spot's page or the Saved page), not under the full map, and never while typing in a field.
+document.addEventListener('keydown', e => {
+  if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey || e.isComposing || e.defaultPrevented) return;
+  const q = document.getElementById('q'), t = e.target;
+  if (!q || mapMode() || t.isContentEditable || /^(INPUT|SELECT|TEXTAREA)$/.test(t.tagName)) return;
+  e.preventDefault(); q.focus(); });
 // A phone turned or a window resized across the breakpoint: put the map where that layout wants it.
 PHONE.addEventListener('change', () => { if (!PHONE.matches && mapMode()) setMapMode(false); setHeaderHeight(); placeMap(); });
 

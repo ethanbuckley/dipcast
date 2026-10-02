@@ -615,9 +615,9 @@ alerts are turned on), and `saved/` lists the
 saved spots with their five days; `saved/#spots=a,b` offers a list someone
 shared (after the `#`, so it never reaches a server). An iPhone's Home Screen
 app has storage of its own: spots saved in Safari do not appear in it (checked
-in the iOS 27 simulator, 29 Sep 2026), and the Saved page says so. The
-"Feedback" link opens `.github/ISSUE_TEMPLATE/feedback.yml`, which asks whether
-the forecast changed what the person did.
+in the iOS 27 simulator, 29 Sep 2026), and the Saved page says so. The Feedback page opens the reader's email app with a message to
+hello@swimsignal.co.uk (the site has no server, so nothing is sent by the
+page itself) and asks whether the forecast changed what the person did.
 
 **The level on the map and in the list** is the worst of four things, worked
 out by `src/dipcast/site/levels.js` (`risk()`), which the page loads and the
