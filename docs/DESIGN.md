@@ -99,7 +99,9 @@ largest headings, and no uppercase labels anywhere.
   the figures in view and put the rest under "What this means", word for word. What the strip's
   cells show folds into the water row, or the spills row where there is no water estimate; under
   the strip only the † sentence stays, and only while a cell carries a †. The EA rating keeps its
-  advice in view and folds how it is rated and the years before.
+  advice in view and folds how it is rated and the years before. A section's note under the answer
+  does the same: River level keeps "Not part of the pollution level." in view, and the definition
+  of reach under the overflows folds whole.
 - "About these forecasts" is in full on the list only. A spot's page and the Saved page give it one
   line, "About these forecasts · How accurate is it?", which opens it in place; so does any link to
   a part of it (the levels, what E. coli counts, your data).

@@ -262,10 +262,11 @@
   .f-v.low { color:var(--k-low); } .f-v.moderate { color:var(--k-moderate); } .f-v.high { color:var(--k-high); } .f-v.veryhigh { color:var(--k-veryhigh); } .f-v.clear { color:var(--k-clear); }
   .f-d { grid-column:1 / -1; font-size:var(--fs-note); line-height:1.45; margin-top:2px; }
   /* A row's explanation past its first sentence, folded (explain). Closed, the 44 px target reaches
-     into the row's padding, so the fold costs the row a line rather than a target's height. */
+     into the row's padding, so the fold costs the row a line rather than a target's height. A
+     section's note (msg) folds the same way. */
   .f-d details.more > summary { margin-bottom:-12px; }
   .f-d details.more[open] > summary { margin-bottom:0; }
-  .f-d details.more p { margin:0; }
+  .f-d details.more p, .msg details.more p { margin:0; }
   /* The five days as one strip: five cells between hairlines, each with its level as a bar at the
      top, and no box round them. */
   .days { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); margin:0 0 8px; }
@@ -969,7 +970,7 @@ function riverCard(d) {
   return `<section class="sec" aria-labelledby="river-h"><h2 class="sec-h" id="river-h">River level</h2><p class="sub">Environment Agency gauge at ${where}</p>`
     + `<div class="now-row"><span class="big level${hot ? ' hot' : ''}">${fmt(rs.level_m, 2)}<small>m</small></span><div><b>${word || 'Level'}</b>${rs.label === 'very high' ? ', above its usual range' : rs.label === 'low' ? ', near the bottom of its usual range' : ''}`
     + `<div class="small muted">${when ? `Observed ${when}.` : ''}${range}</div></div></div>`
-    + `<p class="small muted msg">Not part of the pollution level. A high river runs faster and colder, and after rain it can rise quickly.${link}</p></section>`;
+    + `<div class="small muted msg">Not part of the pollution level.${explain(`A high river runs faster and colder, and after rain it can rise quickly.${link}`)}</div></section>`;
 }
 // Today's high and daylight, from Open-Meteo (build_site.attach_weather), in the hero's line of
 // context and as a row in a day's detail: context, as a weather app gives it, not an input to the
@@ -1629,13 +1630,13 @@ function bindSave(d) {
   });
 }
 function actions(d) {
-  const swam = swamOn(d.id, today());
+  const swam = swamOn(d.id, today()), fb = `${esc(FEEDBACK)}&amp;spot=${encodeURIComponent(d.name)}`;
   return `<div class="actions"><button type="button" class="btn primary" id="share">Copy link to this spot</button>`
     + `<button type="button" class="btn" id="share-img">Share as a picture</button>`
     + `<button type="button" class="btn" id="swam" aria-pressed="${swam}">${swimLabel(swam)}</button>`
-    + `<a class="btn" href="${esc(FEEDBACK)}&amp;spot=${encodeURIComponent(d.name)}">Tell us how you used this</a></div>`
+    + `<a class="btn" href="${fb}">Tell us how you used this</a></div>`
     + `<p class="small muted below" id="share-msg" aria-live="polite"></p><p class="small muted below" id="swam-msg" aria-live="polite"></p>`
-    + `<p class="small muted below">Did the forecast change where or when you swam? That is what decides whether this site is worth building on. Prepare a private email to Ethan. No GitHub account needed.</p>`;
+    + `<p class="small muted below">Did the forecast change where or when you swam? <a href="${fb}">Tell&nbsp;Ethan</a>.</p>`;
 }
 function bindShare(d) {
   const b = document.getElementById('share'); if (!b) return;
@@ -1699,7 +1700,7 @@ function overflowCard(d, total) {
       .bindTooltip(`${esc(c.site_name ?? c.site_id)}: ${far} km, reach ${Math.round(c.weight * 100)}%`).addTo(contribLayer);
   });
   return h + `</ul>${n > SHOW ? `<button type="button" class="btn quiet" id="more-contrib" aria-controls="contrib" aria-expanded="false">Show all ${n}</button>` : ''}`
-    + `<p class="small muted msg">Reach: the chance a spill there affects this spot, from die-off over the travel time and dilution by the size of the river network upstream.</p></section>`;
+    + `<div class="small muted msg">${explain('Reach: the chance a spill there affects this spot, from die-off over the travel time and dilution by the size of the river network upstream.')}</div></section>`;
 }
 // "Nearby": up to three other spots within 40 km, nearest first, each opening on the day shown (DAY,
 // or else the headline). At a spot that is moderate or worse that day, or rated poor, it becomes
@@ -1761,7 +1762,7 @@ function render(d) {
       + `<div>of ${total} upstream overflow${total === 1 ? '' : 's'} discharging now<div class="small muted">${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours} h · ${now.monitored_upstream} of ${total} report live${now.monitored_upstream < total ? `. ${total - now.monitored_upstream === 1 ? 'The one that does not' : `The ${total - now.monitored_upstream} that do not`} could be spilling unseen` : ''}</div></div></div></section>`;
   }
   h += riverCard(d) + algae(d.algae);
-  h += `<section class="sec phone-only"><h2 class="sec-h">Upstream</h2><p class="sub">The spot (ringed) and the overflows that matter most; a bigger circle means more of a spill would reach here. Two fingers move the map.</p><div id="spot-map"></div>`
+  h += `<section class="sec phone-only"><h2 class="sec-h">Upstream</h2><p class="sub">The spot (ringed) and the overflows that matter most; a bigger circle means more of a spill would reach here.</p><div id="spot-map"></div>`
     + `<p class="small muted tight"><span class="dot sm" style="background:${colourFor(1)}"></span>discharging<span class="dot sm" style="background:#5b6470"></span>not discharging<span class="dot sm" style="background:#b3bac2"></span>offline or no feed</p></section>`;
   h += d.contributors.length ? overflowCard(d, total)
     : `<section class="sec"><h2 class="sec-h">No monitored overflows upstream</h2><p class="small muted tight">None within ${d.assumptions.max_upstream_km} km upstream. Risk from farms, wildlife and unmonitored sources is not modelled.</p></section>`;
