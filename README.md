@@ -406,10 +406,16 @@ de-duplication key (site, status, status start) was the same on every poll, so
 each overflow kept one row per status and a later day overwrote an earlier
 one. And the feed-age test read a missing stamp as current. Now: a row marked
 discharging with no event times is a spill on the local day of that poll; a row
-with no status start is kept once per local day polled; and a feed with no
+with no status start is kept once per local day polled, at every company.
+Anglian, United Utilities and Wessex have such rows too (294 in the 2 Oct 14:08
+snapshot, 18 of them with event times), so the history grows by about 300 more
+rows a day, and an event the old key would have overwritten is now kept: their
+spill-day counts can only rise from now on. On the 2 Oct history, which the old
+key had already de-duplicated, no other company's count changed; and a feed with no
 `LastUpdated` is never current, so South West Water's overflows are not scored
 at all (`unstamped_feed_days` applies this to the days polled before the
-change, from `poll_log.parquet`). The feed sees only what is discharging at the
+change, from `poll_log.parquet`, ignoring rows from before the log recorded feed
+ages on 28 Sep 16:51 UTC, when every company's age reads as missing). The feed sees only what is discharging at the
 moment of a poll, a few times a day, so a day of "not discharging" polls cannot
 support "no spill". Its scores are withdrawn: 14,643 of the 14,778 overflow-days
 scored on 2 Oct remain, by the scorer run on the `state` release of 2 Oct
@@ -426,8 +432,11 @@ masks began in the afternoon) and 180 were South West Water's.
 
 A company feed that fails, or returns no rows, keeps its last snapshot in
 `live_latest.parquet` with status -3 (feed down) and the time it last answered;
-a spot's "Right now" tile names the company and that time. The build warns
-when a company returns no rows, and does not publish when none does.
+a spot's "Right now" tile names the company and that time, and counts its
+overflows as not reporting. The build warns when a company returns no rows. It
+still publishes when none does, with every overflow marked feed down: not
+publishing would also freeze the rain forecasts and leave the old statuses on
+the page with no note.
 
 **Algae (an observation, not a forecast; 28 Sep 2026).** At every sampling visit to a
 bathing water the EA sampler records one of four levels of algae: none, a trace (1-2

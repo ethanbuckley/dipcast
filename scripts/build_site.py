@@ -248,8 +248,9 @@ def build_health(results: list[dict], ecoli_samples: dict | None = None, poll_lo
     stalls the E. coli scores, not the forecasts, so it does not stop the publish.
     `poll_log` is the live poller's log (poll_log.parquet): a company whose feed returned
     no rows in the last poll goes in `warnings` (its overflows keep their last snapshot,
-    marked feed down); if every company returned none, the build is not published, so
-    the previous site, with its real statuses, stays up."""
+    marked feed down). If every company returned none the build still publishes, with every
+    overflow marked feed down and one more warning: refusing would also freeze the rain
+    forecasts and leave the previous statuses on the page with no note that they are old."""
     n = len(results)
     # A spot the model cannot say anything about (an isolated lake, no river within
     # reach) returns an explanation with an empty day list; that is an answer, not a
@@ -268,7 +269,8 @@ def build_health(results: list[dict], ecoli_samples: dict | None = None, poll_lo
     if feeds:
         health["live_feeds"] = feeds
         if feeds["rows"] and len(feeds["down"]) == len(feeds["rows"]):
-            raise BuildUnhealthy(f"no live overflow feed returned any rows at {feeds['polled_at']}; not publishing")
+            health["warnings"].append(f"no live overflow feed returned any rows at {feeds['polled_at']}; "
+                                      "published with every overflow's last snapshot marked feed down")
         for c in feeds["down"]:
             before = feeds["previous_rows"].get(c)
             health["warnings"].append(f"{c}'s live overflow feed returned no rows at {feeds['polled_at']} "

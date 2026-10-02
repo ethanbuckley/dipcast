@@ -294,11 +294,20 @@ def unstamped_feed_days(poll_log: pd.DataFrame | None) -> pd.DataFrame:
     poll carried a record stamp (feed_age_h NaN): nothing showed the feed was current.
     South West Water's feed has no LastUpdated and no event times, so its polls see only
     what is discharging at that moment. The coverage file marks such polls stale from
-    2 Oct 2026; this applies the same rule to the days polled before then."""
+    2 Oct 2026; this applies the same rule to the days polled before then.
+
+    Poll-log rows written before the log recorded feed ages (before 28 Sep 2026 16:51 UTC)
+    have a NaN age for every company, which says nothing about the feed. Rows from before
+    the first poll in which any company has an age are ignored, so only a company whose
+    feed carried no stamp while ages were being recorded is flagged."""
     empty = pd.DataFrame({"company": pd.Series(dtype=str), "day": pd.Series(dtype=object)})
     if poll_log is None or poll_log.empty:
         return empty
-    pl = poll_log[poll_log["n_rows"] > 0].copy()
+    t = pd.to_datetime(poll_log["fetched_at"], utc=True)
+    ages_from = t[poll_log["feed_age_h"].notna()].min()
+    if pd.isna(ages_from):
+        return empty
+    pl = poll_log[(poll_log["n_rows"] > 0) & (t >= ages_from)].copy()
     if pl.empty:
         return empty
     pl["day"] = pd.to_datetime(pl["fetched_at"], utc=True).dt.tz_convert(LOCAL_TZ).dt.date

@@ -9,7 +9,6 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pytest
 
 TZ = "Europe/London"
 
@@ -98,7 +97,7 @@ def test_forecast_says_which_feeds_are_down():
     assert feed_down_summary(ov.iloc[2:]) == []
 
 
-def test_build_health_warns_on_a_dead_feed_and_refuses_when_all_are_dead():
+def test_build_health_warns_on_a_dead_feed_and_still_publishes_when_all_are_dead():
     bs = _build_site()
     good = {"name": "ok", "days": [{"data_status": "ok"}]}
     t1, t2 = pd.Timestamp("2026-10-02 09:00", tz="UTC"), pd.Timestamp("2026-10-02 14:00", tz="UTC")
@@ -109,8 +108,11 @@ def test_build_health_warns_on_a_dead_feed_and_refuses_when_all_are_dead():
     h = bs.build_health([good] * 5, None, pl([100, 0]))
     assert h["live_feeds"]["down"] == ["Y"] and len(h["warnings"]) == 1
     assert "Y's live overflow feed returned no rows" in h["warnings"][0] and "previous poll: 50 rows" in h["warnings"][0]
-    with pytest.raises(bs.BuildUnhealthy):
-        bs.build_health([good] * 5, None, pl([0, 0]))
+    # Every feed down: still published (the -3 snapshots say so on the page), with a warning per
+    # company and one for the whole poll.
+    h = bs.build_health([good] * 5, None, pl([0, 0]))
+    assert h["live_feeds"]["down"] == ["X", "Y"] and len(h["warnings"]) == 3
+    assert any("no live overflow feed returned any rows" in w for w in h["warnings"])
     assert "live_feeds" not in bs.build_health([good] * 5, None, None)
 
 
@@ -153,3 +155,32 @@ def test_uncovered_overflow_days_are_split_by_reason(tmp_path, monkeypatch):
     assert "overflow-days" in out["units"]["n_candidates"]
     # The 07:30 forecast was unstamped: the label comes from the log's first stamped issue day.
     assert [r["version"] for r in out["by_version"]] == ["unstamped (stamps begin 2026-09-14)"]
+
+
+def test_poll_log_rows_from_before_feed_ages_were_logged_flag_nothing():
+    from dipcast.forecast_log import unstamped_feed_days
+    t0, t1 = pd.Timestamp("2026-09-20 12:00", tz="UTC"), pd.Timestamp("2026-09-29 12:00", tz="UTC")
+    # On the 20th no company has an age (the log did not record them yet); from the 29th only SW lacks one.
+    pl = pd.DataFrame({"fetched_at": [t0, t0, t1, t1], "company": ["X", "SW", "X", "SW"], "n_rows": 10, "n_known": 10,
+                       "feed_age_h": [np.nan, np.nan, 0.2, np.nan]})
+    got = unstamped_feed_days(pl)
+    assert [(r.company, str(r.day)) for r in got.itertuples()] == [("SW", "2026-09-29")]
+    assert unstamped_feed_days(pl.iloc[:2]).empty     # ages never logged: nothing can be said
+
+
+def test_right_now_counts_leave_feed_down_overflows_out():
+    from dipcast.ingest.live import FEED_DOWN
+    from dipcast.model.forecast import live_counts
+    since = pd.Timestamp("2026-10-02 09:00", tz="UTC")
+    # 1 discharging, 1 recently finished, 1 quiet, 2 on a feed that is down (one with a recent
+    # event in its last snapshot), 1 with no live feed.
+    ov = pd.DataFrame({"company": ["X", "X", "X", "Y", "Y", "Z"], "status": [1, 0, 0, FEED_DOWN, FEED_DOWN, -2],
+                       "has_live": [True, True, True, True, True, False],
+                       "feed_down_since": [pd.NaT, pd.NaT, pd.NaT, since, since, pd.NaT]})
+    c = live_counts(ov, pd.Series([0.5, 0.1, 0.0, 0.2, 0.0, 0.0]))
+    assert c["discharging_upstream"] == 1 and c["recent_upstream"] == 1     # the feed-down event is not "recent"
+    assert c["monitored_upstream"] == 3 and c["feed_down_upstream"] == 2
+    assert c["feed_down"] == [{"company": "Y", "overflows": 2, "since": since.isoformat()}]
+    # The page's dots: quiet = monitored - discharging - recent = 1; not reporting = 6 - 3 = 3.
+    assert c["monitored_upstream"] - c["discharging_upstream"] - c["recent_upstream"] == 1
+    assert live_counts(ov.iloc[0:0], pd.Series(dtype=float))["monitored_upstream"] == 0

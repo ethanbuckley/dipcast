@@ -14,8 +14,9 @@ concurrency:
   group: site
   cancel-in-progress: false
 
-# Each job asks for what it uses; GH_TOKEN is given only to the steps that run gh, so the
-# tests and the build (which run code from the repository) never hold a token in their env.
+# Each job asks for what it uses. GH_TOKEN is given only to the steps that run gh or push, and
+# the checkout does not keep its token in .git/config, so the tests and the build (which run code
+# from the repository) never hold a token.
 permissions:
   contents: read
 
@@ -32,6 +33,8 @@ jobs:
       contents: write     # release assets for state, heartbeat commit
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false   # the heartbeat step pushes with GH_TOKEN instead
 
       - uses: astral-sh/setup-uv@v5
         with:
@@ -140,6 +143,8 @@ jobs:
       - name: Heartbeat commit once the last is 25 days old (GitHub disables schedules after 60 idle days)
         if: github.event_name == 'schedule'
         continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           # Scheduled runs start a few times a day at irregular times, so a fixed clock window can be
           # missed for months. The first scheduled run after HEARTBEAT.md is max_d days old commits a
@@ -160,7 +165,8 @@ jobs:
           fi
           if [ "$now" -ge "$due_s" ]; then
             git config user.name "dipcast-bot"; git config user.email "bot@dipcast.invalid"
-            date -u +"$fmt" > HEARTBEAT.md && git add HEARTBEAT.md && git commit -m "Heartbeat (keeps the site schedule enabled)" && git push
+            date -u +"$fmt" > HEARTBEAT.md && git add HEARTBEAT.md && git commit -m "Heartbeat (keeps the site schedule enabled)" \
+              && git push "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}" HEAD:main
           fi
 
       - uses: actions/upload-pages-artifact@v3

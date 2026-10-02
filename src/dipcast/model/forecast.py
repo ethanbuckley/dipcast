@@ -249,8 +249,7 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
     out["assumptions"]["river_velocity_ms"] = round(v, 2)
     ov = upstream_overflows(net, pin, ov_all, velocity_ms=v, max_km=max_km)
     now_risk, now_contrib = live_now_risk(ov, now)
-    live_n = int(ov["has_live"].sum()) if not ov.empty else 0
-    feed_down = feed_down_summary(ov)
+    counts = live_counts(ov, now_contrib)
 
     weights = ov["weight"].to_numpy(dtype=float) if not ov.empty else np.zeros(0)
     travel = ov["travel_h"].to_numpy(dtype=float) if not ov.empty else np.zeros(0)
@@ -320,20 +319,13 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
         except Exception as e:  # noqa: BLE001 - an optional layer must not fail the forecast
             log.warning("E. coli model skipped: %s", e)
 
-    out["now"] = {
-        "risk": round(now_risk, 3), "label": risk_label(now_risk),
-        "discharging_upstream": int((ov["status"] == 1).sum()) if not ov.empty else 0,
-        "recent_upstream": int(now_contrib.gt(0).sum()) - (int((ov["status"] == 1).sum()) if not ov.empty else 0),
-        # Reporting in this update: an overflow whose company feed failed is carried with its
-        # last snapshot (ingest.live.carry_forward), so it has a live feed but no status now.
-        "monitored_upstream": live_n - sum(f["overflows"] for f in feed_down),
-        "feed_down_upstream": sum(f["overflows"] for f in feed_down),
-        "feed_down": feed_down,
-    }
+    out["now"] = {"risk": round(now_risk, 3), "label": risk_label(now_risk),
+                  **{k: counts[k] for k in ("discharging_upstream", "recent_upstream", "monitored_upstream",
+                                            "feed_down_upstream", "feed_down")}}
     out["days"] = day_rows
     out["upstream_summary"] = {
-        "overflows": len(ov), "with_live_feed": live_n,
-        "without_live_feed": int(len(ov) - live_n),
+        "overflows": len(ov), "with_live_feed": counts["monitored_upstream"],
+        "without_live_feed": int(len(ov) - counts["monitored_upstream"]),
         "sum_weight": round(float(weights.sum()), 3),
         "history_days": int(hist), "max_travel_h": round(float(travel.max()), 1) if len(travel) else 0.0,
     }
@@ -386,6 +378,27 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
     return out
 
 
+def live_counts(ov: pd.DataFrame, now_contrib: pd.Series) -> dict:
+    """The "Right now" counts for the upstream overflows. An overflow whose company feed
+    failed is carried with its last snapshot (ingest.live.carry_forward): it has a feed but
+    no status in this update, so it is neither discharging, recently finished nor reporting;
+    the page shows it as not reporting and names the feed. Its last-known finished event
+    still counts in the risk itself (live_now_risk): that event happened."""
+    from dipcast.ingest.live import FEED_DOWN
+    feed_down = feed_down_summary(ov)
+    if ov.empty:
+        return {"discharging_upstream": 0, "recent_upstream": 0, "monitored_upstream": 0,
+                "feed_down_upstream": 0, "feed_down": feed_down}
+    status = ov["status"]
+    down = status == FEED_DOWN
+    contrib = pd.Series(np.asarray(now_contrib, dtype=float), index=ov.index)
+    n_down = int(down.sum())
+    return {"discharging_upstream": int((status == 1).sum()),
+            "recent_upstream": int((contrib.gt(0) & (status != 1) & ~down).sum()),
+            "monitored_upstream": int((ov["has_live"].astype(bool) & ~down).sum()),
+            "feed_down_upstream": n_down, "feed_down": feed_down}
+
+
 def feed_down_summary(ov: pd.DataFrame) -> list[dict]:
     """Per company whose live feed did not answer the last poll: how many of these
     overflows it covers and when its feed last answered."""
@@ -399,7 +412,7 @@ def feed_down_summary(ov: pd.DataFrame) -> list[dict]:
     out = []
     for c, g in down.groupby(down["company"].fillna("unknown")):
         t = since.loc[g.index].min()
-        out.append({"company": str(c), "overflows": int(len(g)), "since": None if pd.isna(t) else t.isoformat()})
+        out.append({"company": str(c), "overflows": len(g), "since": None if pd.isna(t) else t.isoformat()})
     return out
 
 
