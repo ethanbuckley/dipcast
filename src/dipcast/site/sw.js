@@ -3,15 +3,15 @@
 //
 // Pages, data and the site's own scripts (levels.js must match the page it came with): the network
 // first, the stored copy if the network fails or takes over 4 s (a slow answer still refreshes the
-// stored copy when it arrives). Icons and the map library: the stored copy first, refreshed in
-// the background, and so are the fonts. Map tiles are OpenStreetMap's and the overflow layer is
+// stored copy when it arrives). Icons, the picture behind the pages and the map library: the stored
+// copy first, refreshed in the background, and so are the fonts. Map tiles are OpenStreetMap's and the overflow layer is
 // 6 MB, so neither is stored here.
 //
 // To retire this worker, publish a sw.js that unregisters itself: a deleted file leaves the
 // installed worker running on visitors' devices.
 const CACHE = 'dipcast-v1';
 const TIMEOUT_MS = 4000;
-const SHELL = ['./', 'levels.js', 'experience.js', 'feedback.html', 'page.css', 'data/spots.json', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png',
+const SHELL = ['./', 'levels.js', 'experience.js', 'feedback.html', 'page.css', 'data/spots.json', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/fells.webp',
   'fonts/SourceSans3-latin.woff2', 'fonts/SourceSans3-italic-latin.woff2', 'fonts/SourceSerif4-latin.woff2',
   'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css', 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'];
 

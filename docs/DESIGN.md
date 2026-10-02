@@ -2,11 +2,12 @@
 
 Written 1 October 2026, when the site was redrawn to look like one product rather than a set of
 generated pages, and revised on 2 October 2026 for the fifth round, "a field guide, not a
-dashboard" (below). This file is the reference for anyone changing how the site looks: what was
-wrong, what was decided, and the rules that keep the pages consistent. The stylesheet that carries the
-system is `src/dipcast/api/static/page.css`; the app page, `src/dipcast/site/index.html`, repeats
-the tokens and the header inline so that it paints before any stylesheet arrives and works offline
-on its own. A token changed in one must be changed in the other.
+dashboard", and the seventh, "the sky and the glass" (both below). This file is the reference for
+anyone changing how the site looks: what was wrong, what was decided, and the rules that keep the
+pages consistent. The stylesheet that carries the system is `src/dipcast/api/static/page.css`; the
+app page, `src/dipcast/site/index.html`, repeats the tokens and the header inline so that it paints
+before any stylesheet arrives and works offline on its own. A token changed in one must be changed
+in the other.
 
 ## What was wrong
 
@@ -40,18 +41,21 @@ the licence beside them) so that no third party receives a request:
   600 weight, never heavier. Variable weight and optical size, so it is sturdy at 18 px and fine at
   34 px.
 - **Source Sans 3** for everything else: body, labels, controls, tables. Weights 400 and 600, and
-  700 for risk headlines and level words. Risk levels, operational card headings and numerical
-  results use the sans: they need to read quickly, while the serif gives places and reports their
-  character. Tables and headline figures explicitly use tabular numerals.
+  700 for headlines and level words; 300 (Light) for the answer's one big word and a tile's figure
+  (seventh round). The file carries weights 200 to 900, and both stylesheets declare all of them.
+  Risk levels, operational card headings and numerical results use the sans: they need to read
+  quickly, while the serif gives places and reports their character. Tables and headline figures
+  explicitly use tabular numerals.
 - The monospaced stack is kept for one thing: model version strings.
 
-Six sizes, in pixels, as tokens (`--fs-*`) in both stylesheets, and no other size anywhere:
-13 meta (used sparingly: a row's kind, the week's letters, the day cells, the foot), 15 notes
-(notes, controls, a row's headline, a factor's explanation), 17 body (the app and the prose pages
-alike), 20 section headings (and the wordmark, a prose page's lede and h2), 30 the headline level,
-36 the spot's name and page titles, 30 on phones. A prose page's h3 is the body size in the serif.
-Line height 1.5 for text, 1.1 to 1.25 for headings. No letter-spacing beyond −0.01em on the
-largest headings, and no uppercase labels anywhere.
+Seven sizes, in pixels, as tokens (`--fs-*`) in both stylesheets, and no other size anywhere: 13
+meta (used sparingly: a row's kind, the week's letters, a tile's label, the foot), 15 notes (notes,
+controls, a row's headline, a tile's sentence), 17 body (the app and the prose pages alike), 20
+section headings (and the wordmark, a prose page's lede and h2), 30 a figure (a tile's, "risk"
+beside the big word, a headline without a level), 36 the spot's name and page titles, 30 on phones,
+and 72 the answer's one big word, 64 on phones and 52 at 360 px and under (seventh round). A prose
+page's h3 is the body size in the serif. Line height 1.5 for text, 1.1 to 1.25 for headings. No
+letter-spacing beyond −0.01em on the largest headings, and no uppercase labels anywhere.
 
 ### Colour
 
@@ -74,8 +78,8 @@ largest headings, and no uppercase labels anywhere.
   teal ring has 4.9:1 against it. CSS filters change every colour alike, so the tiles go through
   an SVG filter in `index.html` (`#tiles`) that finds OpenStreetMap's water by its colour. That
   blue is not a token: the filter's numbers cannot read one.
-- A level colours the headline and a 6 px rule on the hero. The written level in bold sans-serif
-  carries the meaning even when colour is hard to see; the rule is a supporting cue. It never fills
+- A level colours the answer's big word, a day's bar and the dot on a scale. The written level
+  carries the meaning even when colour is hard to see; the marks are a supporting cue. It never fills
   a surface: the washed-tint card was the dashboard look, and five of them in a column were a wall
   of pastel. A level word in a table or the swim log is the word in its text colour, not a filled
   label.
@@ -84,14 +88,14 @@ largest headings, and no uppercase labels anywhere.
 
 - One corner radius, 8 px, for the hero, inputs, buttons, a chosen chip and the maps. Count badges
   and dots are round, because they are circles. Nothing else is a pill.
-- One white surface per page (fifth round): the hero, the answer, lifted off the paper by its
-  colour alone, with no border. Everything else sits on the paper: a section is a hairline, a serif
-  heading and its content. No shadows and no gradients, except a 1 px lift under the controls that
-  sit on the map, which need to read against tiles. Notices (stale, offline) keep their box: they
-  are exceptions to read first.
-- The five days are one strip of five cells divided by hairlines, each with its level as a 4 px
-  bar at the top, and no box round them. The open day is shown by an inset ring, not a glow.
-- The hero's forecast issue time sits beside the answer, before the five days, so freshness is
+- The answer has no box (seventh round): its words sit on the sky. Everything after it is a tile,
+  frosted where the picture is behind it and near white on the paper below, with no border; inside
+  a tile, hairlines. No shadows and no gradients, except a 1 px lift under the controls that sit on
+  the map, which need to read against tiles. Notices (stale, offline) keep their box: they are
+  exceptions to read first.
+- The five days are rows, as Apple's ten days: the day, its level, and a bar of four bands filled
+  into the day's band. The open day is shown by a shaded row with a rule at its left, not a glow.
+- The forecast issue time is the answer's last line, before the five days, so freshness is
   visible at the point of deciding.
 
 ### Words
@@ -124,8 +128,10 @@ largest headings, and no uppercase labels anywhere.
 ### Icons
 
 One stroke set, 1.75 px, round caps: search, map, bookmark (Save and Saved), chevron (back links
-and folds), check (swim log). Inline SVG, so they inherit `currentColor` and need no file. The brand
-mark is inlined in every header for the same reason: it needs no path to resolve at any depth.
+and folds), check (swim log), and since the seventh round one for each tile's label (`ICON`: the
+days, spills, water, right now, river level, rain, sun, rating, algae, map, nearby, the table).
+Inline SVG, so they inherit `currentColor` and need no file. The brand mark is inlined in every
+header for the same reason: it needs no path to resolve at any depth.
 
 One decorative element, the river line: the mark's river, turned to run across, 120 by 20 px in a
 1.75 px teal stroke (`RIVER` in the page script). It sits under the list's heading, on the empty
@@ -266,6 +272,54 @@ anything, seventeen type sizes, a Leaflet-demo map, and no motif. So:
   had cost each round effort. A dark theme, if wanted later, is a deliberate toggle with its own
   palette.
 
+### The sky and the glass (seventh round, 2 October 2026)
+
+Ethan asked for the cleanness of Apple Weather, and chose the closest of four mock-ups (a paper
+version, Apple's order without boxes, Apple's tiles on paper, and this) over the recommended one.
+What makes Apple's page clean, and what was taken from it:
+
+- **One big, light figure.** The answer is the level as one word at 72 px Light (64 on phones, 52
+  at 360 px and under) with "risk" beside it as its unit, as "19°" has its degree sign: a bare
+  "High" read as high what. Under it, what set it and when ("Sewage spills today"), where the five
+  days go ("Low by Tuesday", Apple's high and low) and the issue time. Centred, with no box.
+- **A sentence over the days**, as Apple's over its hours, saying something the headline does not:
+  "About 13 of the 60 overflows upstream are expected to spill today, fewer each day after."
+- **Data drawn.** The five days are rows with a bar of four bands, filled into the day's band and
+  placed in it by what set the level (the spill exposure, the E. coli chance where it counts, the
+  foot of high for a water rated poor), so the bar always agrees with the word beside it. Drawn
+  from the spills alone, a water rated poor showed "High" beside an almost empty bar. The tiles draw
+  the exposure and the E. coli chance on stepped scales, the river's level on its usual range, every
+  overflow upstream as a dot, the rain as columns and the sun's path over the day.
+- **One anatomy.** Every tile is a label with its icon, one figure, one drawing, one sentence, and
+  the rest of the explanation behind a chevron in its corner: Sewage spills, Water quality, Right
+  now, River level, Rain, Weather, the EA rating and the algae where they apply, then Nearby, the
+  Upstream map, the overflows that matter most and the day-by-day numbers.
+- **A background that is the place.** A picture of fells over a lake (`icons/fells.webp`, 8 KB,
+  drawn by `scripts/make_sky_image.py`, so it needs no licence and no request to anyone else) hangs
+  behind the opening of each view: its sky ends at the bottom of the answer's words, its fells fill a
+  128 px band below them, and it is the paper about 300 px further down. Its top rows are the
+  `--sky` colour that runs on up to the header, so it has no edge. The weather data has only the
+  day's high, sunrise and sunset, so the picture cannot follow the weather, as Apple's does. A
+  photograph would be a separate job, with sourcing and licences.
+- **Glass, light.** The tiles are frosted (`--glass`, a blur and 76% white). Measured on 2 October
+  2026 over the darkest fell: the grey text and the level colours pass 4.5:1 at 76% and fail at
+  64% (4.1 to 4.2), so the panes are three-quarters white and the picture shows through them only
+  faintly. On the built pages (8,492 text runs, nine views at 320, 375 and 1440 px) every one passes
+  AA, against the darkest pixel behind it: the closest are 4.70:1 on the sky and 4.82:1 on the
+  glass. Nothing below the
+  answer's words sits on the picture without a tile: on the list the saved spots, the hint and all
+  the spots are tiles, and so is the empty Saved page. Plain white where a browser draws no blur, or
+  the reader has asked for less transparency.
+- **Saved as Apple's places**: each spot's name, its level as one big word with "risk", what set it
+  and where the week goes, and the week as small bars. The list shows the same cards on one tile.
+
+What it reverses, knowingly: one white surface per page (round five) becomes tiles, as Apple's
+page is; six type sizes become seven; the level's bold headline becomes the Light word. Uppercase
+labels, borders, shadows and gradients stay out: a tile's label is normal case, and a bar's bands are
+steps. Overflow names that arrive in capitals ("LITTLE SALKELD WwTW") are set in normal case
+(`nameCase`). The daily E. coli figures left the five days for the water tile (today and
+tomorrow) and the day-by-day table. The prose pages keep the paper.
+
 ### What was kept on purpose
 
 The information architecture (list → spot → day), every word of the terms and privacy notice, the
@@ -276,13 +330,14 @@ how things look, not what the site says.
 ## Rules for changes
 
 1. Add a colour, size or radius only as a token in `page.css`, and mirror it in `index.html`. A
-   font size is one of the six `--fs-*` tokens, or it is a seventh size.
+   font size is one of the seven `--fs-*` tokens, or it is an eighth size.
 2. Place names, page titles and section headings in the serif, 600; risk levels, a row's headline,
    controls and numbers in the sans. No uppercase labels, no tracking.
-3. No new radius, shadow or gradient. One white surface per page; if anything else needs
-   separating, use a hairline and whitespace, not a box.
+3. No new radius, shadow or gradient. In the app the answer is unboxed and everything after it is a
+   tile (seventh round); within a tile, and on the prose pages, separate with a hairline and
+   whitespace, not a box. No words on the picture below the answer's own without a tile under them.
 4. Icons are inline SVG from the one stroke set; never a text glyph.
-5. A level may colour text and its left rule. It may not fill a surface.
+5. A level may colour text, a day's bar and a dot on a scale. It may not fill a surface.
 6. Check a change at 320, 375 and 1440 px before opening a pull request. The local preview is
    `.claude/launch.json` (`python3 -m http.server 8766 --directory site`) after
    `scripts/build_site.py` has written `site/`, or after writing the pages alone with

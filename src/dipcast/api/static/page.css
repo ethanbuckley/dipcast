@@ -5,10 +5,11 @@
 
    Two typefaces, served from this site (fonts/, SIL Open Font License): Source Serif 4 for the
    editorial headings, Source Sans 3 for figures and everything else. A warm paper page, at most
-   one white surface on it, hairlines for the rest. One corner radius, no shadows, no gradients,
-   six type sizes. Labels in normal case. Light only: the site is read outdoors. */
+   one white surface on it, hairlines for the rest (the app adds its sky and frosted tiles). One
+   corner radius, no shadows, no gradients, seven type sizes. Labels in normal case. Light only: the
+   site is read outdoors. */
 
-@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 400 700; font-display: swap;
+@font-face { font-family: "Source Sans 3"; font-style: normal; font-weight: 200 900; font-display: swap;
              src: url(fonts/SourceSans3-latin.woff2) format("woff2"); }
 @font-face { font-family: "Source Sans 3"; font-style: italic; font-weight: 400 700; font-display: swap;
              src: url(fonts/SourceSans3-italic-latin.woff2) format("woff2"); }
@@ -32,8 +33,12 @@
   /* Notices */
   --control-low: #326a43; --focus: #0f5a61; --notice-bg: #fff6e8; --notice-line: #e5a53a;
   --radius: 8px;
-  /* Six type sizes: meta, notes, body, section headings, the headline level, titles (30 on phones). */
-  --fs-meta: 13px; --fs-note: 15px; --fs-body: 17px; --fs-head: 20px; --fs-level: 30px; --fs-title: 36px;
+  /* Seven type sizes: meta, notes, body, section headings, a figure, titles (30 on phones), and the
+     app's one big word (64 on phones, 52 on the smallest). */
+  --fs-meta: 13px; --fs-note: 15px; --fs-body: 17px; --fs-head: 20px; --fs-level: 30px; --fs-title: 36px; --fs-hero: 72px;
+  /* The app's sky and glass (index.html): the picture's top colour, a frosted tile, the empty part of
+     a bar, and an overflow quiet or not reporting. Here so that the two stylesheets keep one set. */
+  --sky: #dfe6e7; --glass: rgba(255, 255, 255, .76); --track: rgba(27, 35, 40, .13); --ov-quiet: #5b6470; --ov-off: #b3bac2;
 }
 @media (max-width: 540px) { :root { --fs-title: 30px; } }
 
