@@ -250,6 +250,7 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
     ov = upstream_overflows(net, pin, ov_all, velocity_ms=v, max_km=max_km)
     now_risk, now_contrib = live_now_risk(ov, now)
     live_n = int(ov["has_live"].sum()) if not ov.empty else 0
+    feed_down = feed_down_summary(ov)
 
     weights = ov["weight"].to_numpy(dtype=float) if not ov.empty else np.zeros(0)
     travel = ov["travel_h"].to_numpy(dtype=float) if not ov.empty else np.zeros(0)
@@ -323,7 +324,11 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
         "risk": round(now_risk, 3), "label": risk_label(now_risk),
         "discharging_upstream": int((ov["status"] == 1).sum()) if not ov.empty else 0,
         "recent_upstream": int(now_contrib.gt(0).sum()) - (int((ov["status"] == 1).sum()) if not ov.empty else 0),
-        "monitored_upstream": live_n,
+        # Reporting in this update: an overflow whose company feed failed is carried with its
+        # last snapshot (ingest.live.carry_forward), so it has a live feed but no status now.
+        "monitored_upstream": live_n - sum(f["overflows"] for f in feed_down),
+        "feed_down_upstream": sum(f["overflows"] for f in feed_down),
+        "feed_down": feed_down,
     }
     out["days"] = day_rows
     out["upstream_summary"] = {
@@ -378,6 +383,23 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
                          available=avail, rain_mm=rain_mm, version=model_version())
         except Exception as e:  # noqa: BLE001 - logging must never fail a forecast
             log.warning("forecast log failed: %s", e)
+    return out
+
+
+def feed_down_summary(ov: pd.DataFrame) -> list[dict]:
+    """Per company whose live feed did not answer the last poll: how many of these
+    overflows it covers and when its feed last answered."""
+    from dipcast.ingest.live import FEED_DOWN
+    if ov.empty or "status" not in ov:
+        return []
+    down = ov[ov["status"] == FEED_DOWN]
+    if down.empty:
+        return []
+    since = pd.to_datetime(down["feed_down_since"], utc=True) if "feed_down_since" in down else pd.Series(pd.NaT, index=down.index)
+    out = []
+    for c, g in down.groupby(down["company"].fillna("unknown")):
+        t = since.loc[g.index].min()
+        out.append({"company": str(c), "overflows": int(len(g)), "since": None if pd.isna(t) else t.isoformat()})
     return out
 
 

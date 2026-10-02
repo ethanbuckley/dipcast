@@ -24,8 +24,15 @@ Scoring rules (16 Sep 2026):
   or the last and midnight) longer than MAX_GAP_H, from a feed that looked current,
   and at least once the next day (live_coverage.parquet, written by
   ingest.live.save_live). A poll gap, an offline monitor, a stale or dead company
-  feed is a missing observation, not a dry day. Days from before the coverage file
-  existed are not scored. Scores under a stricter gap rule are reported alongside.
+  feed is a missing observation, not a dry day. A feed that stamps no record
+  (South West Water's: no LastUpdated, no event times) is never current, so its
+  overflows are not scored. Days from before the observation masks existed
+  (observations_from) are not scored and are left out of the scoring window.
+  Scores under a stricter gap rule are reported alongside.
+* Spills. An overflow-day is a spill if a poll saw an event that touched that day
+  (latest event start to end, or to the poll time while still discharging), or saw
+  the overflow discharging with no event times, which counts on the local day of
+  that poll.
 * Versions. Every logged forecast carries a compact version stamp (spill model,
   calibration map, E. coli model, code, weather source); scores are broken down
   by stamp so successive changes are not mixed in one table.
@@ -138,12 +145,16 @@ def log_forecast(issued_at: pd.Timestamp, lat: float, lon: float, mode: str, wat
 
 def observed_spill_days(history: pd.DataFrame) -> pd.DataFrame:
     """(site_id, day) pairs with a recorded discharge, from accumulated live polls.
-    An overflow still discharging at poll time is open-ended, so its end is the poll time."""
+    An overflow still discharging at poll time is open-ended, so its end is the poll time.
+    An overflow discharging at poll time with no event start (South West Water's feed
+    publishes none) discharged at least at that moment: a spill on the poll's local day."""
     h = history.copy()
     start = pd.to_datetime(h["latest_event_start"], utc=True)
     end = pd.to_datetime(h["latest_event_end"], utc=True)
     fetched = pd.to_datetime(h["fetched_at"], utc=True)
-    end = end.where(~((h["status"] == 1) & end.isna()), fetched)
+    discharging = h["status"] == 1
+    start = start.where(~(discharging & start.isna()), fetched)
+    end = end.where(~(discharging & end.isna()), fetched)
     end = end.fillna(start)
     ok = start.notna()
     if not ok.any():   # a fresh history with no recorded event at all
@@ -235,15 +246,14 @@ def observations_from(cov: pd.DataFrame) -> str | None:
     return str(masked.min()) if len(masked) else None
 
 
-def covered_site_days(cov: pd.DataFrame, min_known: int = MIN_KNOWN_POLLS,
-                      max_gap_h: float = MAX_GAP_H) -> pd.DataFrame:
-    """(site_id, day) pairs whose observation supports a 'no spill' verdict: at
-    least `min_known` known-status polls that day from a current feed, no
-    unobserved stretch longer than `max_gap_h` (including the edges of the day),
-    and one observation the day after (so an event that ended late is still visible
-    in the feed's latest-event fields). Returns the stats too, for reporting."""
+def coverage_checks(cov: pd.DataFrame, min_known: int = MIN_KNOWN_POLLS,
+                    max_gap_h: float = MAX_GAP_H) -> pd.DataFrame:
+    """Per observed (site_id, day): the stats and which of the coverage rules it
+    passes (ok_gap, ok_polls, ok_next). covered_site_days keeps the rows passing all
+    three; uncovered_reasons names the first rule each failing row breaks."""
+    cols = ["site_id", "day", "n_known", "n_slots", "max_gap_h", "ok_gap", "ok_polls", "ok_next"]
     if cov.empty:
-        return pd.DataFrame(columns=["site_id", "day", "n_known", "n_slots", "max_gap_h"])
+        return pd.DataFrame(columns=cols)
     c = cov.groupby(["site_id", "day"], as_index=False).agg(
         n_known=("n_known", "sum"), n_stale=("n_stale", "sum"),
         slots=("slots", lambda s: int(np.bitwise_or.reduce(s.to_numpy(dtype="int64")))))
@@ -253,8 +263,69 @@ def covered_site_days(cov: pd.DataFrame, min_known: int = MIN_KNOWN_POLLS,
     nxt["day"] = nxt["day"].dt.date
     nxt = nxt.rename(columns={"n_known": "n_known_next"})
     m = c.merge(nxt, on=["site_id", "day"], how="left")
-    ok = ((m["n_known"] - m["n_stale"]) >= min_known) & (m["max_gap_h"] <= max_gap_h) & (m["n_known_next"].fillna(0) >= 1)
+    m["ok_gap"] = m["max_gap_h"] <= max_gap_h
+    m["ok_polls"] = (m["n_known"] - m["n_stale"]) >= min_known
+    m["ok_next"] = m["n_known_next"].fillna(0) >= 1
+    return m[cols].reset_index(drop=True)
+
+
+def covered_site_days(cov: pd.DataFrame, min_known: int = MIN_KNOWN_POLLS,
+                      max_gap_h: float = MAX_GAP_H) -> pd.DataFrame:
+    """(site_id, day) pairs whose observation supports a 'no spill' verdict: at
+    least `min_known` known-status polls that day from a current feed, no
+    unobserved stretch longer than `max_gap_h` (including the edges of the day),
+    and one observation the day after (so an event that ended late is still visible
+    in the feed's latest-event fields). Returns the stats too, for reporting."""
+    m = coverage_checks(cov, min_known, max_gap_h)
+    if m.empty:
+        return m[["site_id", "day", "n_known", "n_slots", "max_gap_h"]]
+    ok = m["ok_gap"] & m["ok_polls"] & m["ok_next"]
     return m.loc[ok, ["site_id", "day", "n_known", "n_slots", "max_gap_h"]].reset_index(drop=True)
+
+
+POLL_LOG_FILE = "poll_log.parquet"
+# Why an overflow-day was not scored, in the order the rules are checked; the first one
+# a day breaks is the one it is counted under. They sum to n_uncovered.
+UNCOVERED_REASONS = ["before_observations", "feed_not_current", "max_gap", "min_known_polls", "next_day_unobserved"]
+
+
+def unstamped_feed_days(poll_log: pd.DataFrame | None) -> pd.DataFrame:
+    """(company, day) pairs, local days, on which a company's feed returned rows but no
+    poll carried a record stamp (feed_age_h NaN): nothing showed the feed was current.
+    South West Water's feed has no LastUpdated and no event times, so its polls see only
+    what is discharging at that moment. The coverage file marks such polls stale from
+    2 Oct 2026; this applies the same rule to the days polled before then."""
+    empty = pd.DataFrame({"company": pd.Series(dtype=str), "day": pd.Series(dtype=object)})
+    if poll_log is None or poll_log.empty:
+        return empty
+    pl = poll_log[poll_log["n_rows"] > 0].copy()
+    if pl.empty:
+        return empty
+    pl["day"] = pd.to_datetime(pl["fetched_at"], utc=True).dt.tz_convert(LOCAL_TZ).dt.date
+    stamped = pl.groupby(["company", "day"])["feed_age_h"].apply(lambda a: bool(a.notna().any())).reset_index(name="stamped")
+    return stamped.loc[~stamped["stamped"], ["company", "day"]].reset_index(drop=True)
+
+
+def load_poll_log() -> pd.DataFrame | None:
+    p = config.state_read(POLL_LOG_FILE)
+    return pd.read_parquet(p) if p.exists() else None
+
+
+def uncovered_reasons(keys: pd.DataFrame, checks: pd.DataFrame, not_current: pd.DataFrame,
+                      observations_from: str | None) -> pd.Series:
+    """For each (site_id, day) in `keys`, the first coverage rule it breaks (one of
+    UNCOVERED_REASONS), or None if it can be scored. `checks` is coverage_checks();
+    `not_current` the (site_id, day) pairs whose feed was not current that day."""
+    k = keys[["site_id", "day"]].reset_index(drop=True)
+    m = k.merge(checks, on=["site_id", "day"], how="left")
+    m = m.merge(not_current[["site_id", "day"]].drop_duplicates().assign(nc=True), on=["site_id", "day"], how="left")
+    first = pd.Timestamp(observations_from).date() if observations_from else None
+    before = m["day"].map(lambda d: first is None or d < first).astype(bool)
+
+    def flag(c):   # a day with no coverage row was never observed: it fails the gap rule
+        return m[c].astype("boolean").fillna(False).astype(bool)
+    reason = np.select([before, flag("nc"), ~flag("ok_gap"), ~flag("ok_polls"), ~flag("ok_next")], UNCOVERED_REASONS, default="")
+    return pd.Series(np.where(reason == "", None, reason), index=keys.index, dtype=object)
 
 
 def _brier_block(g: pd.DataFrame) -> dict:
@@ -273,6 +344,7 @@ def verify_live(as_of: date | None = None) -> dict:
         try:
             fc = select_decision_forecasts(con, cutoff)
             first_issue = con.execute("SELECT min(issue_day) FROM forecast_overflows").fetchone()[0]
+            first_stamped = con.execute("SELECT min(issue_day) FROM forecast_overflows WHERE version IS NOT NULL").fetchone()[0]
             n_points = con.execute("SELECT count(*) FROM forecast_points").fetchone()[0]
         finally:
             con.close()
@@ -280,8 +352,13 @@ def verify_live(as_of: date | None = None) -> dict:
            "n_point_forecasts": int(n_points), "n_scored": 0,
            "rules": {"decision_hour_local": DECISION_HOUR, "min_known_polls": MIN_KNOWN_POLLS, "max_gap_h": MAX_GAP_H,
                      "strict_gap_h": STRICT_GAP_H, "feed_current_h": 6.0,
+                     "unstamped_feed": "a feed with no record stamp (South West Water's) is never current: its overflows are not scored",
+                     "discharging_without_event_times": "a spill on the local day of the poll that saw it",
                      "baseline": "annual spill count / 365, an approximation (spill-days per counted spill = "
-                                 f"{_spill_days_per_spill():.2f} pooled over United Utilities 2023-25; not checked per overflow or company)"}}
+                                 f"{_spill_days_per_spill():.2f} pooled over United Utilities 2023-25; not checked per overflow or company)"},
+           "units": {"n_point_forecasts": "rows in the spot forecast log: one per spot, issue and target day (not overflow-days)",
+                     "n_candidates": "overflow-days: one monitored overflow on one past target day, with a forecast and rainfall data",
+                     "n_scored": "overflow-days"}}
     hist_path = config.state_read("live_history.parquet")
     if fc.empty or not hist_path.exists():
         return _finish(out, as_of)
@@ -295,18 +372,29 @@ def verify_live(as_of: date | None = None) -> dict:
     fc = fc[fc["before_cutoff"]]
     # Score only overflow-days whose observation supports a verdict either way.
     cov_all = load_coverage()
-    out["observations_from"] = observations_from(cov_all)
-    cov = covered_site_days(cov_all)
+    obs_from = observations_from(cov_all)
+    out["observations_from"] = obs_from
+    # Feeds that stamp no record are never current (see unstamped_feed_days).
+    site_company = hist.drop_duplicates("site_id", keep="last").set_index("site_id")["company"]
+    sites = pd.DataFrame({"site_id": site_company.index.astype(str), "company": site_company.to_numpy()})
+    not_current = sites.merge(unstamped_feed_days(load_poll_log()), on="company")[["site_id", "day"]]
+    keys = fc[["site_id", "target_day"]].rename(columns={"target_day": "day"})
+    fc["reason"] = uncovered_reasons(keys, coverage_checks(cov_all), not_current, obs_from).to_numpy()
+    cov = covered_site_days(cov_all).merge(not_current.assign(nc=True), on=["site_id", "day"], how="left")
+    cov = cov[cov["nc"].isna()].drop(columns="nc")
     out["coverage_from"] = str(cov["day"].min()) if len(cov) else None
     if len(cov):
         out["coverage_stats"] = {"covered_site_days": len(cov), "median_known_polls": float(cov["n_known"].median()),
                                  "median_max_gap_h": float(cov["max_gap_h"].median())}
     strict = covered_site_days(cov_all, max_gap_h=STRICT_GAP_H)[["site_id", "day"]].assign(strict=True)
-    fc = fc.merge(cov[["site_id", "day"]].assign(covered=True), left_on=["site_id", "target_day"], right_on=["site_id", "day"], how="left")
-    fc = fc[fc["covered"].fillna(False).astype(bool)].drop(columns=["covered", "day"])
+    uncovered = fc[fc["reason"].notna()]
+    fc = fc[fc["reason"].isna()].drop(columns="reason")
     fc = fc.merge(strict, left_on=["site_id", "target_day"], right_on=["site_id", "day"], how="left").drop(columns=["day"])
-    fc["strict"] = fc["strict"].fillna(False).astype(bool)
+    fc["strict"] = fc["strict"].astype("boolean").fillna(False).astype(bool)
     out["n_uncovered"] = int(out["n_candidates"] - out["missed_deadline"]["n"] - len(fc))
+    # n_uncovered by the first rule each overflow-day breaks; the parts sum to n_uncovered.
+    out["uncovered_by_reason"] = {r: int((uncovered["reason"] == r).sum()) for r in UNCOVERED_REASONS}
+    out["scoring_window"] = _scoring_window(obs_from, cutoff, missed, uncovered, fc)
     if fc.empty:
         return _finish(out, as_of)
     obs = observed_spill_days(hist)
@@ -345,7 +433,7 @@ def verify_live(as_of: date | None = None) -> dict:
     out["coverage_sensitivity"] = {"default": {"max_gap_h": MAX_GAP_H, **_brier_block(fc)},
                                    "strict": {"max_gap_h": STRICT_GAP_H, **_brier_block(st)} if len(st) else None}
     # By version stamp, so a model or code change is not averaged into the old table.
-    fc["version"] = fc["version"].fillna("unstamped (before 17 Sep 2026)")
+    fc["version"] = fc["version"].fillna(unstamped_label(first_stamped))
     out["by_version"] = [{"version": v, **_brier_block(g), "first_day": str(g["issue_day"].min()), "last_day": str(g["issue_day"].max())}
                          for v, g in fc.groupby("version")]
     # By water company: the spill model was trained on United Utilities only, so this is
@@ -381,6 +469,30 @@ def verify_live(as_of: date | None = None) -> dict:
     if len(fc) >= 200:
         out["reliability"] = reliability_table(y, fc["p_cal"].to_numpy()).round(4).to_dict("records")
     return _finish(out, as_of)
+
+
+def unstamped_label(first_stamped) -> str:
+    """The version label for forecasts logged without a stamp, from the first stamped issue
+    day in the log. Stamping was written on 17 Sep 2026 but reached the live site on 28 Sep."""
+    return f"unstamped (stamps begin {first_stamped})" if first_stamped else "unstamped"
+
+
+def _scoring_window(obs_from: str | None, cutoff: date, missed: pd.DataFrame, uncovered: pd.DataFrame,
+                    scored: pd.DataFrame) -> dict:
+    """The overflow-days that could be scored: target days from the first day with observation
+    masks to yesterday. Days before it cannot be scored under the coverage rule, so they are
+    counted apart (n_before_window) and left out of n_candidates here, which is
+    n_missed_deadline + n_uncovered + n_scored."""
+    first = pd.Timestamp(obs_from).date() if obs_from else None
+    m_in = int(sum(first is not None and d >= first for d in missed["target_day"]))
+    u_in = uncovered[uncovered["reason"] != "before_observations"]
+    n_before = int(len(missed) - m_in + (uncovered["reason"] == "before_observations").sum())
+    return {"unit": "overflow-day", "from_day": obs_from, "to_day": str(cutoff),
+            "n_candidates": m_in + len(u_in) + len(scored), "n_missed_deadline": m_in, "n_uncovered": len(u_in),
+            "uncovered_by_reason": {r: int((u_in["reason"] == r).sum()) for r in UNCOVERED_REASONS[1:]},
+            "n_scored": len(scored), "n_before_window": n_before,
+            "first_scored_day": str(scored["target_day"].min()) if len(scored) else None,
+            "last_scored_day": str(scored["target_day"].max()) if len(scored) else None}
 
 
 def _finish(out: dict, as_of: date) -> dict:
@@ -488,7 +600,11 @@ def refresh_ecoli_samples(force: bool = False) -> pd.DataFrame:
     since = f"{pd.Timestamp.now(tz=LOCAL_TZ).year}-05-01T00:00:00"
     bw, bw_answered, bw_errors = _from_bathing_water_service(sites, since)
     archive, archive_error = _from_archive(sites, since)
-    answered = bw_answered | (set(sites.dropna(subset=["wqa_point"])["bw_id"]) if archive is not None else set())
+    # A site counts as answered when the bathing-water service answered for it or the archive
+    # returned rows for it; the archive's one request succeeding says nothing about each site.
+    archive_sites = set(archive["bw_id"]) if archive is not None and len(archive) else set()
+    answered = bw_answered | archive_sites
+    reached = bool(bw_answered) or archive is not None   # some source answered at all
 
     def clean(part: pd.DataFrame | None) -> pd.DataFrame | None:
         if part is None or not len(part):
@@ -501,24 +617,23 @@ def refresh_ecoli_samples(force: bool = False) -> pd.DataFrame:
     parts = [x for x in (clean(bw), kept, clean(archive)) if x is not None and len(x)]
     df = pd.concat(parts, ignore_index=True).drop_duplicates(["bw_id", "sample_time"], keep="first") if parts else pd.DataFrame()
     now = pd.Timestamp.now(tz=LOCAL_TZ).isoformat(timespec="seconds")
-    if answered:
+    if reached:
         last_ok = now
     else:   # carried over; before the status file existed, the samples file's age says when a fetch last worked
         last_ok = (samples_status() or {}).get("last_ok_at")
         if last_ok is None and p.exists():
             last_ok = pd.Timestamp(p.stat().st_mtime, unit="s", tz="UTC").tz_convert(LOCAL_TZ).isoformat(timespec="seconds")
-    use = df if answered and len(df) else old
-    n_mapped = int(sites["wqa_point"].notna().sum())
+    use = df if reached and len(df) else old
     status = {"checked_at": now, "n_sites": len(sites), "n_failed": len(sites) - len(answered),
-              "all_failed": bool(len(sites)) and not answered, "last_ok_at": last_ok, "n_samples": len(use),
+              "all_failed": bool(len(sites)) and not reached, "last_ok_at": last_ok, "n_samples": len(use),
               "sources": {"bathing_water": {"answered": len(bw_answered), "errors": bw_errors, "refused": "HTTP 403" in bw_errors},
-                          "archive": {"answered": n_mapped if archive is not None else 0, "error": archive_error,
+                          "archive": {"answered": len(archive_sites), "error": archive_error,
                                       "n_samples": 0 if archive is None else len(archive)}}}
     config.state_write(ECOLI_STATUS).write_text(json.dumps(status, indent=1))
     if status["all_failed"]:
         log.error("EA samples: no source answered (%s); E. coli scoring gets no new samples. Last good fetch: %s",
                   describe_fetch(status), last_ok or "never")
-    if not (answered and len(df)):
+    if not (reached and len(df)):
         return old
     df.to_parquet(config.state_write(ECOLI_SAMPLES), index=False)
     log.info("EA samples refreshed: %d this season at %d sites (%s)", len(df), df.bw_id.nunique(), describe_fetch(status))
@@ -556,8 +671,10 @@ def verify_ecoli(as_of: date | None = None) -> dict:
                 SELECT epoch_ms(issued_at) AS issued_ms, lat, lon, target_day, lead, p_ecoli, rain_48h, risk, version
                 FROM forecast_points WHERE p_ecoli IS NOT NULL AND target_day <= ?
             """, [as_of]).df()
+            ms = con.execute("SELECT min(epoch_ms(issued_at)) FROM forecast_points WHERE version IS NOT NULL").fetchone()[0]
         finally:
             con.close()
+    first_stamped = pd.Timestamp(ms, unit="ms", tz="UTC").tz_convert(LOCAL_TZ).date() if ms is not None else None
     out = {"n_forecasts": int(pts[["lat", "lon", "target_day", "lead"]].drop_duplicates().shape[0]) if len(pts) else 0,
            "n_scored": 0, "rule": "latest forecast issued before the sample time, per lead"}
     if pts.empty:
@@ -601,7 +718,7 @@ def verify_ecoli(as_of: date | None = None) -> dict:
         out["in_advance"] = {"n": len(adv), "brier": float(np.mean((pa - ya) ** 2)), "base_rate": float(ya.mean()),
                              "climatology_brier": float(np.mean((adv["p_clim"].to_numpy() - ya) ** 2)),
                              "auc": float(roc_auc_score(ya, pa)) if 0 < ya.mean() < 1 and len(adv) >= 30 else None}
-    m["version"] = m["version"].fillna("unstamped (before 17 Sep 2026)")
+    m["version"] = m["version"].fillna(unstamped_label(first_stamped))
     out["by_version"] = [{"version": v, "n": len(g), "base_rate": float(g["y"].mean()),
                           "brier": float(np.mean((g["p_ecoli"].to_numpy() - g["y"].to_numpy()) ** 2))}
                          for v, g in m.groupby("version")]
