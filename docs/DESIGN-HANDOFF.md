@@ -112,7 +112,7 @@ after, and keep what survives the comparison.
 ## 4. Words to cut, fold or keep
 
 Cut or fold (meaning kept, lines removed):
-- The strip note under the five days: fold it under the existing "What this means"; leave the †
+- The strip note under the five days: fold it under the existing "What this means" (now "What <label> means"); leave the †
   sentence visible only when a † is on screen.
 - Factor rows: one sentence visible, the rest in the row's fold (round four did this for the
   water row; do it for the spills row's second sentence and the EA rating's history clause).
