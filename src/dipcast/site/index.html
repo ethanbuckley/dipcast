@@ -63,9 +63,10 @@
           --radius:8px;
           /* Six type sizes: meta, notes, body, section headings, the headline level, titles (30 on phones). */
           --fs-meta:13px; --fs-note:15px; --fs-body:17px; --fs-head:20px; --fs-level:30px; --fs-title:36px;
-          /* The app's own: the map, the controls that float on it, and the rain bars. The tiles are grey,
-             so the markers are the only colour on the map. */
-          --map-bg:#e4e2dc; --tile-filter:grayscale(1) brightness(1.04) contrast(.95); --float:#fff; --veil:rgba(255,255,255,.9); --lift:0 1px 2px rgba(0,0,0,.12), 0 0 0 1px var(--hair);
+          /* The app's own: the map, the controls that float on it, and the rain bars. The tiles are grey
+             and the water a muted blue (#bccfd8), so the markers stay the only strong colours on the map.
+             CSS cannot pick out one colour, so the filter is the SVG one at the top of <body>. */
+          --map-bg:#e4e2dc; --tile-filter:url(#tiles); --float:#fff; --veil:rgba(255,255,255,.9); --lift:0 1px 2px rgba(0,0,0,.12), 0 0 0 1px var(--hair);
           --rain:#3d8bd4; --header-h:56px;
           --arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235a6166' stroke-width='2'/%3E%3C/svg%3E"); }
   * { box-sizing:border-box; }
@@ -116,7 +117,9 @@
   #app { position:relative; }
   #map-wrap { position:relative; background:var(--map-bg); }
   #map { position:absolute; inset:0; background:var(--map-bg); }
-  .leaflet-tile-pane { filter:var(--tile-filter); }   /* grey tiles, so the level colours carry */
+  /* Each tile through the filter, not the pane they sit in: an SVG filter covers the box of the element
+     it is on, and Leaflet's tile pane is 0 by 0. */
+  .leaflet-container .leaflet-tile { filter:var(--tile-filter); }
   /* Leaflet's own controls in the system: the one lift, the one radius, the site's type and colours.
      Leaflet marks every map .leaflet-touch on any browser with pointer events, and styles the zoom bar
      through that class, so these rules start .leaflet-container to equal it and win by coming later. */
@@ -477,6 +480,25 @@
 </style>
 </head>
 <body class="view-list">
+<!-- The map's tiles (--tile-filter): grey, as grayscale(1) brightness(1.04) contrast(.95) made them
+     (land), with OpenStreetMap's water (#aad3df) moved to a muted blue, #bccfd8 (tint: the grey plus
+     -19, 0 and +9 in 255ths). Water is where blue is above red (r1), green above red (r2) and blue not
+     below green by more than a little (r3); each ramps up, so a shore or a thin river, blended with
+     the land, is tinted in part. Parks and pitches are greener, roads redder and boundaries purple,
+     so they stay grey. In sRGB, the tiles' own space. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <filter id="tiles" color-interpolation-filters="sRGB" x="0" y="0" width="1" height="1">
+    <feColorMatrix in="SourceGraphic" type="matrix" result="r1" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -6.6667 0 6.6667 0 -.13333"/>
+    <feColorMatrix in="SourceGraphic" type="matrix" result="r2" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -10 10 0 0 0"/>
+    <feColorMatrix in="SourceGraphic" type="matrix" result="r3" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 -20 20 0 1"/>
+    <feComposite in="r1" in2="r2" operator="arithmetic" k1="1" result="r12"/>
+    <feComposite in="r12" in2="r3" operator="arithmetic" k1="1" result="water"/>
+    <feColorMatrix in="SourceGraphic" type="matrix" result="land" values=".21 .7066 .0713 0 .025  .21 .7066 .0713 0 .025  .21 .7066 .0713 0 .025  0 0 0 1 0"/>
+    <feColorMatrix in="SourceGraphic" type="matrix" result="tint" values=".21 .7066 .0713 0 -.0499  .21 .7066 .0713 0 .0247  .21 .7066 .0713 0 .06  0 0 0 1 0"/>
+    <feComposite in="tint" in2="water" operator="in" result="blue"/>
+    <feMerge><feMergeNode in="land"/><feMergeNode in="blue"/></feMerge>
+  </filter>
+</svg>
 <a class="skip" href="#panel">Skip to forecasts</a>
 <header class="top" id="top">
   <a class="brand" href="./"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#1a6871"/><path d="M430-20C330 110 470 230 300 290S110 380 190 540" fill="none" stroke="#5CC2B5" stroke-width="70" stroke-linecap="round"/><circle cx="318" cy="138" r="38" fill="#F08A4B"/><circle cx="165" cy="358" r="46" fill="none" stroke="#fff" stroke-width="22"/></svg>SwimSignal</a>
