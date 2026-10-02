@@ -128,8 +128,11 @@ and folds), check (swim log). Inline SVG, so they inherit `currentColor` and nee
 mark is inlined in every header for the same reason: it needs no path to resolve at any depth.
 
 One decorative element, the river line: the mark's river, turned to run across, 120 by 20 px in a
-1.75 px teal stroke (`RIVER` in the page script). It sits under the list's heading and on the empty
-states (no saved spots, no spot matching a search), and nowhere else.
+1.75 px teal stroke (`RIVER` in the page script). It sits under the list's heading, on the empty
+states (no saved spots, no spot matching a search) and under the name on the link-preview card,
+and nowhere else. The card (`icons/og.png`, drawn by `scripts/make_share_image.py`) is the site's
+first screen in small: the paper, the mark, the name in teal over the river line, the tagline in
+ink and one line in the muted grey.
 
 ### Layout
 
