@@ -250,16 +250,18 @@ def build_health(results: list[dict], ecoli_samples: dict | None = None) -> dict
     health = {"spots": n, "forecast_ok": len(ok), "forecast_failed": n - len(ok),
               "no_forecast_possible": len(ok) - len(with_days), "today_rain_unavailable": today_no_data,
               "failed_spots": [r["name"] for r in results if "days" not in r][:20], "warnings": []}
-    if n and len(ok) < MIN_OK_SHARE * n:
-        raise BuildUnhealthy(f"only {len(ok)}/{n} spots got a forecast; not publishing")
-    if with_days and today_no_data > MAX_NO_DATA_SHARE * len(with_days):
-        raise BuildUnhealthy(f"{today_no_data}/{len(ok)} forecasts have no rainfall data for today; not publishing")
+    # Spots on the wrong water, and gauges whose latest reading is old: reported, never a reason not to publish.
+    health["river_levels_stale"] = sum(bool((r.get("river_state") or {}).get("stale")) for r in results)
     misplaced = placement_check(results)
     if misplaced:
         health["placement_check"] = misplaced
         health["warnings"].append(
             f"{len(misplaced)} river spot{'' if len(misplaced) == 1 else 's'} may be on the wrong water (check spots.csv): "
             + "; ".join(f"{m['id']}: {m['reason']}" for m in misplaced))
+    if n and len(ok) < MIN_OK_SHARE * n:
+        raise BuildUnhealthy(f"only {len(ok)}/{n} spots got a forecast; not publishing")
+    if with_days and today_no_data > MAX_NO_DATA_SHARE * len(with_days):
+        raise BuildUnhealthy(f"{today_no_data}/{len(ok)} forecasts have no rainfall data for today; not publishing")
     if ecoli_samples:
         s = ecoli_samples
         health["ecoli_samples"] = {k: s.get(k) for k in ("checked_at", "n_sites", "n_failed", "last_ok_at", "sources")}
@@ -649,7 +651,6 @@ def build(refresh: bool = True) -> dict:
     health = build_health(results, samples_status())   # raises before anything is written if the build is bad
     health["algae_checks"], health["classifications"] = n_algae, n_classified
     health["river_levels"], health["weather"] = n_levels, n_weather
-    health["river_levels_stale"] = sum(bool((r.get("river_state") or {}).get("stale")) for r in results)
     for w in health["warnings"]:
         announce(w)
     (SITE / "data").mkdir(parents=True, exist_ok=True)
