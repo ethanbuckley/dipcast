@@ -27,12 +27,13 @@
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
-<!-- The header's paper, so the browser's own bar runs on from it. The status bar keeps its dark text
-     ("default"): "black-translucent" would put white text over the paper header. -->
-<meta name="theme-color" content="#f6f4ee">
+<!-- The header's slate (--bar), so the browser's own bar runs on from it. The Home Screen app draws
+     under the status bar ("black-translucent"), whose white text then sits on the slate: the
+     header's top padding takes in the safe area. -->
+<meta name="theme-color" content="#3d5b5d">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SwimSignal">
 <!-- Pinned by hash, so a changed file on the CDN is refused rather than run. -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
@@ -57,6 +58,9 @@
           --bg:#f6f4ee; --card:#fff; --ink:#1b2328; --muted:#5a6166; --faint:#676b6e; --line:#e0dbd0; --hair:rgba(27,35,40,.1);
           --hover:#efebe2; --active:#e8e3d8; --field:#fff;
           --brand:#0f5a61; --brand-deep:#0b474d; --brand-tint:#e4f1ef; --link:#0f5a61;
+          /* The header: a slate bar, a darker shade of the picture's nearest fells, with white on it
+             (7.4:1) and the links in 86% white (5.6:1). */
+          --bar:#3d5b5d; --bar-ink:rgba(255,255,255,.86); --bar-hover:rgba(255,255,255,.12);
           /* The levels in one natural palette: moss, ochre, rust and brick. The plain colours mark the
              map, the strips and the rules; the "k" shades are for text. */
           --low:#3b7d4f; --moderate:#b7791f; --high:#c2552a; --veryhigh:#a32d2d; --unknown:#98a2aa; --clear:#4aa39a;
@@ -103,21 +107,19 @@
   .msg { margin:8px 0 0; } .tight, .actions.tight { margin:0; } .below { margin:0 0 6px; } .after { margin-top:16px; }
   /* The one icon set: 1.75 px strokes, round caps, the current colour. */
   .ic { display:inline-block; width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; vertical-align:-3px; }
-  /* The river from the mark, turned to run across: the one decorative line, under the list's heading
-     and on an empty page. */
-  .river { display:block; width:120px; height:20px; color:var(--brand); fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; }
 
-  /* The header, as on every page of the site: on the paper, the mark and the wordmark in teal, the
-     links in ink and a hairline below. The brand's one accent at the top of the page. */
-  .top { position:sticky; top:0; z-index:1100; display:flex; align-items:center; gap:10px; background:var(--bg); color:var(--ink); border-bottom:1px solid var(--line);
+  /* The header, as on every page of the site: the slate bar, the mark, the wordmark and the links in
+     white, the current page underlined in white. It frames the sky below it. */
+  .top { position:sticky; top:0; z-index:1100; display:flex; align-items:center; gap:10px; background:var(--bar); color:#fff;
          padding:calc(9px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 9px calc(16px + env(safe-area-inset-left)); }
-  .brand { display:inline-flex; align-items:center; gap:10px; padding:8px 0; margin:-8px 0; color:var(--brand); text-decoration:none; font:600 var(--fs-head)/1 var(--font-display); letter-spacing:-.005em; }   /* a 44 px target that moves nothing */
+  .brand { display:inline-flex; align-items:center; gap:10px; padding:8px 0; margin:-8px 0; color:#fff; text-decoration:none; font:600 var(--fs-head)/1 var(--font-display); letter-spacing:-.005em; }   /* a 44 px target that moves nothing */
   .brand svg { display:block; width:28px; height:28px; border-radius:6px; }
   .top nav { margin-left:auto; display:flex; align-items:center; gap:4px; }
-  .top nav a, .hbtn { color:var(--ink); text-decoration:none; font-size:var(--fs-note); font-weight:600; line-height:1.2; min-height:44px; display:inline-flex; align-items:center; padding:8px 10px; border-radius:6px; border:0; background:transparent; cursor:pointer; }
-  .top nav a:hover, .hbtn:hover { background:var(--hover); }
-  .top .hbtn[aria-pressed=true], .top .hbtn[aria-current=page] { box-shadow:inset 0 -2px 0 var(--brand); border-radius:0; background:transparent; }
-  .hbtn .n { display:inline-block; min-width:20px; margin-left:6px; padding:0 6px; border-radius:999px; background:var(--brand); color:#fff; font-size:var(--fs-meta); font-weight:600; line-height:20px; text-align:center; vertical-align:1px; }
+  .top nav a, .hbtn { color:var(--bar-ink); text-decoration:none; font-size:var(--fs-note); font-weight:600; line-height:1.2; min-height:44px; display:inline-flex; align-items:center; padding:8px 10px; border-radius:6px; border:0; background:transparent; cursor:pointer; }
+  .top nav a:hover, .hbtn:hover { color:#fff; background:var(--bar-hover); }
+  .top .hbtn[aria-pressed=true], .top .hbtn[aria-current=page] { color:#fff; box-shadow:inset 0 -2px 0 #fff; border-radius:0; background:transparent; }
+  .top :focus-visible { outline-color:#fff; }
+  .hbtn .n { display:inline-block; min-width:20px; margin-left:6px; padding:0 6px; border-radius:999px; background:#fff; color:var(--bar); font-size:var(--fs-meta); font-weight:600; line-height:20px; text-align:center; vertical-align:1px; }
   .hbtn .n[hidden] { display:none; }
 
   #app { position:relative; }
@@ -184,7 +186,7 @@
      it, then the saved spots, then all the spots with their sort and their kinds. */
   .intro { padding:4px 0 0; }
   .intro h1 { font-size:var(--fs-title); line-height:1.1; letter-spacing:-.01em; margin:0; text-wrap:balance; }
-  .intro .river { margin:12px 0; }
+  .intro .lede { margin-top:10px; }
   .lede { color:var(--muted); margin:0; font-size:var(--fs-body); }
   .search { position:relative; margin:16px 0 0; }
   .search svg { position:absolute; left:12px; top:50%; width:18px; height:18px; transform:translateY(-50%); color:var(--faint); pointer-events:none; }
@@ -239,7 +241,6 @@
   .week.rain .wk { justify-content:flex-end; height:40px; }   /* the tallest bar (24 px), the gap and the letter */
   .week.rain .wk i { height:var(--h, 3px); min-height:3px; background:var(--rain); opacity:.85; }
   .empty { padding:24px 0; color:var(--muted); }
-  .empty .river { margin:0 0 12px; }
   .count { font-size:var(--fs-note); color:var(--muted); margin:8px 0 0; }
 
   /* One spot */
@@ -493,7 +494,6 @@
   .linkbtn.small { font-size:inherit; padding:0; }   /* inside a sentence */
   .empty-saved { text-align:center; padding:32px 16px 24px; }
   .empty-saved.tile { padding:28px 16px 20px; }
-  .empty-saved .river { margin:0 auto 16px; }
   /* A list someone shared, offered: the one box on the Saved page while it waits for an answer. */
   .offer { background:var(--card); border-radius:var(--radius); padding:16px 20px; margin:20px 0 0; }
   ul.inc-list { margin:6px 0 12px; padding-left:20px; }
@@ -956,19 +956,19 @@ function summary(d) {
   const why = x => { const t = spilling(x, total); return t ? ': ' + t : ''; };
   // All low: the headline already says so, so say what it rests on rather than repeat it.
   if (!ORDER[peak.label]) out.push(`A spill from the ${total === 1 ? 'overflow' : `${total} overflows`} upstream is unlikely to reach here${known.length === days.length ? '' : ' on any day with a forecast'}.`);
-  else if (peak === days[0]) out.push(`${cap(peak.label)} today${why(peak)}.`);
+  else if (peak === days[0]) out.push(`${cap(peak.label)} risk today${why(peak)}.`);
   else {
-    out.push(hasData(days[0]) ? `${cap(days[0].label)} today.` : 'No forecast for today.');
+    out.push(hasData(days[0]) ? `${cap(days[0].label)} risk today.` : 'No forecast for today.');
     // The badge covers tomorrow, so a raised tomorrow is named even when the worst day is later:
     // "Low today. High on Saturday" sat under a "Moderate" badge.
-    if (peak !== days[1] && days[1] && hasData(days[1]) && ORDER[days[1].label]) out.push(`${cap(days[1].label)} tomorrow.`);
-    out.push(`${cap(peak.label)} ${dayWord(peak.date)}${why(peak)}.`);
+    if (peak !== days[1] && days[1] && hasData(days[1]) && ORDER[days[1].label]) out.push(`${cap(days[1].label)} risk tomorrow.`);
+    out.push(`${cap(peak.label)} risk ${dayWord(peak.date)}${why(peak)}.`);
   }
   const eases = ORDER[peak.label] ? days.slice(days.indexOf(peak) + 1).find(x => hasData(x) && x.label === 'low') : null;
-  if (eases) out.push(`Low again ${dayWord(eases.date)}.`);
-  // Without this, "Low again on Thursday" read as the all-clear when Friday rose again.
+  if (eases) out.push(`Low risk again ${dayWord(eases.date)}.`);
+  // Without this, "Low risk again on Thursday" read as the all-clear when Friday rose again.
   const rises = eases ? days.slice(days.indexOf(eases) + 1).find(x => hasData(x) && ORDER[x.label]) : null;
-  if (rises) out.push(`${cap(rises.label)}${rises.label === peak.label ? ' again' : ''} ${dayWord(rises.date)}.`);
+  if (rises) out.push(`${cap(rises.label)} risk${rises.label === peak.label ? ' again' : ''} ${dayWord(rises.date)}.`);
   return out;
 }
 // What the headline rests on, a row each: the spills, the water and the EA's rating, each with its
@@ -990,7 +990,7 @@ function factors(d) {
   if (d.error) rows.push(factorRow('Sewage spills', null, 'Not covered', esc(d.error)));
   else if (!overflows(d)) rows.push(factorRow('Sewage spills', null, 'None monitored', firstThen(summary(d), note)));
   else { const sp = [ORDER[d.now.label] !== undefined ? d.now.label : null, ...d.days.slice(0, 2).map(x => hasData(x) ? x.label : null)].reduce(higher, null);
-    rows.push(factorRow('Sewage spills upstream', sp, sp ? cap(sp) : 'No data', firstThen(summary(d), note))); }
+    rows.push(factorRow('Sewage spills upstream', sp, sp ? `${cap(sp)} risk` : 'No data', firstThen(summary(d), note))); }
   return `<div class="factors">${rows.join('')}${water(d, d.days.slice(0, 2), ecoliTested(d) ? stripNote(d) : '')}${standing(d)}</div>`;
 }
 // The calibrated number, over the days given: it counts bacteria from any source, so rain can
@@ -1016,7 +1016,7 @@ function water(d, days, note = '') {
 function standing(d) {
   const rows = [], c = classOf(d), cl = d.classification || {};
   const al = algaeLevel(d);
-  if (al) rows.push(factorRow('Algae at the last check', al, cap(al), `The EA sampler saw ${esc(d.algae.phrase)} on ${new Date(d.algae.date + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short'})}. Some algae are toxic; the check cannot tell which.`));
+  if (al) rows.push(factorRow('Algae at the last check', al, `${cap(al)} risk`, `The EA sampler saw ${esc(d.algae.phrase)} on ${new Date(d.algae.date + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short'})}. Some algae are toxic; the check cannot tell which.`));
   // Advice that changes within a season (a pollution incident, an algal bloom) is on the EA's page
   // only: its service refuses the build's machines and does not answer other sites' pages.
   const live = cl.url ? ` <a href="${esc(cl.url)}">The EA's page</a> has its latest samples and any short-term advice against bathing, after pollution or algae, which this page does not include.` : '';
@@ -1106,10 +1106,10 @@ function answerParts(d, iso = null) {
   }
   const l = level(d), [h, w] = headParts(d);
   if (ORDER[l] === undefined) return { word: null, tone: headTone(d), head: h, sub: w ? cap(w) : '', next: '' };
-  // headParts gives the level and when ("High today") and what set it, or a rating, or the week.
-  const when = h.startsWith(cap(l) + ' ') ? h.slice(cap(l).length + 1) : '';
+  // headParts gives the level, "risk" and when ("High risk today") and what set it, or a rating, or the week.
+  const lead = `${cap(l)} risk`, when = h.startsWith(lead + ' ') ? h.slice(lead.length + 1) : '';
   const sub = h === 'Rated poor' ? 'Rated poor: advice against bathing' : h.startsWith('Rated ') ? h
-    : h.startsWith('Low now') ? 'Today and tomorrow' : /^Low (for|on every)/.test(h) ? cap(when) : [w && cap(w), when].filter(Boolean).join(' ');
+    : h.startsWith('Low risk now') ? 'Today and tomorrow' : /^Low risk (for|on every)/.test(h) ? cap(when) : [w && cap(w), when].filter(Boolean).join(' ');
   return { word: cap(l), tone: tone(l), head: '', sub, next: weekNext(d) };
 }
 // Where the five days go from the answer, as Apple's high and low: the day a raised level falls to low
@@ -1122,11 +1122,11 @@ function weekNext(d) {
   if (rank(l0) >= 1) {
     const after = ds.slice(Math.max(0, ds.findIndex(o => o.l === l0)) + 1);
     const to = after.find(o => o.l === 'low') || after.reduce((a, b) => rank(b.l) < rank(a ? a.l : l0) ? b : a, null);
-    if (!to) return ds.every(o => o.l === l0) ? `${cap(l0)} on all five days` : '';
-    return `${cap(to.l)} ${to.x.date === addDays(today(), 1) ? 'tomorrow' : 'by ' + dayName(to.x.date)}`;
+    if (!to) return ds.every(o => o.l === l0) ? `${cap(l0)} risk on all five days` : '';
+    return `${cap(to.l)} risk ${to.x.date === addDays(today(), 1) ? 'tomorrow' : 'by ' + dayName(to.x.date)}`;
   }
   const later = laterDay(d);
-  return later ? `${cap(later[0].level)} on ${dayName(later[1].date)}` : '';
+  return later ? `${cap(later[0].level)} risk on ${dayName(later[1].date)}` : '';
 }
 // The sentence over the five days, as Apple's over its hours: what the overflows upstream are expected
 // to do, not the headline again. A water rated poor says first that every day is at least high; a spot
@@ -1218,7 +1218,7 @@ function facts(d) {
   if (!d.error && !total) out.push({ icon: ICON.spills, label: 'Sewage spills', fig: '0', unit: 'overflows upstream',
     say: `None monitored within ${d.assumptions.max_upstream_km}&nbsp;km upstream.`, more: 'Risk from farms, wildlife and unmonitored sources is not modelled.' });
   else if (!d.error && x0 && hasData(x0)) { const i = x0.risk * 100;
-    out.push({ icon: ICON.spills, label: 'Sewage spills', fig: i > 0 && i < .5 ? '&lt;1' : Math.round(i), unit: 'of 100', word: cap(x0.label), wordTone: tone(x0.label),
+    out.push({ icon: ICON.spills, label: 'Sewage spills', fig: i > 0 && i < .5 ? '&lt;1' : Math.round(i), unit: 'of 100', word: `${cap(x0.label)} risk`, wordTone: tone(x0.label),
       vis: scaleBar(x0.risk, [.15, .40, .70], x0.label, `Exposure index ${Math.round(i)} of 100: ${x0.label}`),
       say: `${cap(spilling(x0, total))} today.`,
       more: 'The exposure index, 0 to 100: the modelled chance that a spill from an overflow upstream reaches the spot, after travel time, die-off and dilution. Low under 15, moderate 15 to 40, high 40 to 70, very high 70 or more. <a href="#about-exposure">What this counts</a>' }); }
@@ -1303,7 +1303,7 @@ function swimsCard() {
   const list = swims().slice().reverse().slice(0, 12); if (!list.length) return '';
   const rows = list.map(x => { const s = DATA.spots.find(y => y.id === x.id), name = s ? s.name : x.id;
     return `<li><span class="swim-when">${new Date(x.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}</span>`
-      + `<span class="swim-what">${s ? `<a href="${esc(spotPath(x.id))}" data-swim-spot="${esc(x.id)}">${esc(name)}</a>` : esc(name)}${x.level ? ` <span class="badge ${cls(x.level)}">${cap(x.level)}</span>` : ''}`
+      + `<span class="swim-what">${s ? `<a href="${esc(spotPath(x.id))}" data-swim-spot="${esc(x.id)}">${esc(name)}</a>` : esc(name)}${x.level ? ` <span class="badge ${cls(x.level)}">${cap(x.level)} risk</span>` : ''}`
       + ` <a class="small" href="${swimFeedback(name, x.date)}">How was it?</a></span>`
       + `<button type="button" class="linkbtn small" data-unswim="${esc(x.id)}" data-date="${x.date}" aria-label="Remove ${esc(name)} on ${x.date} from your swim log">Remove</button></li>`; }).join('');
   return `<section class="sec tile" aria-labelledby="swims-h"><h2 class="sec-h" id="swims-h">Your swims</h2><p class="sub">Logged from a spot's page with "I swam here today", with the forecast level that day. Kept on this device only.</p><ul class="swims" id="swims">${rows}</ul>`
@@ -1405,7 +1405,7 @@ function dayDetail(d, x) {
     + new Date(x.date + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'});
   if (!hasData(x)) rows.push(factorRow('Sewage spills upstream', null, 'No data', 'The rainfall forecast for this day has not arrived, so there is no figure.'));
   else { const i = x.risk * 100, n = first ? d.now.discharging_upstream : 0;
-    rows.push(factorRow('Sewage spills upstream', x.label, cap(x.label), `${cap(spilling(x, total))}.`
+    rows.push(factorRow('Sewage spills upstream', x.label, `${cap(x.label)} risk`, `${cap(spilling(x, total))}.`
       + (n ? ` ${n} of them ${n === 1 ? 'is' : 'are'} discharging now.` : '')
       + ` Exposure index <b>${i > 0 && i < 0.5 ? 'under 1' : Math.round(i)}</b> of 100, after travel time, die-off and dilution. <a href="#about-exposure">What this counts</a>`
       + dayOverflows(d, j))); }
@@ -1510,7 +1510,7 @@ const mapWhen = () => VIEW.day ? dayWord(VIEW.day) : 'today and tomorrow';
 const lowLabel = () => 'Low risk';
 const lowListNote = () => `Low risk from pollution ${mapWhen()}, going by the forecasts and the EA's ratings. Not a safety check: look at the signs at the water before you swim.`;
 const markerTip = s => { const l = mapLevel(s);
-  return `${esc(s.name)}: ${!VIEW.day ? headline(s) : ORDER[l] !== undefined ? `${cap(l)} ${dayWord(VIEW.day)}` : `no level ${dayWord(VIEW.day)}`}`; };
+  return `${esc(s.name)}: ${!VIEW.day ? headline(s) : ORDER[l] !== undefined ? `${cap(l)} risk ${dayWord(VIEW.day)}` : `no level ${dayWord(VIEW.day)}`}`; };
 function styleMarkers() {
   for (const s of DATA.spots) {
     const m = MARKERS.get(s.id), lv = mapLevel(s), on = !VIEW.lowOnly || lv === 'low'; if (!m) continue;
@@ -1594,8 +1594,6 @@ const SORTS = { risk: 'Highest risk', name: 'A–Z', near: 'Near me' };
 const BOOKMARK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>';
 const CHECK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';
 const saveLabel = on => BOOKMARK + (on ? 'Saved' : 'Save');
-// The river from the mark (icons/icon.svg), turned to run across: the one decorative line.
-const RIVER = '<svg class="river" viewBox="0 0 120 20" aria-hidden="true"><path d="M1.5 7.3C32 11.9 42.6-8 66.1 7C89.5 21.9 96.3 22.7 118.5 7.3"/></svg>';
 const SEARCH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>';
 // The counts over the list, after when the forecast was issued: freshness where the list begins.
 function overview(spots) {
@@ -1635,7 +1633,7 @@ function renderList() {
   // The answer first: the intro and one row of controls, with one line under it (the caveat and the
   // week's best day), under the sky (.lead); then the saved spots, as cards on one tile, and all the
   // spots on another. The colour key went: each row says its level in words.
-  let h = `<div class="lead"><section class="intro"><h1>Check the water before you go</h1>${RIVER}<p class="lede">Five-day pollution forecasts for ${DATA.spots.length} spots in England. <a href="#about">How it works</a></p>`
+  let h = `<div class="lead"><section class="intro"><h1>Check the water before you go</h1><p class="lede">Five-day pollution forecasts for ${DATA.spots.length} spots in England. <a href="#about">How it works</a></p>`
     + `<div class="search">${SEARCH_ICON}<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(VIEW.q)}"></div></section>`
     + `<div class="toolbar"><label class="sr" for="listday">When are you swimming?</label><select id="listday"><option value="">Today and tomorrow</option>${[0,1,2,3,4].map(k => addDays(today(), k)).map(iso => `<option value="${iso}"${VIEW.day === iso ? ' selected' : ''}>${dateLabel(iso)}</option>`).join('')}</select>`
     + `<button type="button" class="chip-btn low" data-low aria-pressed="${VIEW.lowOnly}" aria-describedby="low-note-list"><span class="dot" style="background:${colour('low')}"></span><span data-low-t>${lowLabel()}</span></button></div>`
@@ -1707,7 +1705,7 @@ function drawSpots() {
   document.getElementById('overview').textContent = overview(items);
   document.getElementById('untested-note').hidden = !items.some(waterEst);
   ul.innerHTML = items.length ? items.map(spotItem).join('')
-    : `<li class="empty">${RIVER}<p class="below">No spots match. SwimSignal covers ${DATA.spots.length} river and lake spots in England. Missing yours? <a href="feedback.html?type=spot">Request it</a>.</p>`
+    : `<li class="empty"><p class="below">No spots match. SwimSignal covers ${DATA.spots.length} river and lake spots in England. Missing yours? <a href="feedback.html?type=spot">Request it</a>.</p>`
       + `<button type="button" class="btn" id="clear-filters">Clear search and filters</button></li>`;
   document.getElementById('count').textContent = items.length === DATA.spots.length ? `${items.length} spots.` : `Showing ${items.length} of ${DATA.spots.length} spots.`;
   const clear = document.getElementById('clear-filters');
@@ -1788,7 +1786,7 @@ function renderSaved() {
   h += '</div>';
   if (spots.length) h += `<ul class="places" id="scards">${spots.map(s => savedCard(s)).join('')}</ul>`
     + `<p class="small muted msg">Updated ${issued()} (${ago(ageMin())} ago). <a href="#levels">What the levels mean</a>. Forecasts, not water tests: check the signs at the water before you swim.${spots.some(anyUntested) ? ' ' + UNTESTED_NOTE : ''}</p>`;
-  else h += `<div class="empty-saved tile">${RIVER}<h2 class="sec-h">No saved spots yet</h2>`
+  else h += `<div class="empty-saved tile"><h2 class="sec-h">No saved spots yet</h2>`
     + `<p class="sub">Open a spot and press <b>Save</b>. It then shows here with the days ahead.`
     + `${navigator.standalone ? ' Spots saved in Safari do not appear in the Home Screen app: iPhones keep the two apart, so save them again here.' : ''}</p>`
     + `<a class="btn primary" href="${esc(ROOT.pathname)}" id="find">Find a spot</a></div>`;
@@ -1940,7 +1938,7 @@ function tech(d) {
 // Day by day, with the exposure index and the E. coli figure: folded away, one tap to open.
 function dayTable(d, total, isLake, scope) {
   let h = `<details class="tile fold"><summary><span class="t-lab">${ICON.table}<span>Day-by-day numbers</span></span></summary>`
-    + `<table><tr><th>Day</th><th class="num">Exposure</th><th></th><th class="num">E.&nbsp;coli &gt;900</th><th class="num">Rain 48&nbsp;h</th></tr>`;
+    + `<table><tr><th>Day</th><th class="num">Exposure</th><th>Risk</th><th class="num">E.&nbsp;coli &gt;900</th><th class="num">Rain 48&nbsp;h</th></tr>`;
   let anyNoData = false, anyOffSeason = false;
   for (const day of d.days) {
     const noData = !hasData(day); anyNoData = anyNoData || noData;

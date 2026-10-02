@@ -98,19 +98,20 @@ const because = r => r.by === 'spill' ? 'sewage spills'
 // The gist in a few words, for the list and the top of a spot's page: the worst of now, today and
 // tomorrow, when, and what set it; or, if those are all low, the first worse day after them.
 // [the level and when, what set it]; the list joins them, a spot's page puts them on two lines.
+// A level always says "risk": a bare "Very high today" read as very high what.
 function headParts(s) {
   const l = level(s);
   if (l === NO_FORECAST) return ['No forecast in this update', ''];
   if (l === NOT_COVERED) return ['Not covered by the forecast', ''];
   if (l === NO_OVERFLOWS) return ['No monitored overflows upstream', ''];
-  if (!daily(s) && rank(algaeLevel(s)) > rank(CLASS_LEVEL[classOf(s)] ?? null)) return [cap(l), 'algae at the last check'];
+  if (!daily(s) && rank(algaeLevel(s)) > rank(CLASS_LEVEL[classOf(s)] ?? null)) return [`${cap(l)} risk`, 'algae at the last check'];
   if (!daily(s) || worstNear(s)[0].by === 'record')
     return advisedAgainst(s) ? ['Rated poor', 'advice against bathing'] : [`Rated ${classOf(s)} by the EA`, ''];
   const [r, when] = worstNear(s);
-  if (rank(r.level) > 0) return [`${cap(r.level)} ${when}`, because(r)];
+  if (rank(r.level) > 0) return [`${cap(r.level)} risk ${when}`, because(r)];
   const x = laterDay(s);
-  if (x) return [`Low now · ${cap(x[0].level)} on ${shortDay(x[1].date)}`, ''];
-  return [s.days.slice(0, 5).every(hasData) ? 'Low for the next five days' : 'Low on every day with a forecast', ''];
+  if (x) return [`Low risk now · ${cap(x[0].level)} risk on ${shortDay(x[1].date)}`, ''];
+  return [s.days.slice(0, 5).every(hasData) ? 'Low risk for the next five days' : 'Low risk on every day with a forecast', ''];
 }
 const headline = s => headParts(s).filter(Boolean).join(': ');
 // The level on one day (a date in s.days), for the map's day picker and the alerts: where the
@@ -127,7 +128,7 @@ function dayHeadline(s, iso) {
   const x = s.days.slice(0, 5).find(d => d.date === iso), r = x ? risk(s, x) : {level:null};
   if (!r.level) return 'No forecast for this day';
   if (r.by === 'record') return 'Rated poor: advice against bathing';
-  return `${cap(r.level)}${rank(r.level) > 0 ? ': ' + because(r) : ' forecast risk'}`;
+  return `${cap(r.level)}${rank(r.level) > 0 ? ' risk: ' + because(r) : ' forecast risk'}`;
 }
 
 // The day with the most spots at low, among those with a forecast that changes from day to day:

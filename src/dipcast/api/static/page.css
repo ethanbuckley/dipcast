@@ -26,6 +26,9 @@
   --hover: #efebe2; --active: #e8e3d8; --field: #fff;
   /* Brand teal, the one accent. Focus has its own token. */
   --brand: #0f5a61; --brand-deep: #0b474d; --brand-tint: #e4f1ef; --link: #0f5a61;
+  /* The header: a slate bar, a darker shade of the app's picture's nearest fells, with white on it
+     (7.4:1) and the links in 86% white (5.6:1). */
+  --bar: #3d5b5d; --bar-ink: rgba(255, 255, 255, .86); --bar-hover: rgba(255, 255, 255, .12);
   /* Pollution levels in one natural palette: moss, ochre, rust and brick. The plain colours mark the
      map, the day strips and the rules; the "k" shades are for text, 4.5:1 or more on the paper and on white. */
   --low: #3b7d4f; --moderate: #b7791f; --high: #c2552a; --veryhigh: #a32d2d; --unknown: #98a2aa; --clear: #4aa39a;
@@ -52,15 +55,16 @@ a:focus-visible { border-radius: 4px; }   /* a rounded ring on text links; contr
 b, strong { font-weight: 600; }
 code { font: 0.92em var(--font-mono); }
 
-/* The header every page shares: on the paper, the mark and the wordmark in teal, the main links in
-   ink and a hairline below. */
-.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 10px 20px; background: var(--bg); color: var(--ink); border-bottom: 1px solid var(--line); }
-.brand { display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; margin: -8px 0; color: var(--brand); text-decoration: none; font: 600 var(--fs-head)/1 var(--font-display); letter-spacing: -.005em; }   /* a 44 px target that moves nothing */
+/* The header every page shares: the slate bar, the mark, the wordmark and the main links in white,
+   the current page underlined in white. */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 10px 20px; background: var(--bar); color: #fff; }
+.brand { display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; margin: -8px 0; color: #fff; text-decoration: none; font: 600 var(--fs-head)/1 var(--font-display); letter-spacing: -.005em; }   /* a 44 px target that moves nothing */
 .brand svg { display: block; width: 28px; height: 28px; border-radius: 6px; }
 .top nav { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; margin-left: auto; }
-.top nav a { color: var(--ink); text-decoration: none; font-size: var(--fs-note); font-weight: 600; line-height: 1.2; min-height:44px; display:inline-flex; align-items:center; padding: 8px 10px; border-radius: 6px; }
-.top nav a:hover { background: var(--hover); }
-.top nav a[aria-current=page] { box-shadow: inset 0 -2px 0 var(--brand); border-radius: 0; }
+.top nav a { color: var(--bar-ink); text-decoration: none; font-size: var(--fs-note); font-weight: 600; line-height: 1.2; min-height:44px; display:inline-flex; align-items:center; padding: 8px 10px; border-radius: 6px; }
+.top nav a:hover { color: #fff; background: var(--bar-hover); }
+.top nav a[aria-current=page] { color: #fff; box-shadow: inset 0 -2px 0 #fff; border-radius: 0; }
+.top :focus-visible { outline-color: #fff; }
 
 /* On a phone the brand and the four links each get a complete row. */
 @media (max-width: 540px) {
