@@ -50,7 +50,7 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     assert '<link rel="canonical" href="https://example.org/swim/">' in home
     assert '<base href="./">' in home.split("</head>")[0]   # pushState to spot/<id>/ must not move its links
     assert "Loading forecasts…" in home
-    for f in ["sw.js", "manifest.webmanifest", "icons/og.png", "verification.html", "privacy.html", "page.css", ".nojekyll", "404.html", "robots.txt",
+    for f in ["sw.js", "manifest.webmanifest", "icons/og.png", "icons/fells.webp", "verification.html", "privacy.html", "page.css", ".nojekyll", "404.html", "robots.txt",
               "fonts/SourceSans3-latin.woff2", "fonts/SourceSerif4-latin.woff2", "fonts/LICENSE.txt"]:   # the typefaces page.css declares
         assert (tmp_path / f).exists(), f
     # GitHub Pages serves 404.html at any depth, so its links must be absolute; search engines may not keep it.
