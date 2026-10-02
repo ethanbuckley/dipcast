@@ -29,6 +29,7 @@ from shapely.geometry import Point
 
 from dipcast import config
 from dipcast.ingest.lakes import load_lakes
+from dipcast.network.names import river_words
 from dipcast.network.rivers import RiverNetwork, Snap, lonlat_to_bng
 
 log = logging.getLogger(__name__)
@@ -63,6 +64,9 @@ class PinLocation:
     lake_area_km2: float | None = None
     lake_source: str | None = None     # 'polygon' (WFD) or 'centreline' (OS Open Rivers only)
     adopted_main_channel: bool = False # pin was on a side channel; traced the main river instead
+    placement: str | None = None       # with a river hint: 'on river' (nearest link is that river),
+                                       # 'moved to river' (a nearer link of another name was passed over),
+                                       # 'river not found' (none within HINT_SNAP_M; nearest kept)
 
 
 PIN_SNAP_M = 1_500.0    # users click imprecisely; allow a wider search than for outfalls
@@ -70,18 +74,31 @@ LAKE_BIAS = 0.5         # lake centrelines sit further from the shore than inflo
 ADOPT_RADIUS_M = 500.0  # side channels: look this far for the main channel
 ADOPT_MIN_M = 5_000.0   # ...when the snapped link has less than this much network upstream
 ADOPT_RATIO = 5.0       # ...and the alternative has at least this many times more
+HINT_SNAP_M = 1_000.0   # a spot's named river this close beats a nearer link of another name
+RIVER_FORMS = ("inlandRiver", "tidalRiver")
 
 
-def _adopt_main_channel(net: RiverNetwork, x: float, y: float, river: Snap) -> tuple[Snap, bool]:
+def _names_match(cand: pd.DataFrame, want: frozenset[str]) -> pd.Series:
+    """Which candidate links carry the wanted river's name, as their name or OS's alternative
+    (Welsh links often have the English name there)."""
+    return (cand["watercourse_name"].map(lambda n: bool(river_words(n) & want) if isinstance(n, str) else False)
+            | cand.get("watercourse_name_alternative", pd.Series(None, index=cand.index, dtype=object)).map(lambda n: bool(river_words(n) & want) if isinstance(n, str) else False))
+
+
+def _adopt_main_channel(net: RiverNetwork, x: float, y: float, river: Snap,
+                        want: frozenset[str] | None = None) -> tuple[Snap, bool]:
     """A pin on a mill stream, leat or braided side channel is in main-channel
     water, but OS Open Rivers often leaves such channels disconnected upstream.
     If the snapped link has a tiny upstream network and a nearby river link has a
-    much larger one, snap to that link instead."""
+    much larger one, snap to that link instead. With `want` (a river's words), only
+    links carrying that name are considered."""
     own = net.link_upstream_m(river.link_id)
     if own >= ADOPT_MIN_M:
         return river, False
     cand = net.candidates_xy(x, y, ADOPT_RADIUS_M)
-    cand = cand[cand["form"].isin(["inlandRiver", "tidalRiver"]) & (cand.index != river.link_id)]
+    cand = cand[cand["form"].isin(RIVER_FORMS) & (cand.index != river.link_id)]
+    if want:
+        cand = cand[_names_match(cand, want)]
     if cand.empty:
         return river, False
     ups = cand["start_node"].map(net.upstream_m).fillna(0.0)
@@ -122,13 +139,56 @@ def _snap_to_links(net: RiverNetwork, x: float, y: float, link_ids: set[str]) ->
     return Snap(link_id=lid, frac=frac, dist_m=float(d.min()), form=sub.loc[lid, "form"], x=sp.x, y=sp.y)
 
 
-def locate_pin(net: RiverNetwork, lon: float, lat: float, kind_hint: str | None = None) -> PinLocation:
+def locate_pin(net: RiverNetwork, lon: float, lat: float, kind_hint: str | None = None,
+               river_hint: str | None = None) -> PinLocation:
     """`kind_hint` = 'lake' says the caller knows this is a lake (e.g. a designated
     lake bathing water or a curated spot). A lake with no WFD polygon and no lake
     centreline nearby is then treated as isolated rather than snapped to whatever
-    river passes closest, which would credit it with that river's overflows."""
-    x, y = lonlat_to_bng(lon, lat)
+    river passes closest, which would credit it with that river's overflows.
 
+    `river_hint` is the river the spot is on (spots.csv's `river` column). The pin
+    goes to the nearest link carrying that name (or OS's alternative name, so
+    "River Wye" finds "Afon Gwy") within HINT_SNAP_M, even when a link of another
+    name is nearer: Crook o' Lune sat 262 m from Escow Beck and 672 m from the Lune
+    and was traced up the beck, finding no overflows (2 Oct 2026). With no such link
+    the nearest is kept, with a warning. Ignored for lakes."""
+    x, y = lonlat_to_bng(lon, lat)
+    pin = _locate(net, x, y, kind_hint)
+    if river_hint and kind_hint != "lake":
+        pin = _apply_river_hint(net, pin, river_hint)
+    return pin
+
+
+def _apply_river_hint(net: RiverNetwork, pin: PinLocation, hint: str) -> PinLocation:
+    want = river_words(hint)
+    shown = river_words(hint, welsh=False)   # the name is shown as spots.csv spells it, Welsh or English
+    if not want:
+        return pin
+    if pin.mode == "river" and pin.snap is not None:
+        own = net.links.loc[[pin.snap.link_id]]
+        if bool(_names_match(own, want).iloc[0]):   # the link itself, not a name borrowed from downstream
+            pin.watercourse = _link_name(net, pin.snap.link_id, prefer=shown)
+            pin.placement = "on river"
+            return pin
+    cand = net.candidates_xy(pin.x, pin.y, HINT_SNAP_M)
+    cand = cand[cand["form"].isin(RIVER_FORMS)]
+    cand = cand[_names_match(cand, want)]
+    if cand.empty:
+        log.warning("no link named like %r within %.0f m of (%.0f, %.0f); kept the nearest, %s",
+                    hint, HINT_SNAP_M, pin.x, pin.y, pin.watercourse)
+        pin.placement = "river not found"
+        return pin
+    snap = _snap_to_links(net, pin.x, pin.y, {cand.index[0]})
+    snap, adopted = _adopt_main_channel(net, pin.x, pin.y, snap, want=want)
+    log.info("placed on %s %.0f m away rather than %s", hint, snap.dist_m, pin.watercourse)
+    start, _ = net.link_nodes(snap.link_id)
+    return PinLocation("river", pin.x, pin.y, snap, trace_node=start,
+                       trace_offset_m=snap.frac * net.links.loc[snap.link_id, "length"],
+                       watercourse=_link_name(net, snap.link_id, prefer=shown), adopted_main_channel=adopted,
+                       placement="moved to river")
+
+
+def _locate(net: RiverNetwork, x: float, y: float, kind_hint: str | None) -> PinLocation:
     # 1. Inside (or on the shore of) a WFD lake polygon: the lake's centreline
     #    links are the ones intersecting the polygon.
     poly = _lake_polygon_at(x, y)
@@ -173,14 +233,21 @@ def locate_pin(net: RiverNetwork, lon: float, lat: float, kind_hint: str | None 
                        watercourse=_link_name(net, river.link_id), adopted_main_channel=adopted)
 
 
-def _link_name(net: RiverNetwork, link_id: str, max_steps: int = 12) -> str | None:
-    """Name of the link, else the first named link downstream (the river it feeds)."""
+def _link_name(net: RiverNetwork, link_id: str, max_steps: int = 12,
+               prefer: frozenset[str] | None = None) -> str | None:
+    """Name of the link, else the first named link downstream (the river it feeds).
+    With `prefer` (a river's words), OS's alternative name is given when it is the one
+    spelt that way: "River Wye" rather than "Afon Gwy" for a spot said to be on the River Wye."""
     lid = link_id
     for _ in range(max_steps):
         if lid not in net.links.index:
             return None
         name = net.links.loc[lid, "watercourse_name"]
         if isinstance(name, str) and name:
+            alt = net.links.loc[lid].get("watercourse_name_alternative")
+            if (prefer and isinstance(alt, str) and alt and river_words(alt, welsh=False) & prefer
+                    and not river_words(name, welsh=False) & prefer):
+                return alt
             return name
         end = net.links.loc[lid, "end_node"]
         succ = list(net.graph.successors(end))

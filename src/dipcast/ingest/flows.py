@@ -10,14 +10,17 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from urllib.parse import urlsplit, urlunsplit
 
 import httpx
 
 from dipcast import config
+from dipcast.network.names import river_words
 
 log = logging.getLogger(__name__)
 
+MAX_READING_AGE_H = 24.0   # an older "latest" reading is not today's level: a gauge can go quiet for weeks
 EA_TIMEOUT_S = 4.0          # the EA API is sometimes very slow; never let it stall a forecast
 _STATION_CACHE: dict[tuple[float, float], tuple[float, RiverState | None]] = {}
 _STATION_TTL_S = 1800.0
@@ -60,6 +63,24 @@ class RiverState:
             return None
         return (self.level_m - self.typical_low) / rng
 
+    def age_hours(self, now: datetime | None = None) -> float | None:
+        """Hours since the reading was taken; None if the time is missing or unreadable."""
+        if not self.observed_at:
+            return None
+        try:
+            t = datetime.fromisoformat(str(self.observed_at))   # Python 3.11+ reads the trailing Z
+        except ValueError:
+            return None
+        if t.tzinfo is None:
+            t = t.replace(tzinfo=UTC)
+        return ((now or datetime.now(UTC)) - t).total_seconds() / 3600.0
+
+    def is_stale(self, now: datetime | None = None, max_age_h: float = MAX_READING_AGE_H) -> bool:
+        """The EA's "latest" reading can be weeks old (Salisbury's was 708 h on 2 Oct 2026); one
+        older than `max_age_h`, or with no time, is not the river's level now."""
+        age = self.age_hours(now)
+        return age is None or age > max_age_h
+
     @property
     def label(self) -> str:
         i = self.index
@@ -89,12 +110,8 @@ def nearest_level_station(lat: float, lon: float, dist_km: int = 15, river: str 
     return st
 
 
-_GENERIC = {"river", "beck", "brook", "water", "the", "stream", "burn", "canal", "lake", "mere", "tarn", "reservoir"}
-
-
-def _river_words(name: str | None) -> frozenset[str]:
-    """The distinctive words of a watercourse name: "River Wharfe" and "Wharfe" both give {wharfe}."""
-    return frozenset(w for w in (name or "").lower().replace("-", " ").split() if w.isalpha() and w not in _GENERIC)
+# The distinctive words of a watercourse name, Welsh names read as English ("Afon Gwy" -> {wye}).
+_river_words = river_words
 
 
 def _nearest_level_station(lat: float, lon: float, dist_km: int = 15, river: str | None = None) -> RiverState | None:

@@ -124,7 +124,12 @@ class RiverNetwork:
     @classmethod
     def from_gpkg(cls, path: Path = config.RIVERS_GPKG) -> RiverNetwork:
         log.info("reading %s ...", path)
-        links = gpd.read_file(path, layer="watercourse_link")
+        return cls.from_links(gpd.read_file(path, layer="watercourse_link"))
+
+    @classmethod
+    def from_links(cls, links: gpd.GeoDataFrame) -> RiverNetwork:
+        """The network from OS Open Rivers' watercourse_link layer (or a small frame with the
+        same columns, as the tests build)."""
         links = links.set_index("id", drop=False)
         # Orient every link in the direction of flow.
         rev = links["flow_direction"].eq("in opposite direction")
