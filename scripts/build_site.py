@@ -82,8 +82,8 @@ SITE_URL_ENV = "DIPCAST_SITE_URL"
 # string is the privacy notice's own lead, so the terms page's date is not touched.
 COUNTER_TOKEN_ENV = "DIPCAST_CF_BEACON_TOKEN"
 COUNTER_JS = TEMPLATE.parent / "counter.js"
-NO_COUNTER = ("and what it does not. Last updated 1 October 2026.", "There is no analytics script and no third-party tracking.")
-WITH_COUNTER = ("and what it does not. Last updated 1 October 2026 (page-view counter).",
+NO_COUNTER = ("and what it does not. Last updated 2 October 2026.", "There is no analytics script and no third-party tracking.")
+WITH_COUNTER = ("and what it does not. Last updated 2 October 2026 (page-view counter).",
                 ("Page views are counted with Cloudflare Web Analytics. Cloudflare states that it sets no cookies, "
                  "uses no local storage and does not fingerprint visitors. It sees your IP address when the counter "
                  "loads, as any web server would, and its "
@@ -161,13 +161,15 @@ PUSH_PRIVACY = (
     "saved spots, and nothing else: no name, email address or location. It uses them only to send a notification "
     "when one of those spots' forecast turns high. Each notification passes through your browser maker's push "
     "service, encrypted so that the push service cannot read it; that company is responsible for its own service. "
-    "Your browser also keeps a note of what it last sent, so that an unchanged list is not sent again. The basis is "
+    "Your browser also keeps a note of what it last sent, so that an unchanged list is sent again only about once a "
+    "week. The basis is "
     "your consent: you turn alerts on, and you can turn them off on the Saved page at any time, which withdraws it. "
     "An alert can be late or not come at all, so no alert does not mean the water is clean. The record is kept "
     "until you turn alerts off, remove all your saved spots or turn off the offline copy (alerts need it), or until "
     "your browser's push service says the address no longer works; then it is deleted. The alert service runs on "
     "Cloudflare Workers, which may handle the record outside the UK under its own safeguards, and which sees your "
-    "IP address when you turn alerts on or off or change your saved spots, as any web server would; "
+    "IP address when you turn alerts on or off or change your saved spots, and about once a week when you open the "
+    "site, as any web server would; "
     '<a href="https://www.cloudflare.com/privacypolicy/">Cloudflare\'s privacy policy</a> applies to that.</p>')
 
 
