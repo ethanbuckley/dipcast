@@ -315,10 +315,10 @@ What makes Apple's page clean, and what was taken from it:
 - **A sentence over the days**, as Apple's over its hours, saying something the headline does not:
   "About 13 of the 60 overflows upstream are expected to spill today, fewer each day after."
 - **Data drawn.** The five days are rows with a bar of four bands, filled into the day's band and
-  placed in it by what set the level (the spill exposure, the E. coli chance where it counts, the
+  placed in it by what set the level (the exposure index, the E. coli estimate where it counts, the
   foot of high for a water rated poor), so the bar always agrees with the word beside it. Drawn
   from the spills alone, a water rated poor showed "High" beside an almost empty bar. The tiles draw
-  the exposure and the E. coli chance on stepped scales, the river's level on its usual range, every
+  the exposure index and the E. coli estimate on stepped scales, the river's level on its usual range, every
   overflow upstream as a dot, the rain as columns and the sun's path over the day.
 - **One anatomy.** Every tile is a label with its icon, one figure, one drawing, one sentence, and
   the rest of the explanation behind a chevron in its corner: Sewage spills, Water quality, Right

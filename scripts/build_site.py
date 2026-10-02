@@ -298,7 +298,8 @@ def data_credits(root: str) -> dict:
             "database right, OGL v3.0; river levels: this uses Environment Agency flood and river level data from the "
             "real-time data API (Beta). Contains OS data © Crown copyright and database right 2026. Weather data by "
             "Open-Meteo.com, CC BY 4.0, from Met Office forecasts © Crown copyright, CC BY-SA 4.0: rainfall figures "
-            "stay under CC BY-SA 4.0. The models were trained on ERA5-Land reanalysis: contains modified Copernicus "
+            "stay under CC BY-SA 4.0. The models were trained on ERA5-Land reanalysis (doi:10.24381/cds.e2161bac): "
+            "contains modified Copernicus "
             "Climate Change Service information 2026; neither the European Commission nor ECMWF is responsible for any "
             "use that may be made of the Copernicus information or data it contains."),
         "modified": ("Combined, filtered and modelled by SwimSignal. The forecasts, levels and scores are SwimSignal's own "

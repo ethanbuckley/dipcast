@@ -49,7 +49,7 @@ td.bars { width:38%; padding-top:10px; }
 <div id="live"></div>
 <div id="offline"></div>
 
-<p class="note">Model and verification code: open source under MIT. Live scores use the water companies' published overflow status; an overflow counts as spilling on a day if any published event overlaps it. An overflow-day counts as "no spill" only if that overflow was observed with a known status at least six times that day and once the next day; a poll gap, an offline monitor or a dead feed is a missing observation, not a dry day. The forecast scored for each day is the one available at 08:00 local time on the day it was issued.<br><br>Data: storm overflow status and United Utilities' event history from the water companies via the National Storm Overflow Hub and Stream, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Bathing water ratings and in-season samples © Environment Agency copyright and/or database right 2016, and E. coli results from the Water Quality Explorer © Environment Agency copyright and/or database right 2025, <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">OGL v3.0</a>. <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a>, CC BY 4.0, from Met Office forecasts © Crown copyright, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>, and ERA5-Land reanalysis: contains modified Copernicus Climate Change Service information 2026; neither the European Commission nor ECMWF is responsible for any use that may be made of the Copernicus information or data it contains. Scores are SwimSignal's; none of these bodies endorses it. <a href="/terms#data">All credits and licences</a>.</p>
+<p class="note">Model and verification code: open source under MIT. Live scores use the water companies' published overflow status; an overflow counts as spilling on a day if any published event overlaps it. An overflow-day counts as "no spill" only if that overflow was observed with a known status at least six times that day and once the next day; a poll gap, an offline monitor or a dead feed is a missing observation, not a dry day. The forecast scored for each day is the one available at 08:00 local time on the day it was issued.<br><br>Data: storm overflow status and United Utilities' event history from the water companies via the National Storm Overflow Hub and Stream, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Bathing water ratings and in-season samples © Environment Agency copyright and/or database right 2016, and E. coli results from the Water Quality Explorer © Environment Agency copyright and/or database right 2025, <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">OGL v3.0</a>. <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a>, CC BY 4.0, from Met Office forecasts © Crown copyright, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>, and ERA5-Land reanalysis (<a href="https://doi.org/10.24381/cds.e2161bac">doi:10.24381/cds.e2161bac</a>): contains modified Copernicus Climate Change Service information 2026; neither the European Commission nor ECMWF is responsible for any use that may be made of the Copernicus information or data it contains. Scores are SwimSignal's; none of these bodies endorses it. <a href="/terms#data">All credits and licences</a>.</p>
 </main>
 <footer class="site-foot"><div class="rule"><p>SwimSignal is a free, non-commercial pollution risk forecast for river and lake swim spots in England, run by Ethan Buckley. A forecast, not a water test: check the signs at the water before you swim.</p>
 <p><a href="/terms">Terms of use</a> · <a href="/privacy">Privacy</a> · <a href="/feedback">Feedback</a> · <a href="/terms#data">Data credits</a> · <a href="https://github.com/ethanbuckley/swimsignal">Source code</a> (MIT)</p></div></footer>
@@ -60,9 +60,10 @@ const day = iso => iso ? new Date(iso + 'T12:00:00').toLocaleDateString('en-GB',
 // The model names in the data files come from the training scripts, which still say dipcast (the package's
 // name): the page shows the product's.
 const model = s => String(s).replace(/\bdipcast\b/g, 'SwimSignal').replace(/\bspill exposure\b/g, 'exposure index');
-// The first target day the live scores cover. first_forecast_day is the first forecast logged, earlier than
-// anything the coverage rule lets through; coverage_from is the first day with observations that pass it.
-const scoredFrom = L => day(L.coverage_from || L.first_forecast_day);
+// The first target day the live scores cover: scoring_window's first scored day, else coverage_from, the
+// first day with observations that pass the coverage rule. Not first_forecast_day, the first forecast
+// logged, which is earlier than anything the rule lets through. Neither known: no date is given.
+const fromClause = L => { const d = (L.scoring_window && L.scoring_window.first_scored_day) || L.coverage_from; return d ? `, for days from ${day(d)}` : ''; };
 // Some tables are wider than a phone: each scrolls sideways in its own box, so the page does not.
 const scrolling = html => html.replace(/<table/g, '<div class="tw" tabindex="0" role="region" aria-label="Table, scrolls sideways"><table').replace(/<\/table>/g, '</table></div>');
 // A section with an id the contents list can point at.
@@ -89,7 +90,7 @@ async function main() {
     h += section('live-scoring', 'Live scoring of issued forecasts', live);
   } else {
     const o = L.overall;
-    live += `<p class="small muted">${L.n_scored.toLocaleString()} overflow-day forecasts scored, for days from ${scoredFrom(L)}; updated ${new Date(L.generated_at).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}.</p>`;
+    live += `<p class="small muted">${L.n_scored.toLocaleString()} overflow-day forecasts scored${fromClause(L)}; updated ${new Date(L.generated_at).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}.</p>`;
     live += `<table><tr><th>Forecast</th><th class="num">Brier</th><th class="num">AUC</th><th class="num">Skill vs climatology</th></tr>`;
     for (const [k, lab] of [['calibrated','SwimSignal (as shown on the map)'],['raw','SwimSignal before lead calibration']]) {
       const s = o[k]; live += `<tr><td>${lab}</td><td class="num">${f(s.brier)}</td><td class="num">${f(s.auc,3)}</td><td class="num">${f(1 - s.brier/o.climatology_brier, 2)}</td></tr>`;
@@ -218,22 +219,25 @@ function inShort(d) {
   const runsHigh = (L.reliability || []).filter(r => r.n >= 200 && r.forecast >= 1.5 * r.observed && r.forecast - r.observed >= 0.05)
     .sort((a, b) => (b.forecast - b.observed) - (a.forecast - a.observed))[0];
   const flatWins = L.overall && L.overall.period_base_rate_brier !== undefined && L.overall.period_base_rate_brier < L.overall.calibrated.brier;
-  // Whole days the live scores span so far, from the first scored day to the day before they were computed.
-  const span = L.coverage_from && L.generated_at ? Math.floor((new Date(L.generated_at) - new Date(L.coverage_from + 'T00:00:00')) / 864e5) : null;
+  // Target days the live scores span so far: the scoring window's first to last scored day, inclusive;
+  // without it, from coverage_from to the day before the scores were computed.
+  const W = L.scoring_window || {};
+  const span = W.first_scored_day && W.last_scored_day ? Math.round((new Date(W.last_scored_day + 'T12:00:00') - new Date(W.first_scored_day + 'T12:00:00')) / 864e5) + 1
+    : L.coverage_from && L.generated_at ? Math.floor((new Date(L.generated_at) - new Date(L.coverage_from + 'T00:00:00')) / 864e5) : null;
   const short = span !== null && span >= 1 && span < 14 ? span : 0;
   const eo = E.overall, eSkill = eo && eo.climatology_brier > 0 ? 1 - eo.brier / eo.climatology_brier : null;
-  const ecoliVerdict = eSkill === null ? 'scored' : eSkill < 0.05 ? 'no better than the average rate' : `${Math.round(100 * eSkill)}% lower error than the average rate`;
+  const ecoliVerdict = eSkill === null ? 'scored' : eSkill <= 0 ? 'no better than the average rate' : eSkill < 0.05 ? 'about the same as the average rate' : `${Math.round(100 * eSkill)}% lower error than the average rate`;
   const tile = (v, l, dd) => `<div class="stat"><dt class="l">${l}</dt><dd class="v">${v}</dd><dd class="d">${dd}</dd></div>`;
   const tiles = [
     ho ? tile(`${Math.round(100 * ho.auc)}%`, 'Spill days ranked above dry days', `On a year the model never saw: ${ho.n.toLocaleString()} overflow-days, United Utilities, 2025.`) : '',
     ho ? tile(`${Math.round(100 * ho.brier_skill_vs_clim)}%`, 'Lower error than the long-run rate', 'Same test. The long-run rate is each overflow\'s own average spill rate.') : '',
-    tile(liveSkill === null ? '–' : `${liveSkill}%`, 'Lower error, live', liveSkill === null ? 'Nothing scored yet.' : `${L.n_scored.toLocaleString()} overflow-days scored, for days from ${scoredFrom(L)}, against what the overflows then did.`),
+    tile(liveSkill === null ? '–' : `${liveSkill}%`, 'Lower error, live', liveSkill === null ? 'Nothing scored yet.' : `${L.n_scored.toLocaleString()} overflow-days scored${fromClause(L)}, against what the overflows then did.`),
     tile(E.n_samples ? E.n_samples.toLocaleString() : '0', 'Lab samples scored', E.n_samples ? `Environment Agency E. coli samples at ${E.n_sites} site${E.n_sites === 1 ? '' : 's'} so far.` : 'No Environment Agency E. coli samples scored yet.'),
   ].join('');
   if (ho) pts.push(`<b>Spill forecasts, on a year the model never saw</b> (${ho.n.toLocaleString()} overflow-days at United Utilities in 2025): a spill day was ranked above a dry day ${Math.round(100 * ho.auc)}% of the time, and the error was ${Math.round(100 * ho.brier_skill_vs_clim)}% lower than always forecasting each overflow's long-run rate.`);
   if (hi) pts.push(`<b>Offline, over-confident at the top end:</b> days forecast at about ${Math.round(100 * hi.forecast)}% had a spill ${Math.round(100 * hi.observed)}% of the time.`);
   if (L.n_scored && L.overall) {
-    pts.push(`<b>Live, against what the overflows then did:</b> ${L.n_scored.toLocaleString()} overflow-days scored, for days from ${scoredFrom(L)}; the error is ${liveSkill}% lower than the long-run rate's.${short ? ` So far that is ${short} target day${short === 1 ? '' : 's'}, too few to judge across different weather.` : ''} <a href="#live-scoring">Details</a>`);
+    pts.push(`<b>Live, against what the overflows then did:</b> ${L.n_scored.toLocaleString()} overflow-days scored${fromClause(L)}; the error is ${liveSkill}% lower than the long-run rate's.${short ? ` So far that is ${short} target day${short === 1 ? '' : 's'}, too few to judge across different weather.` : ''} <a href="#live-scoring">Details</a>`);
     const flat = `a flat forecast at this period's own spill rate scored better (Brier ${f(L.overall.period_base_rate_brier)} against ${f(L.overall.calibrated.brier)})`;
     if (runsHigh) pts.push(`<b>Live, the forecast runs high:</b> days forecast at ${Math.round(100 * runsHigh.lo)}–${Math.round(100 * runsHigh.hi)}% had a spill ${Math.round(100 * runsHigh.observed)}% of the time${flatWins ? `, and ${flat}` : ''}. <a href="#reliability">Reliability</a>`);
     else if (flatWins) pts.push(`<b>Live, the forecast is pitched at the wrong level:</b> ${flat}. <a href="#live-scoring">Details</a>`);
