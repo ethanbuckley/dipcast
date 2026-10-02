@@ -6,9 +6,10 @@ const dayMonthYear = iso => new Date(iso + 'T12:00:00').toLocaleDateString('en-G
 function evidenceRows(s, iso, issued) {
   const total = s.upstream_summary?.overflows || 0, monitored = s.now?.monitored_upstream;
   const day = (s.days || []).find(x => x.date === iso), cl = s.classification;
-  // The page's rule for the E. coli figure (ecoliUntested): the build marks each day in or out of the
-  // tested season, rather than going by the calendar month here.
-  const offSeason = !!day && day.in_validated_season === false;
+  // The build's mark on the day, as the page goes by (ecoliUntested); a day without one (no forecast
+  // that day, or one built before the mark) goes by the calendar month, May to September.
+  const offSeason = day && typeof day.in_validated_season === 'boolean' ? !day.in_validated_season
+    : ![5, 6, 7, 8, 9].includes(Number(iso.slice(5, 7)));
   const model = s.error ? `${rules().coverage(s)}.` : !total ? 'No daily spill forecast: no monitored overflows upstream.'
     : !day || day.risk == null ? 'No spill forecast for this day.' : 'Model prediction, not a water sample.';
   return [
@@ -18,7 +19,7 @@ function evidenceRows(s, iso, issued) {
       : `${monitored} of ${total} upstream overflows report live in this update.${monitored < total ? ' Missing reports do not mean no spills.' : ''}`],
     ['Environment Agency rating', cl?.class ? `${cl.class.charAt(0).toUpperCase() + cl.class.slice(1)}${cl.year ? ' · ' + cl.year : ''}. Based on up to four seasons of samples; not today’s water quality.`
       : s.source === 'designated' ? 'Designated bathing water; no rating available in this update.' : 'Not an Environment Agency designated bathing water. No bathing-water rating shown.'],
-    ['Water samples', 'Individual bacterial sample results are not included here.' + (cl?.url ? ' Check the EA page for dated results and current advice.' : ' No current water test is shown.')],
+    ['Water samples', 'Individual bacterial sample results are not included here.' + (cl?.url ? ' Check the Environment Agency’s page for dated results and current advice.' : ' No current water test is shown.')],
     ['Model limits', total && !s.error && s.location?.mode !== 'lake'
       ? (offSeason ? 'Outside May–September: the E. coli estimate is untested for this season.' : 'E. coli model tested on river bathing waters in May–September; it is not a test of this spot today.')
       : 'No validated daily E. coli estimate is shown here.'],

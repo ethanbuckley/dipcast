@@ -105,6 +105,17 @@ const laterDay = s => { const w = rank(worst(s));
 const because = r => r.by === 'spill' ? 'sewage spills'
   : r.by === 'water' ? (r.level === 'moderate' ? 'E.\u00a0coli may be raised' : r.level === 'very high' ? 'high E.\u00a0coli likely' : 'raised E.\u00a0coli likely')
   : r.by === 'algae' ? 'algae at the last check' : 'rated poor';
+// A water rated poor, on a day (iso). Advice against bathing applies in the bathing season, 15 May to
+// 30 September (Bathing Water Regulations 2013); the rating keeps the level at least high on every day
+// of the year all the same. So the advice is named only in season, and out of season the words say
+// why the level is high and when the advice applies: "advice against bathing" beside a sentence
+// saying it applies only in summer read as a contradiction in October. One wording for the
+// headline's reason, the rating's sentence, the days' sentence and the alerts.
+const inBathingSeason = iso => { const md = String(iso).slice(5, 10); return md >= '05-15' && md <= '09-30'; };
+const poorReason = iso => inBathingSeason(iso) ? 'advice against bathing' : 'advice against bathing from 15 May';
+const poorAdvice = iso => inBathingSeason(iso)
+  ? 'Advice against bathing applies here while the rating is poor, and should be shown on signs at the water.'
+  : 'The rating is poor, so the level stays at least high; advice against bathing applies 15 May to 30 September.';   // the council's, not the EA's (above)
 // The words for a spot without a level, the same wherever it is described (the headline, the
 // page's spills row, the comparison).
 const COVER = { [NO_FORECAST]: 'No forecast in this update', [NOT_COVERED]: 'Not covered by the forecast',
@@ -120,7 +131,7 @@ function headParts(s) {
   if (COVER[l]) return [COVER[l], ''];
   if (!daily(s) && rank(algaeLevel(s)) > rank(CLASS_LEVEL[classOf(s)] ?? null)) return [`${cap(l)} risk`, 'algae at the last check'];
   if (!daily(s) || worstNear(s)[0].by === 'record')
-    return advisedAgainst(s) ? ['Rated poor', 'advice against bathing'] : [`Rated ${classOf(s)} by the Environment Agency`, ''];
+    return advisedAgainst(s) ? ['Rated poor', poorReason(today())] : [`Rated ${classOf(s)} by the Environment Agency`, ''];
   const [r, when] = worstNear(s);
   if (rank(r.level) > 0) return [`${cap(r.level)} risk ${when}`, because(r)];
   const x = laterDay(s);
@@ -143,7 +154,7 @@ function dayHeadline(s, iso) {
   if (!daily(s)) return headline(s);
   const x = s.days.slice(0, 5).find(d => d.date === iso), r = x ? risk(s, x) : {level:null};
   if (!r.level) return 'No forecast for this day';
-  if (r.by === 'record') return 'Rated poor: advice against bathing';
+  if (r.by === 'record') return `Rated poor: ${poorReason(iso)}`;
   return `${cap(r.level)} risk${rank(r.level) > 0 ? ': ' + because(r) : ''}`;
 }
 // Where the five days go from the answer, as Apple's high and low: the day a raised level falls to low
@@ -155,11 +166,12 @@ function weekNext(s) {
   const ds = s.days.slice(0, 5).filter(hasData).map(x => ({ x, l: risk(s, x).level })).filter(o => o.l), l0 = level(s);
   if (!ds.length) return '';
   if (rank(l0) >= 1) {
-    const after = ds.slice(ds.findIndex(o => o.l === l0) + 1);   // -1, from right now: every day
+    const at = ds.findIndex(o => o.l === l0), after = ds.slice(at + 1);   // -1, from right now: every day
     const to = after.find(o => o.l === 'low') || after.reduce((a, b) => rank(b.l) < rank(a ? a.l : l0) ? b : a, null);
     if (!to) return ds.every(o => o.l === l0) ? `${cap(l0)} risk on all five days` : '';
     const d = to.x.date;
-    return `${cap(to.l)} risk ${d === today() || d === addDays(today(), 1) ? dayWord(d) : 'by ' + dayName(d)}`;
+    // Right now is part of today, so today's lower forecast is "later today".
+    return `${cap(to.l)} risk ${d === today() ? (at < 0 ? 'later today' : 'today') : d === addDays(today(), 1) ? 'tomorrow' : 'by ' + dayName(d)}`;
   }
   const later = laterDay(s);
   return later ? `${cap(later[0].level)} risk ${dayWord(later[1].date)}` : '';
@@ -182,5 +194,5 @@ function bestDay(spots, dates) {
 
 if (typeof module === 'object' && module.exports) {
   module.exports = { ORDER, NOT_COVERED, NO_FORECAST, NO_OVERFLOWS, SPILL_CUTS, ECOLI_CUTS, setToday, today, dayWord, rank, risk,
-    level, dayLevel, headParts, headline, dayHeadline, weekNext, coverage, daily, ecoliBand, ecoliLevel, ecoliUntested, bestDay };
+    level, dayLevel, headParts, headline, dayHeadline, weekNext, coverage, inBathingSeason, poorReason, poorAdvice, daily, ecoliBand, ecoliLevel, ecoliUntested, bestDay };
 }

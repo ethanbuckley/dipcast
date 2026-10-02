@@ -64,8 +64,10 @@ test('evidence distinguishes missing feeds, dated records, and out-of-season mod
   assert.match(facts['Algae observation'], /10 Sept? 2026.*not a current/);
   // The season is the build's mark on the day, as on the page, not the calendar month.
   assert.doesNotMatch(Object.fromEntries(evidenceRows(s,'2026-09-30',''))['Model limits'], /untested/);
-  const unmarked = {...s, days: spot.days};   // forecasts built before the mark: tested, as ecoliUntested has it
-  assert.doesNotMatch(Object.fromEntries(evidenceRows(unmarked,'2026-10-01',''))['Model limits'], /untested/);
+  const unmarked = {...s, days: spot.days};   // no mark on the day (built before it): the calendar month decides
+  assert.match(Object.fromEntries(evidenceRows(unmarked,'2026-10-01',''))['Model limits'], /untested/);
+  assert.doesNotMatch(Object.fromEntries(evidenceRows(unmarked,'2026-09-30',''))['Model limits'], /untested/);
+  assert.match(Object.fromEntries(evidenceRows(s,'2026-10-09',''))['Model limits'], /untested/);   // a day outside the forecast
 });
 test('a spot without a forecast is described in the headline’s words', () => {
   const lake = {days:[], error:'An isolated lake with no river connection', classification:{class:'excellent', year:2025}};
@@ -116,7 +118,7 @@ test('a later worse day is named by its full weekday, in the headline and in whe
 test('where the week goes starts at today when the level comes from right now', () => {
   const now = week(['low', 'low', 'low', 'low', 'low'], {now:{label:'moderate'}});
   assert.equal(L.headline(now), 'Moderate risk right now: sewage spills');
-  assert.equal(L.weekNext(now), 'Low risk today');   // was "Low risk tomorrow": the search began a day late
+  assert.equal(L.weekNext(now), 'Low risk later today');   // was "Low risk tomorrow": the search began a day late
   assert.equal(L.weekNext(week(['high', 'low', 'low', 'low', 'low'])), 'Low risk tomorrow');
   assert.equal(L.weekNext(week(['high', 'high', 'moderate', 'low', 'low'])), 'Low risk by Saturday');
   assert.equal(L.weekNext(week(['high', 'high', 'high', 'high', 'high'])), 'High risk on all five days');
@@ -187,4 +189,32 @@ test('a river gauge reading over a day old is named, but not shown as the level 
   assert.match(old.more, /check-for-flooding\.service\.gov\.uk\/station\/1234/);
   assert.match(tileOf({...gauge, stale: true, age_hours: 30, level_m: null}).say, /^Last reading 1 day ago,/);
   assert.match(tileOf({...gauge, stale: true, age_hours: 50, level_m: null}).say, /^Last reading 2 days ago,/);
+});
+test('a water rated poor names the advice against bathing in its season only, by the day shown', () => {
+  const poor = week(['low', 'low', 'low', 'low', 'low'], {classification:{class:'poor'}});
+  assert.equal(L.inBathingSeason('2026-05-15'), true);
+  assert.equal(L.inBathingSeason('2026-09-30'), true);
+  assert.equal(L.inBathingSeason('2026-10-01'), false);
+  assert.equal(L.inBathingSeason('2026-05-14'), false);
+  // Today is 30 September, the season's last day; tomorrow is out of it. The level is high on both.
+  assert.equal(L.headline(poor), 'Rated poor: advice against bathing');
+  assert.equal(L.dayHeadline(poor, '2026-09-30'), 'Rated poor: advice against bathing');
+  assert.equal(L.dayHeadline(poor, '2026-10-01'), 'Rated poor: advice against bathing from 15 May');
+  assert.equal(L.dayLevel(poor, '2026-10-01'), 'high');
+  assert.match(L.poorAdvice('2026-09-30'), /^Advice against bathing applies here while the rating is poor/);
+  assert.match(L.poorAdvice('2026-10-01'), /^The rating is poor, so the level stays at least high; advice against bathing applies 15 May to 30 September\.$/);
+  L.setToday('2026-10-02');
+  try { assert.equal(L.headline({...poor, days: poor.days.map((x, i) => ({...x, date: ['2026-10-02','2026-10-03','2026-10-04','2026-10-05','2026-10-06'][i]}))}),
+    'Rated poor: advice against bathing from 15 May'); }   // what the alerts say, through headline()
+  finally { L.setToday('2026-09-30'); }
+});
+test('the day table’s † note shows only while a cell carries a †', () => {
+  const ctx = pageContext(['esc', 'fmt', 'cls', 'dateLabel', 'glyph', 'ICON', 'dayTable']);
+  const off = week(['low', 'low', 'low', 'low', 'low']);   // every day out of season, with a figure
+  const river = vm.runInContext('d => dayTable(d, 2, false, {})', ctx)(off);
+  assert.match(river, /<sup>†<\/sup>Outside May to September, when the Environment Agency takes no samples/);
+  const lake = vm.runInContext('d => dayTable(d, 2, true, {})', ctx)(off);   // the lake's cells read n/a
+  assert.doesNotMatch(lake, /†/);
+  const blank = vm.runInContext('d => dayTable(d, 2, false, {})', ctx)({days: off.days.map(x => ({...x, p_ecoli_gt900: null}))});
+  assert.doesNotMatch(blank, /†/);
 });
