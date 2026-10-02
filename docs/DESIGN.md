@@ -109,6 +109,9 @@ largest headings, and no uppercase labels anywhere.
   (the alerts) folds under what it is about, before the button, and keeps every sentence.
 - Names agree everywhere: the home page is **Explore**, the verification page is **Accuracy**.
   Page titles are "Page · SwimSignal".
+- A part that cannot be used yet is not shown: Compare appears on the Saved page once two spots
+  are saved. A picked day's details begin with its rows, because the hero's headline already
+  gives that day's level and why.
 
 ### Icons
 
