@@ -356,7 +356,9 @@ What makes Apple's page clean, and what was taken from it:
   128 px band below them, and it is the paper about 300 px further down. Its top rows are the
   `--sky` colour that runs on up to the header, so it has no edge. The weather data has only the
   day's high, sunrise and sunset, so the picture cannot follow the weather, as Apple's does. A
-  photograph would be a separate job, with sourcing and licences.
+  photograph would be a separate job, with sourcing and licences. The picture is 500 CSS px wide; from
+  2 October a view wider than that (a screen 501 to 800 px wide: a phone on its side, a small tablet) stretches it
+  sideways to both edges at the same 600 px height, where before its sides showed as hard vertical edges.
 - **Glass, light.** The tiles are frosted (`--glass`, a blur and 76% white). Measured on 2 October
   2026 over the darkest fell: the grey text and the level colours pass 4.5:1 at 76% and fail at
   64% (4.1 to 4.2), so the panes are three-quarters white and the picture shows through them only

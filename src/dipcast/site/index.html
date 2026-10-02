@@ -285,11 +285,13 @@
      2026). The picture hangs from the bottom of a view's opening words (.answer on a spot's page,
      .lead on the list and the Saved page): its sky ends there, its fells fill the band below them,
      and it is the paper 300 px further down, so nothing below that sits on it. Above it, its own sky
-     colour runs up to the header. Every view puts a tile first after the band. */
+     colour runs up to the header. Every view puts a tile first after the band. The picture is 500 by
+     600 CSS px; a view wider than that (a phone on its side, a small tablet) stretches it sideways to
+     the edges and keeps its height, so the sky still ends at the words and nothing moves up or down. */
   #panel { isolation:isolate; }
   .answer, .lead { position:relative; margin-bottom:128px; }
   .answer::before, .lead::before { content:""; position:absolute; z-index:-1; top:-600px; bottom:-310px; left:-24px; right:-24px; pointer-events:none;
-    background:var(--sky) url(icons/fells.webp) center bottom / auto 600px no-repeat; }
+    background:var(--sky) url(icons/fells.webp) center bottom / max(100%, 500px) 600px no-repeat; }
   /* A tile: frosted over the picture, near white over the paper further down. The one radius, no border
      or shadow. Plain white where a browser draws no blur, or the reader asked for less transparency. */
   .tile { position:relative; min-width:0; padding:12px 14px 14px; border-radius:var(--radius); background:var(--glass);
