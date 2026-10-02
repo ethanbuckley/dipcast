@@ -166,3 +166,25 @@ test('stored lists that are not lists, or hold odd entries, read as empty rather
   assert.equal(vm.runInContext(`savedIds('"abc"').length`, ctx), 0);   // a Set of a string was its letters
   assert.equal(vm.runInContext(`savedIds('["x", {"y":1}]').join()`, ctx), 'x');
 });
+test('a river gauge reading over a day old is named, but not shown as the level now', () => {
+  const ctx = pageContext(['esc', 'fmt', 'glyph', 'ICON', 'rangeBar', 'riverTile']);
+  const tileOf = vm.runInContext('riverTile', ctx);
+  const gauge = {station: 'Salisbury', river: 'River Avon', distance_km: 2.1, same_river: true, rloi: '1234',
+    typical_low_m: 0.2, typical_high_m: 1.4, observed_at: '2026-09-02T09:00:00Z'};
+  // Before the build marked old readings (no stale field): as it was.
+  const now = tileOf({...gauge, level_m: 0.43, label: 'normal'});
+  assert.equal(now.fig, '0.43');
+  assert.equal(now.word, 'Usual level');
+  assert.match(now.say, /^Not part of the pollution level\. Gauge at Salisbury on the River Avon, 2\.1&nbsp;km away, /);
+  assert.equal(tileOf({...gauge, level_m: null}), null);   // no reading at all: no tile
+  assert.equal(tileOf(null), null);
+  // Stale, as attach_river_levels writes it: the value moved to last_level_m, the level cleared.
+  const old = tileOf({...gauge, stale: true, age_hours: 708.4, last_level_m: 0.43, level_m: null, index: null, label: 'unknown'});
+  assert.equal(old.fig, '–');
+  assert.equal(old.word, undefined);
+  assert.equal(old.vis, undefined);   // no range bar: there is no level now to place on it
+  assert.match(old.say, /^Last reading 30 days ago, not shown as current\. Not part of the pollution level\. Gauge at Salisbury/);
+  assert.match(old.more, /check-for-flooding\.service\.gov\.uk\/station\/1234/);
+  assert.match(tileOf({...gauge, stale: true, age_hours: 30, level_m: null}).say, /^Last reading 1 day ago,/);
+  assert.match(tileOf({...gauge, stale: true, age_hours: 50, level_m: null}).say, /^Last reading 2 days ago,/);
+});

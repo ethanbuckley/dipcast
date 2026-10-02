@@ -1220,14 +1220,7 @@ function facts(d) {
       say: `The EA sampler's look, ${when}. ${a.n_seen ? `Seen at ${a.n_seen} of ${a.n_checks} checks ${season}${a.n_objectionable ? `, ${a.n_objectionable} of them enough to be objectionable` : ''}.`
         : `None seen at any of ${a.n_checks} check${a.n_checks === 1 ? '' : 's'} ${season}.`} It cannot tell blue-green algae, which can be toxic, from harmless kinds.`,
       more: `${age > 14 ? 'No check since: the EA checks bathing waters from May to September, and results take about a week to be published. ' : ''}A look at the water, not a lab test.` }); }
-  const rs = d.river_state;
-  if (rs && !nil(rs.level_m)) { const at = rs.observed_at ? new Date(rs.observed_at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-    // Words of its own, in ink: "High" in a level's colour, on a page of pollution levels, read as one.
-    out.push({ icon: ICON.level, label: 'River level', fig: fmt(rs.level_m, 2), unit: 'm', wordTone: 'plain',
-      word: ({ low: 'Low water', normal: 'Usual level', high: 'High water', 'very high': 'Very high water' }[rs.label] || '') + (rs.label === 'very high' ? ', above its usual range' : ''),
-      vis: nil(rs.typical_low_m) || nil(rs.typical_high_m) ? '' : rangeBar(rs),
-      say: `Not part of the pollution level. Gauge at ${esc(rs.station)}${rs.river ? ` on the ${esc(rs.river)}` : ''}, ${rs.distance_km}&nbsp;km away${rs.same_river === false ? ', on a different watercourse' : ''}${at ? `, ${at}` : ''}.`,
-      more: `A high river runs faster and colder, and after rain it can rise quickly.${rs.rloi ? ` <a href="https://check-for-flooding.service.gov.uk/station/${encodeURIComponent(rs.rloi)}">The EA's page for this gauge</a> has the last five days.` : ''}` }); }
+  const rt = riverTile(d.river_state); if (rt) out.push(rt);
   if (!d.error && total && x0 && !nil(x0.rain_48h_mm)) { const wet = d.days.slice(0, 5).reduce((p, q) => (q.rain_48h_mm || 0) > (p.rain_48h_mm || 0) ? q : p);
     out.push({ icon: ICON.rain, label: 'Rain here', fig: Math.round(x0.rain_48h_mm), unit: 'mm', vis: rainCols(d),
       say: `In the 48&nbsp;h to midday today.${wet !== x0 && wet.rain_48h_mm >= 1 ? ` Wettest ${dayName(wet.date)}, ${Math.round(wet.rain_48h_mm)}&nbsp;mm.` : ''}` }); }
@@ -1235,6 +1228,23 @@ function facts(d) {
   if (wx) out.push({ icon: ICON.sun, label: 'Weather', fig: nil(wx.tmax) ? '–' : `${wx.tmax}°`, unit: nil(wx.tmax) ? '' : 'high', vis: sunPath(wx),
     say: `Sunrise ${esc(wx.sunrise)}, sunset ${esc(wx.sunset)}.`, credit: true });
   return out;
+}
+// The River level tile, or null without a reading. A reading the build found over a day old (stale,
+// from attach_river_levels) is not the level now: the tile stays, so the gauge is still named and
+// linked, but with no figure, no word and no range, and says how old the last reading is.
+function riverTile(rs) {
+  if (!rs || (!rs.stale && nil(rs.level_m))) return null;
+  const at = rs.observed_at ? new Date(rs.observed_at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  const gauge = `Gauge at ${esc(rs.station)}${rs.river ? ` on the ${esc(rs.river)}` : ''}, ${rs.distance_km}&nbsp;km away${rs.same_river === false ? ', on a different watercourse' : ''}`;
+  const more = `A high river runs faster and colder, and after rain it can rise quickly.${rs.rloi ? ` <a href="https://check-for-flooding.service.gov.uk/station/${encodeURIComponent(rs.rloi)}">The Environment Agency's page for this gauge</a> has the last five days.` : ''}`;
+  if (rs.stale) { const h = rs.age_hours, n = nil(h) ? null : h <= 24 ? Math.round(h) : Math.round(h / 24), unit = nil(h) ? '' : h <= 24 ? 'hour' : 'day';
+    return { icon: ICON.level, label: 'River level', fig: '–', unit: 'no current reading',
+      say: `${n === null ? 'The last reading is old' : `Last reading ${n} ${unit}${n === 1 ? '' : 's'} ago`}, not shown as current. Not part of the pollution level. ${gauge}.`, more }; }
+  // Words of its own, in ink: "High" in a level's colour, on a page of pollution levels, read as one.
+  return { icon: ICON.level, label: 'River level', fig: fmt(rs.level_m, 2), unit: 'm', wordTone: 'plain',
+    word: ({ low: 'Low water', normal: 'Usual level', high: 'High water', 'very high': 'Very high water' }[rs.label] || '') + (rs.label === 'very high' ? ', above its usual range' : ''),
+    vis: nil(rs.typical_low_m) || nil(rs.typical_high_m) ? '' : rangeBar(rs),
+    say: `Not part of the pollution level. ${gauge}${at ? `, ${at}` : ''}.`, more };
 }
 // The answer's words, which a picked day fills again (showDay).
 const answerWords = (d, iso = null) => { const m = answerParts(d, iso);
