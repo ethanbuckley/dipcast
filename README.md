@@ -3,7 +3,7 @@
 Probabilistic sewage-pollution risk for river and lake swim spots in England.
 The code and the Python package (`dipcast`) keep the working name dipcast.
 
-Live site: https://swimsignal.co.uk/ (forecasts for 88 named
+Live site: https://swimsignal.co.uk/ (forecasts for 89 named
 spots, rebuilt several times a day by a scheduled GitHub Actions job; free to
 run, never sleeps). Source: https://github.com/ethanbuckley/swimsignal (MIT).
 Every forecast issued is scored later and published on the site's
@@ -70,13 +70,15 @@ base rate 7.45% of days with a discharge:
 
 | Model | Brier | Log loss | AUC | Brier skill vs climatology |
 |---|---|---|---|---|
-| SwimSignal (pooled + site calibration) | 0.0447 | 0.154 | 0.929 | 0.33 |
-| pooled only | 0.0452 | 0.156 | 0.927 | 0.33 |
-| per-site climatology | 0.0669 | 0.246 | 0.768 | 0.00 |
+| SwimSignal (pooled + site calibration) | 0.0445 | 0.153 | 0.930 | 0.33 |
+| pooled only | 0.0452 | 0.155 | 0.927 | 0.33 |
+| per-site climatology | 0.0669 | 0.245 | 0.768 | 0.00 |
 | naive rule: >10 mm in 48 h | 0.0621 | 0.224 | 0.758 | 0.07 |
 
 Reliability is good below 30% forecast probability and mildly overconfident
-above 70% (forecast 0.85 verifies at 0.78). Dropping the negative subsampling
+above 70% (forecast 0.85 verifies at 0.78). The table is the CSV written on
+13 Sep 2026; the two comparisons that follow were measured on the first run of
+12 Sep, when the full model scored 0.0447. Dropping the negative subsampling
 does not change this (Brier 0.0449), and recency-weighting the site
 calibration improves it only slightly (0.0445), so the residual is a year
 effect: 2025 had a 7.45% spill-day rate against 10.1% in 2023-24 for the same
@@ -85,11 +87,15 @@ overflows, and a model fitted on the earlier years over-predicts it. On wet days
 climatology; on dry days 0.023 against 0.038.
 
 **Transport.** For each upstream overflow: distance along the network (plus a
-straight-line lake crossing for lake spots), travel time from a reach velocity
-scaled by the nearest gauge's level index (0.05 m/s across lakes), first-order
+straight-line lake crossing for lake spots), travel time at a fixed reach
+velocity of 0.5 m/s (0.05 m/s across lakes), first-order
 die-off with T90 = 30 h, and dilution as the ratio of upstream network length
 at the outfall to that at the spot. The product is the probability that a spill
-there affects the spot. Risk = 1 - prod(1 - p_i w_i).
+there affects the spot. Risk = 1 - prod(1 - p_i w_i). The site runs
+`forecast_point(..., gauge=False)`, so the river level shown beside a forecast
+does not change it; the click-anywhere API (`gauge=True`) scales the velocity by
+the nearest EA gauge's level index, 0.3 m/s at typical low to 1.0 m/s at typical
+high (`river_velocity`).
 
 **Lakes.** A click inside or within 150 m of a WFD lake polygon is treated as
 that lake. The lake's centreline links (OS Open Rivers `form = lake`) inside the
@@ -336,7 +342,8 @@ end-of-day estimate the earlier rule (latest issue of the day) produced. Issue
 days with no forecast by 08:00 are missed deadlines: counted and listed on the
 verification page, not scored. An overflow-day counts as "no spill" only if the
 poller recorded that overflow with a known status at least six times that day,
-from a feed whose freshest `LastUpdated` was under 6 h old, with no unobserved
+from a feed whose freshest `LastUpdated` was under 6 h old (a feed with no
+`LastUpdated` at all is not current; see the correction of 2 Oct below), with no unobserved
 stretch longer than 8 h (6 h until 1 Oct 2026; see the correction below;
 counting midnight to the first poll and the last poll to midnight), and once
 the next day. `live_coverage.parquet` holds one row per
@@ -388,6 +395,39 @@ visible. The next-day rule still catches a single event that ends late; what
 8 h gives up is a second event that starts and ends unseen inside one stretch.
 Established by running the scorer's own functions on the `state` release of
 1 Oct 10:32 UTC.
+
+Correction (2 Oct 2026): South West Water's feed carries no `StatusStart`,
+`LatestEventStart`, `LatestEventEnd` or `LastUpdated` on any row. Three things
+followed. A spill was found only from the event fields, so none of its
+overflows ever counted as spilling, although the history holds rows marked
+discharging (74 overflows on 29 Sep, 165 on 30 Sep): its 135 scored
+overflow-days all read "no spill", base rate 0, skill -0.52. The history's
+de-duplication key (site, status, status start) was the same on every poll, so
+each overflow kept one row per status and a later day overwrote an earlier
+one. And the feed-age test read a missing stamp as current. Now: a row marked
+discharging with no event times is a spill on the local day of that poll; a row
+with no status start is kept once per local day polled; and a feed with no
+`LastUpdated` is never current, so South West Water's overflows are not scored
+at all (`unstamped_feed_days` applies this to the days polled before the
+change, from `poll_log.parquet`). The feed sees only what is discharging at the
+moment of a poll, a few times a day, so a day of "not discharging" polls cannot
+support "no spill". Its scores are withdrawn: 14,643 of the 14,778 overflow-days
+scored on 2 Oct remain, by the scorer run on the `state` release of 2 Oct
+14:08 UTC.
+
+The scorer also reports why each unscored overflow-day was not scored
+(`uncovered_by_reason`: before observations, feed not current, gap, too few
+polls, no poll the next day), and a `scoring_window` from `observations_from`
+to yesterday. Days before the masks existed cannot be scored, so they are
+counted apart (`n_before_window`) rather than in the window's candidates. On
+2 Oct's state, 60,300 of the 65,805 unscored overflow-days were before
+observations, 5,325 failed the gap rule (5,025 of them on 28 Sep, when the
+masks began in the afternoon) and 180 were South West Water's.
+
+A company feed that fails, or returns no rows, keeps its last snapshot in
+`live_latest.parquet` with status -3 (feed down) and the time it last answered;
+a spot's "Right now" tile names the company and that time. The build warns
+when a company returns no rows, and does not publish when none does.
 
 **Algae (an observation, not a forecast; 28 Sep 2026).** At every sampling visit to a
 bathing water the EA sampler records one of four levels of algae: none, a trace (1-2
