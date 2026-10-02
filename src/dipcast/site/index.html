@@ -42,9 +42,9 @@
      and works offline on its own; a token changed in one must be changed in the other. Two
      typefaces served from this site (fonts/): Source Serif 4 for place names and headings,
      Source Sans 3 for everything else, declared over its whole weight axis (200 to 900, which the
-     file carries) for the answer's one big word in Light. A warm paper page; a picture of fells
+     file carries) for the tiles' figures in Light. A warm paper page; a picture of fells
      behind the opening of each view, with the tiles under it frosted (the sky and the glass, seventh
-     round); hairlines inside them. One corner radius, no shadows, seven type sizes. Light only: the
+     round); hairlines inside them. One corner radius, no shadows, six type sizes. Light only: the
      page is read outdoors, where this contrast is what counts. Every colour is a variable. Level
      text uses the "k" shades, which pass WCAG AA (4.5:1) on the paper, on white and on the glass. */
   @font-face { font-family:"Source Sans 3"; font-style:normal; font-weight:200 900; font-display:swap; src:url(fonts/SourceSans3-latin.woff2) format("woff2"); }
@@ -63,9 +63,9 @@
           --k-low:#326a43; --k-moderate:#855817; --k-high:#a04623; --k-veryhigh:#992a2a; --k-na:#4f5a62; --k-clear:#0f5a61;
           --control-low:#326a43; --focus:#0f5a61; --notice-bg:#fff6e8; --notice-line:#e5a53a;
           --radius:8px;
-          /* Seven type sizes: meta, notes, body, section headings, a figure, titles (30 on phones), and
-             the answer's one big word (64 on phones, 52 on the smallest). */
-          --fs-meta:13px; --fs-note:15px; --fs-body:17px; --fs-head:20px; --fs-level:30px; --fs-title:36px; --fs-hero:72px;
+          /* Six type sizes: meta, notes, body, section headings, a figure or headline, titles and the
+             answer's level (30 on phones). */
+          --fs-meta:13px; --fs-note:15px; --fs-body:17px; --fs-head:20px; --fs-level:30px; --fs-title:36px;
           /* The app's own: the map, the controls that float on it, and the rain bars. The tiles are grey
              and the water a muted blue (#bccfd8), so the markers stay the only strong colours on the map.
              CSS cannot pick out one colour, so the filter is the SVG one at the top of <body>. */
@@ -295,15 +295,14 @@
   #nearby-host:empty { display:none; }
   .stack > .loc { margin:0; }
   .tile #spot-map { margin:10px 0 0; }
-  /* The answer, as Apple's opening lines: the place, its name, the level as one big light word with
-     "risk" beside it as its unit, what set it and when, where the five days go, the issue time. */
+  /* The answer, as Apple's opening lines: the place, its name, the level and "risk" at the title's size,
+     what set it and when, where the five days go, the issue time. */
   .top-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
   .top-row .save { margin-top:0; }
   .answer { text-align:center; padding:4px 0 0; }
   .answer .kind { margin:0; font-size:var(--fs-meta); line-height:1.35; color:var(--muted); }
   .answer .spot-name { margin:6px auto 0; max-width:16em; text-wrap:balance; }
-  .big { margin:14px 0 0; font:300 var(--fs-hero)/1 var(--font-text); letter-spacing:-.025em; color:var(--k-na); }
-  .big .u { font-size:var(--fs-level); letter-spacing:0; }
+  .big { margin:12px 0 0; font:600 var(--fs-title)/1.1 var(--font-text); letter-spacing:-.01em; color:var(--k-na); }
   .big-head { margin:14px auto 0; max-width:12em; font:700 var(--fs-level)/1.12 var(--font-text); letter-spacing:-.01em; color:var(--k-na); text-wrap:balance; }
   .big.low, .big-head.low { color:var(--k-low); } .big.moderate, .big-head.moderate { color:var(--k-moderate); } .big.high, .big-head.high { color:var(--k-high); }
   .big.veryhigh, .big-head.veryhigh { color:var(--k-veryhigh); } .big.clear, .big-head.clear { color:var(--k-clear); }
@@ -462,7 +461,7 @@
   .sec.tile { margin-top:8px; padding:12px 16px 14px; border-top:0; }
   details.sec.tile > summary { margin:-6px 0; }
 
-  /* A saved spot as Apple's place card: its name, its level as one big word with "risk", what set it
+  /* A saved spot as Apple's place card: its name, its level with "risk", what set it
      and where the week goes, the week drawn small. The whole card opens the spot. On the list the saved
      spots are one tile, the heading in it, the cards between hairlines. */
   .page-h { font-size:var(--fs-title); line-height:1.1; letter-spacing:-.01em; margin:8px 0; }
@@ -478,8 +477,7 @@
   .unsave .ic { width:20px; height:20px; fill:currentColor; }
   .unsave:hover { background:var(--hover); }
   .place-mid { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-top:8px; }
-  .place .big { margin:0; font-size:var(--fs-title); }
-  .place .big .u { font-size:var(--fs-head); }
+  .place .big { margin:0; font-size:var(--fs-head); font-weight:700; letter-spacing:-.005em; }
   .place .big-head { margin:0; max-width:none; font-size:var(--fs-body); text-align:left; }
   .place-sub { margin:6px 0 0; font-size:var(--fs-note); line-height:1.35; }
   .place-sub:empty { display:none; }
@@ -542,7 +540,7 @@
   }
   /* Phones: the list first, the map one tap away; a spot's page carries its own small map. */
   @media (max-width: 800px) {
-    :root { --nav-h:calc(64px + env(safe-area-inset-bottom)); --fs-title:30px; --fs-hero:64px; }
+    :root { --nav-h:calc(64px + env(safe-area-inset-bottom)); --fs-title:30px; }
     .answer::before, .lead::before { left:calc(-16px - env(safe-area-inset-left)); right:calc(-16px - env(safe-area-inset-right)); }
     .desk-only { display:none !important; }
     #map-wrap { display:none; }
@@ -576,9 +574,8 @@
     .wk i { width:9px; } .week { gap:3px; }
     th, td { padding:5px 2px; }
   }
-  /* The smallest phones: the big word smaller, so the longest level and its unit stay on one line, and one tile to a row. */
+  /* The smallest phones: one tile to a row. */
   @media (max-width: 360px) {
-    :root { --fs-hero:52px; }
     .tiles { grid-template-columns:minmax(0, 1fr); }
     .drow { grid-template-columns:52px 88px minmax(0, 1fr); }
   }
@@ -1095,9 +1092,9 @@ const ICON = {   // the one stroke set, as the search, map, bookmark and check
 // Overflow names come in capitals from some feeds ("LITTLE SALKELD WwTW"): a word of four or more
 // capitals is set in normal case; shorter ones (CSO, STW, PS) and mixed ones (WwTW) are kept.
 const nameCase = s => String(s ?? '').replace(/[A-Za-z']+/g, w => /^[A-Z']{4,}$/.test(w) ? w[0] + w.slice(1).toLowerCase() : w);
-// The answer in Apple's three lines ("19°", "Partly Cloudy", "H:21° L:11°"): the level as one big word,
-// which the page follows with "risk", its unit (a bare "High" read as high what); what set it and when;
-// and where the five days go. A day picked in the five days (iso) gives that day's, and its date.
+// The answer in Apple's three lines ("19°", "Partly Cloudy", "H:21° L:11°"): the level, which the page
+// follows with "risk" at the same size (a bare "High" read as high what); what set it and when; and
+// where the five days go. A day picked in the five days (iso) gives that day's, and its date.
 // Without a level, the headline in place of the word.
 function answerParts(d, iso = null) {
   if (iso && daily(d)) {
@@ -1261,7 +1258,7 @@ function facts(d) {
 }
 // The answer's words, which a picked day fills again (showDay).
 const answerWords = (d, iso = null) => { const m = answerParts(d, iso);
-  return (m.word ? `<h2 class="big ${m.tone}" id="risk-headline">${m.word}<span class="u"> risk</span></h2>` : `<h2 class="big-head ${m.tone}" id="risk-headline">${m.head}</h2>`)
+  return (m.word ? `<h2 class="big ${m.tone}" id="risk-headline">${m.word} risk</h2>` : `<h2 class="big-head ${m.tone}" id="risk-headline">${m.head}</h2>`)
     + (m.sub ? `<p class="why">${m.sub}</p>` : '') + (m.next ? `<p class="next">${m.next}</p>` : '') + `<p class="issued">Issued ${issued()}, ${ago(ageMin())} ago</p>`; };
 
 // "Lowest pollution risk this week": the day with the most low spots (levels.js, bestDay), a tap
@@ -1719,8 +1716,8 @@ function drawSpots() {
 }
 
 // ------------------------------------------------------------------------------ the Saved page
-// saved/: a card for each saved spot, in the order saved, as Apple's places: the name, the level as
-// one big word with "risk", what set it and where the week goes, the week drawn small. A spot is
+// saved/: a card for each saved spot, in the order saved, as Apple's places: the name, the level with
+// "risk", what set it and where the week goes, the week drawn small. A spot is
 // removed with its bookmark, and Undo puts it back in place. The list shows the same cards, without
 // the bookmark, on its day (iso).
 function savedCard(s, unsave = true, iso = null) {
@@ -1728,7 +1725,7 @@ function savedCard(s, unsave = true, iso = null) {
   return `<li class="scard place${unsave ? ' tile' : ''}"><div class="place-top"><a class="scard-link" href="${esc(iso && daily(s) ? spotPath(s.id) + '#day=' + iso : spotPath(s.id))}" data-id="${esc(s.id)}">`
     + `<span class="nm">${esc(s.name)}</span><span class="k">${meta}</span></a>`
     + (unsave ? `<button type="button" class="unsave" data-unsave="${esc(s.id)}" aria-label="Remove ${esc(s.name)} from saved spots">${BOOKMARK}</button>` : '') + '</div>'
-    + `<div class="place-mid">${m.word ? `<p class="big ${m.tone}">${m.word}<span class="u"> risk</span></p>` : `<p class="big-head ${m.tone}">${m.head}</p>`}${week(s)}</div>`
+    + `<div class="place-mid">${m.word ? `<p class="big ${m.tone}">${m.word} risk</p>` : `<p class="big-head ${m.tone}">${m.head}</p>`}${week(s)}</div>`
     + `<p class="place-sub">${[m.sub, m.next].filter(Boolean).join(' · ')}</p></li>`;
 }
 const listOf = spots => `<ul class="inc-list">${spots.slice(0, 5).map(s => `<li>${esc(s.name)}</li>`).join('')}${spots.length > 5 ? `<li>and ${spots.length - 5} more</li>` : ''}</ul>`;

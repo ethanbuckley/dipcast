@@ -41,21 +41,21 @@ the licence beside them) so that no third party receives a request:
   600 weight, never heavier. Variable weight and optical size, so it is sturdy at 18 px and fine at
   34 px.
 - **Source Sans 3** for everything else: body, labels, controls, tables. Weights 400 and 600, and
-  700 for headlines and level words; 300 (Light) for the answer's one big word and a tile's figure
-  (seventh round). The file carries weights 200 to 900, and both stylesheets declare all of them.
+  700 for headlines and level words; 300 (Light) for a tile's figure (seventh round). The file
+  carries weights 200 to 900, and both stylesheets declare all of them.
   Risk levels, operational card headings and numerical results use the sans: they need to read
   quickly, while the serif gives places and reports their character. Tables and headline figures
   explicitly use tabular numerals.
 - The monospaced stack is kept for one thing: model version strings.
 
-Seven sizes, in pixels, as tokens (`--fs-*`) in both stylesheets, and no other size anywhere: 13
+Six sizes, in pixels, as tokens (`--fs-*`) in both stylesheets, and no other size anywhere: 13
 meta (used sparingly: a row's kind, the week's letters, a tile's label, the foot), 15 notes (notes,
 controls, a row's headline, a tile's sentence), 17 body (the app and the prose pages alike), 20
-section headings (and the wordmark, a prose page's lede and h2), 30 a figure (a tile's, "risk"
-beside the big word, a headline without a level), 36 the spot's name and page titles, 30 on phones,
-and 72 the answer's one big word, 64 on phones and 52 at 360 px and under (seventh round). A prose
-page's h3 is the body size in the serif. Line height 1.5 for text, 1.1 to 1.25 for headings. No
-letter-spacing beyond −0.01em on the largest headings, and no uppercase labels anywhere.
+section headings (and the wordmark, a prose page's lede and h2, a saved spot's level), 30 a figure
+(a tile's, a headline without a level), 36 the spot's name, page titles and the answer's level, 30
+on phones. A prose page's h3 is the body size in the serif. Line height 1.5 for text, 1.1 to 1.25
+for headings. No letter-spacing beyond −0.01em on the largest headings, and no uppercase labels
+anywhere.
 
 ### Colour
 
@@ -278,10 +278,12 @@ Ethan asked for the cleanness of Apple Weather, and chose the closest of four mo
 version, Apple's order without boxes, Apple's tiles on paper, and this) over the recommended one.
 What makes Apple's page clean, and what was taken from it:
 
-- **One big, light figure.** The answer is the level as one word at 72 px Light (64 on phones, 52
-  at 360 px and under) with "risk" beside it as its unit, as "19°" has its degree sign: a bare
-  "High" read as high what. Under it, what set it and when ("Sewage spills today"), where the five
-  days go ("Low by Tuesday", Apple's high and low) and the issue time. Centred, with no box.
+- **One answer, first.** The level and "risk" at one size, the title's (36 px, 30 on phones), in
+  semibold sans and the level's colour: "High risk", since a bare "High" read as high what. Under
+  it, what set it and when ("Sewage spills today"), where the five days go ("Low by Tuesday",
+  Apple's high and low) and the issue time. Centred, with no box. The first build set the level
+  alone at 72 px Light with a small "risk" beside it, as Apple sets "19°"; Ethan found it goofy and
+  too large, and picked this from three settings (Regular at 44, this, Bold at 30).
 - **A sentence over the days**, as Apple's over its hours, saying something the headline does not:
   "About 13 of the 60 overflows upstream are expected to spill today, fewer each day after."
 - **Data drawn.** The five days are rows with a bar of four bands, filled into the day's band and
@@ -310,11 +312,11 @@ What makes Apple's page clean, and what was taken from it:
   answer's words sits on the picture without a tile: on the list the saved spots, the hint and all
   the spots are tiles, and so is the empty Saved page. Plain white where a browser draws no blur, or
   the reader has asked for less transparency.
-- **Saved as Apple's places**: each spot's name, its level as one big word with "risk", what set it
+- **Saved as Apple's places**: each spot's name, its level with "risk" (20 px bold), what set it
   and where the week goes, and the week as small bars. The list shows the same cards on one tile.
 
 What it reverses, knowingly: one white surface per page (round five) becomes tiles, as Apple's
-page is; six type sizes become seven; the level's bold headline becomes the Light word. Uppercase
+page is; the level's headline grows from 30 px bold to the title's size, semibold. Uppercase
 labels, borders, shadows and gradients stay out: a tile's label is normal case, and a bar's bands are
 steps. Overflow names that arrive in capitals ("LITTLE SALKELD WwTW") are set in normal case
 (`nameCase`). The daily E. coli figures left the five days for the water tile (today and
@@ -330,7 +332,7 @@ how things look, not what the site says.
 ## Rules for changes
 
 1. Add a colour, size or radius only as a token in `page.css`, and mirror it in `index.html`. A
-   font size is one of the seven `--fs-*` tokens, or it is an eighth size.
+   font size is one of the six `--fs-*` tokens, or it is a seventh size.
 2. Place names, page titles and section headings in the serif, 600; risk levels, a row's headline,
    controls and numbers in the sans. No uppercase labels, no tracking.
 3. No new radius, shadow or gradient. In the app the answer is unboxed and everything after it is a
