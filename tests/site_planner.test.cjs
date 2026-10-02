@@ -48,7 +48,7 @@ test('the lowest-risk day counts low days among spots with a daily forecast, tie
   assert.equal(bestDay(spots, ['2026-10-09']), null);   // no spot has a level that day
 });
 test('standing ratings and missing coverage are not called daily forecasts', () => {
-  assert.equal(dayHeadline({days:[],classification:{class:'excellent'}},'2026-10-01'),'Rated excellent by the EA');
+  assert.equal(dayHeadline({days:[],classification:{class:'excellent'}},'2026-10-01'),'Rated excellent by the Environment Agency');
   assert.equal(dayHeadline({days:[]},'2026-10-01'),'No monitored overflows upstream');
 });
 
@@ -58,7 +58,7 @@ test('evidence distinguishes missing feeds, dated records, and out-of-season mod
   const s = {...spot, days, now:{monitored_upstream:1},classification:{class:'poor',year:2025,url:'https://example.org'},algae:{date:'2026-09-10',phrase:'none seen'}};
   const facts = Object.fromEntries(evidenceRows(s,'2026-10-01','Wed 00:08'));
   assert.match(facts['Live spill feeds'], /1 of 2.*Missing reports/);
-  assert.match(facts['EA rating'], /2025.*not today/);
+  assert.match(facts['Environment Agency rating'], /2025.*not today/);
   assert.match(facts['Water samples'], /not included/);
   assert.match(facts['Model limits'], /untested/);
   assert.match(facts['Algae observation'], /10 Sept? 2026.*not a current/);

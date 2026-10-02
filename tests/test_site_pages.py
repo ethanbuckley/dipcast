@@ -40,7 +40,7 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     assert '<base href="../../">' in head   # relative: the site works at any address
     assert '<link rel="canonical" href="https://example.org/swim/spot/wharfe-ilkley/">' in head
     assert '<meta property="og:image" content="https://example.org/swim/icons/og.png">' in head
-    assert "<title>Wharfe at &quot;Cromwheel&quot; &amp; Ilkley: sewage-spill forecast · SwimSignal</title>" in head
+    assert "<title>Wharfe at &quot;Cromwheel&quot; &amp; Ilkley: pollution risk forecast · SwimSignal</title>" in head
     assert "from the 15 monitored storm overflows upstream" in head
     assert "very high" not in head.lower().replace("veryhigh", "")
     assert head.count("<title>") == 1 and "page-meta" not in page

@@ -27,7 +27,7 @@ const dayName = iso => dayWord(iso).replace(/^on /, '');
 // A day's level is the worse of two forecasts and one record, because sewage from overflows is
 // only part of what makes river water dirty: before this, every Thames spot read "low".
 //  - Sewage spills: the exposure index's level, where monitored overflows are upstream.
-//  - Water quality: the calibrated E. coli column, the chance a sample would be over 900 per 100 ml,
+//  - Water quality: the E. coli estimate, the calibrated chance a sample would be over 900 per 100 ml,
 //    where it was tested (rivers with overflows upstream). Low under 10%: the minimum inland
 //    standard ("sufficient", Bathing Water Regulations 2013, schedule 5) is a 90th percentile at
 //    or under 900, so a water can be over 900 about one sample in ten and still pass. Moderate to
@@ -57,7 +57,7 @@ const dayName = iso => dayWord(iso).replace(/^on /, '');
 // an incident (Frensham Great Pond's algae warning since 19 Jun 2026, say). Its service refuses
 // the build's machines and does not answer other sites' pages, so a spot's page links to it.
 // The cut-offs between the four levels, as fractions: the spill exposure's (transport.risk_label,
-// whose labels arrive in spots.json) and the E. coli chance's. The page draws its scales from these.
+// whose labels arrive in spots.json) and the E. coli estimate's. The page draws its scales from these.
 const SPILL_CUTS = [0.15, 0.40, 0.70], ECOLI_CUTS = [0.10, 0.25, 0.50];
 const ECOLI_BANDS = [...ECOLI_CUTS, Infinity].map((t, i) => [t, ['low', 'moderate', 'high', 'very high'][i]]);
 const CLASS_LEVEL = { excellent: 'low', good: 'low', sufficient: 'moderate', poor: 'high' };
@@ -120,7 +120,7 @@ function headParts(s) {
   if (COVER[l]) return [COVER[l], ''];
   if (!daily(s) && rank(algaeLevel(s)) > rank(CLASS_LEVEL[classOf(s)] ?? null)) return [`${cap(l)} risk`, 'algae at the last check'];
   if (!daily(s) || worstNear(s)[0].by === 'record')
-    return advisedAgainst(s) ? ['Rated poor', 'advice against bathing'] : [`Rated ${classOf(s)} by the EA`, ''];
+    return advisedAgainst(s) ? ['Rated poor', 'advice against bathing'] : [`Rated ${classOf(s)} by the Environment Agency`, ''];
   const [r, when] = worstNear(s);
   if (rank(r.level) > 0) return [`${cap(r.level)} risk ${when}`, because(r)];
   const x = laterDay(s);

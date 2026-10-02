@@ -8,8 +8,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- page-meta: scripts/build_site.py replaces this block on every page it writes (absolute
      links for share previews; a spot's own page gets its name, a description and a <base>). -->
-<title>SwimSignal · sewage-spill forecasts for swim spots</title>
-<meta name="description" content="Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow data, rainfall forecasts and the river network.">
+<title>SwimSignal · pollution risk forecasts for swim spots</title>
+<meta name="description" content="Five-day pollution risk forecasts for river and lake swim spots in England, from live sewage-overflow data, rainfall forecasts and the river network.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SwimSignal">
 <meta property="og:title" content="SwimSignal">
@@ -627,7 +627,7 @@
       <details class="more" id="levels"><summary>What the levels mean</summary>
         <p class="small muted">A day's level is the highest of these. A spot's page shows each one.</p>
         <dl>
-          <dt>Sewage spills</dt><dd>The exposure index (0–100): the modelled chance that a spill from an overflow upstream reaches the spot. Low under 15, moderate 15 to 40, high 40 to 70, very high 70 or more.</dd>
+          <dt>Sewage spills</dt><dd>The exposure index, a 0–100 score of how likely sewage from upstream is to reach the spot. Low under 15, moderate 15 to 40, high 40 to 70, very high 70 or more.</dd>
           <dt>Water quality</dt><dd>On rivers with overflows upstream: the chance a water sample would show E. coli over 900 per 100 ml, from any source, runoff after rain included. Low risk under 10%, moderate 10 to 25%, high 25 to 50%, very high over 50%. The minimum bathing-water standard lets about one sample in ten be over 900. In the May to September season only: from October to April, when the EA takes no samples, the estimate is shown marked † but does not set the level.</dd>
           <dt>Environment Agency rating</dt><dd>At a designated bathing water, the EA's yearly rating from up to four seasons of lab samples. When it is poor, advice against bathing applies through the bathing season, 15 May to 30 September, and the level is at least high on every day. Where there is no daily forecast, the rating sets the level: excellent or good low, sufficient moderate, poor high.</dd>
           <dt>Algae</dt><dd>At a designated bathing water, the EA sampler's last look, if under two weeks old: enough algae to be objectionable makes the level at least high, some at intervals at least moderate.</dd>
@@ -644,8 +644,8 @@
       <details class="more"><summary>What each part of a spot's page means</summary>
         <dl>
           <dt>Right now</dt><dd>Which upstream storm overflows are discharging now or finished within 48 hours, from the water companies' live feeds.</dd>
-          <dt id="about-exposure">Exposure index (0–100)</dt><dd>The modelled chance that at least one upstream overflow spills and its discharge reaches the spot after travel time, die-off and dilution. The spill part is verified against what the overflows did; the die-off and dilution weights are physical estimates, not calibrated against water samples, so it is an index, not a probability. The colour levels (low to very high) come from it.</dd>
-          <dt id="about-ecoli">E. coli &gt; 900</dt><dd>The estimated probability that a midday water sample would exceed 900 E. coli cfu/100 ml, from rainfall at the spot, the exposure index, water-body type and season, fitted to Environment Agency samples at river and lake bathing waters and tested on years and sites it never saw. It counts bacteria from any source, so rain alone can raise it when the exposure index is low. 900 is the threshold used in the inland "sufficient" classification, which is a 90th-percentile calculation over four seasons, not a pass/fail test of one sample. It is validated on rivers in the May–September sampling season only; on lakes it has no demonstrated skill and is not shown. The EA takes no samples from October to April, so then nothing tests it: the figure is still shown, marked †, but it does not set the level, and the date's own effect is held at its value at the nearer end of the season (30 September or 1 May) rather than carried on with nothing to check it.</dd>
+          <dt id="about-exposure">Exposure index (0–100)</dt><dd>A 0–100 score of how likely sewage from upstream is to reach the spot. It is built from the chance that at least one overflow upstream spills and its discharge arrives, after travel time, die-off and dilution. The spill part is verified against what the overflows did; the die-off and dilution weights are physical estimates, not calibrated against water samples, so the score is not a probability. The colour levels (low to very high) come from it.</dd>
+          <dt id="about-ecoli">E. coli estimate</dt><dd>The estimated chance that a midday water sample would show over 900 E. coli per 100 ml, from rainfall at the spot, the exposure index, water-body type and season, fitted to Environment Agency samples at river and lake bathing waters and tested on years and sites it never saw. It counts bacteria from any source, so rain alone can raise it when the exposure index is low. 900 is the threshold used in the inland "sufficient" classification, which is a 90th-percentile calculation over four seasons, not a pass/fail test of one sample. It is validated on rivers in the May–September sampling season only; on lakes it has no demonstrated skill and is not shown. The EA takes no samples from October to April, so then nothing tests it: the figure is still shown, marked †, but it does not set the level, and the date's own effect is held at its value at the nearer end of the season (30 September or 1 May) rather than carried on with nothing to check it.</dd>
           <dt>Algae</dt><dd>Designated bathing waters only: the Environment Agency sampler's latest look at the water, an observation, not a forecast. It does not tell blue-green algae from harmless kinds.</dd>
           <dt>What it does not know</dt><dd>Anything about a specific farm, road, outfall or algal bloom: only monitored storm overflows are modelled.</dd>
         </dl>
@@ -1036,10 +1036,10 @@ function ratingHistory(cl) {
 // A water-quality figure from October to April, when nothing tests it, is marked †.
 const untested = x => ecoliUntested(x) && !nil(x.p_ecoli_gt900);
 const anyUntested = d => ecoliTested(d) && d.days.slice(0, 5).some(untested);
-const UNTESTED_NOTE = '† Untested outside May to September, when the EA takes no samples, so it does not set the level.';
+const UNTESTED_NOTE = '† Untested outside May to September, when the Environment Agency takes no samples, so it does not set the level.';
 // Out of season the water-quality figure is not in the level, so a list row names it, marked †.
 const waterEst = s => { if (!ecoliTested(s)) return ''; const x = VIEW.day ? s.days.find(y => y.date === VIEW.day) : s.days[0];
-  return x && untested(x) ? `E.&nbsp;coli risk ${Math.round(x.p_ecoli_gt900 * 100)}%†` : ''; };
+  return x && untested(x) ? `E.&nbsp;coli estimate ${Math.round(x.p_ecoli_gt900 * 100)}%†` : ''; };
 // The week at a glance in a list row: one bar per day, coloured by level. Where no overflow can
 // reach the spot there is no level to colour, so the bars show the rain instead (40 mm fills one).
 const week = s => {
@@ -1119,7 +1119,7 @@ function daysSentence(d) {
     + `${cap(spilling(known[0], total))} ${dayWord(known[0].date)}${trend}.`;
 }
 // A day's place on its bar, 0 to 1: four equal bands, the day in its level's band, placed in it by
-// what set the level: the spill exposure (bands at SPILL_CUTS, 15, 40 and 70 of 100), the E. coli chance
+// what set the level: the exposure index (bands at SPILL_CUTS, 15, 40 and 70 of 100), the E. coli estimate
 // where it counts (ECOLI_CUTS, 10, 25 and 50%), the foot of high for a water rated poor, the algae. So the bar always agrees
 // with the word beside it; drawn from the spills alone, a water rated poor showed "High" by an empty bar.
 const inBand = (v, cuts) => { for (let i = 0; i < 4; i++) if (v < cuts[i + 1] || i === 3) return Math.min(1, (i + Math.max(0, Math.min(1, (v - cuts[i]) / (cuts[i + 1] - cuts[i])))) / 4); };
@@ -1199,7 +1199,7 @@ function facts(d) {
     out.push({ icon: ICON.spills, label: 'Sewage spills', fig: i > 0 && i < .5 ? '&lt;1' : Math.round(i), unit: 'of 100', word: `${cap(x0.label)} risk`, wordTone: tone(x0.label),
       vis: scaleBar(x0.risk, SPILL_CUTS, x0.label, `Exposure index ${Math.round(i)} of 100: ${x0.label}`),
       say: `${cap(spilling(x0, total))} today.`,
-      more: `The exposure index, 0 to 100: the modelled chance that a spill from an overflow upstream reaches the spot, after travel time, die-off and dilution. ${bandWords(SPILL_CUTS, c => Math.round(c * 100))}. <a href="#about-exposure">What this counts</a>` }); }
+      more: `The exposure index, a 0–100 score of how likely sewage from upstream is to reach the spot, after travel time, die-off and dilution. ${bandWords(SPILL_CUTS, c => Math.round(c * 100))}. <a href="#about-exposure">What this counts</a>` }); }
   // Out of season the figure stays but its band does not (water): it does not set the level.
   if (!d.error && ecoliTested(d) && x0 && !nil(x0.p_ecoli_gt900)) { const off = untested(x0), b = off ? null : ecoliBand(d, x0);
     out.push({ icon: ICON.water, label: 'Water quality', fig: pct(x0.p_ecoli_gt900) + '%', word: off ? 'Out of season†' : `${cap(b)} risk`, wordTone: off ? '' : tone(b),
@@ -1341,7 +1341,7 @@ async function shareImage(d) {
   g.fillStyle = v('--muted'); g.font = `500 28px ${F}`;
   if (days.length) y = wrapText(g, (pct ? 'Pollution risk each day, and the chance a water sample would show E. coli over 900 per 100 ml' : on ? 'Pollution risk each day, and rain in the 48 h to midday' : 'Rain in the 48 h to midday')
     + (anyUntested(d) ? '. † Untested outside May to September, so it does not set the level.' : '.'), 60, y, W - 120, 38);
-  y = wrapText(g, `Forecast issued ${new Date(DATA.generated_at).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. A forecast of sewage-overflow risk, not a water test: check the signs at the water.`, 60, y + 16, W - 120, 38);
+  y = wrapText(g, `Forecast issued ${new Date(DATA.generated_at).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. A pollution risk forecast, not a water test: check the signs at the water.`, 60, y + 16, W - 120, 38);
   // Cut the canvas to its content, then the address along the bottom.
   const out = document.createElement('canvas'); out.width = W; out.height = Math.min(H, Math.max(900, Math.round(y + 120)));
   const o = out.getContext('2d'); o.drawImage(c, 0, 0);
@@ -1490,7 +1490,7 @@ const MARKERS = new Map();
 const mapLevel = s => VIEW.day ? dayLevel(s, VIEW.day) : level(s);
 const mapWhen = () => VIEW.day ? dayWord(VIEW.day) : 'today and tomorrow';
 const lowLabel = () => 'Low risk';
-const lowListNote = () => `Low risk from pollution ${mapWhen()}, going by the forecasts and the EA's ratings. Not a safety check: look at the signs at the water before you swim.`;
+const lowListNote = () => `Low risk from pollution ${mapWhen()}, going by the forecasts and the Environment Agency's ratings. Not a safety check: look at the signs at the water before you swim.`;
 // A marker's tooltip: the name and the list row's headline, so the map and the list say the same.
 const markerTip = s => `${esc(s.name)}: ${listHeadline(s)}`;
 function styleMarkers() {
@@ -1506,7 +1506,7 @@ function styleMarkers() {
   if (b) { b.setAttribute('aria-pressed', String(VIEW.lowOnly)); b.querySelector('.n').textContent = DATA.spots.filter(s => mapLevel(s) === 'low').length; }
   document.querySelectorAll('[data-low]').forEach(x => x.setAttribute('aria-pressed', String(VIEW.lowOnly)));
   document.querySelectorAll('[data-low-t]').forEach(x => { x.textContent = lowLabel(); });
-  document.getElementById('low-note').textContent = `Low risk ${mapWhen()} from pollution. Not a safety check: currents, cold water and the EA's short-term warnings are not included.`;
+  document.getElementById('low-note').textContent = `Low risk ${mapWhen()} from pollution. Not a safety check: currents, cold water and the Environment Agency's short-term warnings are not included.`;
 }
 function setMapDay(iso) {
   VIEW.day = iso || null;
@@ -1526,7 +1526,7 @@ const lowCtl = L.control({ position: 'topright' });
 lowCtl.onAdd = () => { const el = L.DomUtil.create('div', 'low-ctl');
   el.innerHTML = `<label class="sr" for="mapday">Day shown on the map</label><select id="mapday"><option value="">Today and tomorrow</option></select>`
     + `<button type="button" id="lowbtn" aria-pressed="false" aria-describedby="low-note"><span class="dot" style="background:${colour('low')}"></span>Low risk only <span class="n"></span></button>`
-    + `<p class="low-note" id="low-note">Low risk today and tomorrow from pollution. Not a safety check: currents, cold water and the EA's short-term warnings are not included.</p>`;
+    + `<p class="low-note" id="low-note">Low risk today and tomorrow from pollution. Not a safety check: currents, cold water and the Environment Agency's short-term warnings are not included.</p>`;
   L.DomEvent.disableClickPropagation(el);
   el.querySelector('button').addEventListener('click', () => setLowOnly(!VIEW.lowOnly));
   el.querySelector('select').addEventListener('change', e => setMapDay(e.target.value));
@@ -1576,7 +1576,7 @@ const SORTS = { risk: 'Highest risk', name: 'A–Z', near: 'Near me' };
 const BOOKMARK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>';
 const CHECK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';
 const saveLabel = on => BOOKMARK + (on ? 'Saved' : 'Save');
-const SEARCH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>';
+const SEARCH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>';
 // The counts over the list, after when the forecast was issued: freshness where the list begins.
 function overview(spots) {
   const rated = spots.filter(s => ORDER[mapLevel(s)] !== undefined);
@@ -1609,13 +1609,13 @@ function setView(v) {
 function renderList() {
   contribLayer.clearLayers(); selLayer.clearLayers(); current = null; shown = 'list';
   setView('list');
-  document.title = `${BRAND} · sewage-spill forecasts for swim spots`;
+  document.title = `${BRAND} · pollution risk forecasts for swim spots`;
   const saved = DATA.spots.filter(s => SAVED.has(s.id)), best = bestDayNote(DATA.spots);
   const sorts = Object.entries(SORTS).filter(([k]) => k !== 'near' || 'geolocation' in navigator);
   // The answer first: the intro and one row of controls, with one line under it (the caveat and the
   // week's best day), under the sky (.lead); then the saved spots, as cards on one tile, and all the
   // spots on another. The colour key went: each row says its level in words.
-  let h = `<div class="lead"><section class="intro"><h1>Check the water before you go</h1><p class="lede">Five-day pollution forecasts for ${DATA.spots.length} spots in England. <a href="#about">How it works</a></p>`
+  let h = `<div class="lead"><section class="intro"><h1>Check the water before you go</h1><p class="lede">Five-day pollution risk forecasts for ${DATA.spots.length} spots in England. <a href="#about">How it works</a></p>`
     + `<div class="search">${SEARCH_ICON}<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(VIEW.q)}"></div></section>`
     + `<div class="toolbar"><label class="sr" for="listday">When are you swimming?</label><select id="listday"><option value="">Today and tomorrow</option>${[0,1,2,3,4].map(k => addDays(today(), k)).map(iso => `<option value="${iso}"${VIEW.day === iso ? ' selected' : ''}>${dateLabel(iso)}</option>`).join('')}</select>`
     + `<button type="button" class="chip-btn low" data-low aria-pressed="${VIEW.lowOnly}" aria-describedby="low-note-list"><span class="dot" style="background:${colour('low')}"></span><span data-low-t>${lowLabel()}</span></button></div>`
@@ -1730,7 +1730,7 @@ function drawComparison() {
   const spots = COMPARE.ids.map(id => available.find(s => s.id === id));
   document.getElementById('compare-status').textContent = spots.length < 2 ? 'Choose at least two different saved spots.' : `${spots.length} spots · ${dateLabel(COMPARE.day)}. Scroll sideways to compare all columns.`;
   if (spots.length < 2) { box.innerHTML = ''; return; }
-  const rows = ['Forecast', 'Live spill feeds', 'EA rating', 'Water samples', 'Model limits', 'Algae observation', 'Local warnings'];
+  const rows = ['Forecast', 'Live spill feeds', 'Environment Agency rating', 'Water samples', 'Model limits', 'Algae observation', 'Local warnings'];
   const facts = spots.map(s => Object.fromEntries(evidenceRows(s,COMPARE.day,issued())));
   box.innerHTML = `<div class="compare-scroll" tabindex="0" role="region" aria-label="Spot comparison"><table class="compare-table"><caption>${dateLabel(COMPARE.day)} · issued ${issued()} (${ago(ageMin())} ago)</caption><thead><tr><th scope="col">Evidence</th>${spots.map(s => `<th scope="col"><a data-compare-spot="${esc(s.id)}" href="${esc(spotPath(s.id))}${daily(s) ? '#day='+COMPARE.day : ''}">${esc(s.name)}</a></th>`).join('')}</tr></thead><tbody>
     <tr><th scope="row">Pollution risk</th>${spots.map(s => `<td><b>${esc(dayHeadline(s,COMPARE.day))}</b></td>`).join('')}</tr>
@@ -1922,12 +1922,12 @@ function tech(d) {
     ['Spill model', a.model], ['Lead-time calibration', a.lead_calibration === undefined ? null : a.lead_calibration ? 'on' : 'off'],
     ['E. coli model', e.n_samples ? `${e.target}, fitted on ${e.n_samples.toLocaleString()} samples` : null],
     ['Version', a.version]].filter(r => r[1] !== null && r[1] !== undefined && r[1] !== '');
-  return rows.length ? `<details class="more small"><summary>Technical details</summary><dl class="tech">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl></details>` : '';
+  return rows.length ? `<details class="more small"><summary>Technical details</summary><dl class="tech">${rows.map(([k, v]) => `<dt>${k}</dt><dd${k === 'Version' ? ' class="mono"' : ''}>${esc(v)}</dd>`).join('')}</dl></details>` : '';
 }
 // Day by day, with the exposure index and the E. coli figure: folded away, one tap to open.
 function dayTable(d, total, isLake, scope) {
   let h = `<details class="tile fold"><summary><span class="t-lab">${ICON.table}<span>Day-by-day numbers</span></span></summary>`
-    + `<table><tr><th>Day</th><th class="num">Exposure</th><th>Risk</th><th class="num">E.&nbsp;coli &gt;900</th><th class="num">Rain 48&nbsp;h</th></tr>`;
+    + `<table><tr><th>Day</th><th class="num">Exposure</th><th>Risk</th><th class="num">E.&nbsp;coli estimate</th><th class="num">Rain 48&nbsp;h</th></tr>`;
   let anyNoData = false, anyOffSeason = false;
   for (const day of d.days) {
     const noData = !hasData(day); anyNoData = anyNoData || noData;
@@ -1946,7 +1946,7 @@ function dayTable(d, total, isLake, scope) {
   if (anyOffSeason) notes.push(`<sup>†</sup>Outside May to September, when the EA takes no samples: untested. <a href="#about-ecoli">What this means</a>`);
   if (anyNoData) notes.push(`<b>No data</b>: the rainfall forecast for that day did not arrive; no figure is shown rather than one computed as if it were dry.`);
   if (notes.length) h += `<div class="small muted msg">${notes.join(' ')}</div>`;
-  return h + `<p class="small muted msg">Exposure index (0–100): modelled chance that an upstream spill reaches here, from Open-Meteo rainfall through a spill model trained on 743,735 United Utilities discharge events (2023–25) and verified on a held-out year, then travel time, die-off and dilution. An index, not a probability. <b>E. coli &gt; 900</b>: estimated probability that a midday sample would exceed 900 cfu/100 ml, from rain at the spot in the 48 h to midday, the exposure index, and season. Daily resolution. <a href="#levels">What the levels mean</a> · <a href="verification.html">How accurate is it?</a></p></details>`;
+  return h + `<p class="small muted msg"><b>Exposure index</b>: a 0–100 score of how likely sewage from upstream is to reach the spot, from Open-Meteo rainfall through a spill model trained on 743,735 United Utilities discharge events (2023–25) and verified on a held-out year, then travel time, die-off and dilution. Not a probability. <b>E. coli estimate</b>: the estimated chance that a midday sample would show over 900 E. coli per 100 ml, from rain at the spot in the 48 h to midday, the exposure index, and season. Daily resolution. <a href="#levels">What the levels mean</a> · <a href="verification.html">How accurate is it?</a></p></details>`;
 }
 // The overflows that matter most, as rows, each with its reach drawn: on a phone a five-column table
 // was too tight to read. Their circles go on the map, a bigger one for more reach.
@@ -1992,7 +1992,7 @@ function render(d) {
   serverToday = DATA.generated_at.slice(0, 10);
   contribLayer.clearLayers();
   setView('spot');
-  document.title = `${d.name}: sewage-spill forecast · ${BRAND}`;   // as on the spot's own page
+  document.title = `${d.name}: pollution risk forecast · ${BRAND}`;   // as on the spot's own page
   const loc = d.location || {}, total = overflows(d);
   const tags = [cap(d.kind), d.source === 'designated' ? 'Environment Agency designated bathing water' : null,
     loc.watercourse ? esc(loc.watercourse) : null, loc.lake_area_km2 ? `${loc.lake_area_km2} km²` : null,

@@ -16,8 +16,8 @@ function evidenceRows(s, iso, issued) {
     ['Live spill feeds', !total ? 'No monitored overflows upstream; other pollution sources may still affect this water.'
       : monitored == null ? `Live reporting coverage unavailable for ${total} upstream overflows.`
       : `${monitored} of ${total} upstream overflows report live in this update.${monitored < total ? ' Missing reports do not mean no spills.' : ''}`],
-    ['EA rating', cl?.class ? `${cl.class.charAt(0).toUpperCase() + cl.class.slice(1)}${cl.year ? ' · ' + cl.year : ''}. Based on up to four seasons of samples; not today’s water quality.`
-      : s.source === 'designated' ? 'Designated bathing water; no rating available in this update.' : 'Not an EA-designated bathing water. No bathing-water rating shown.'],
+    ['Environment Agency rating', cl?.class ? `${cl.class.charAt(0).toUpperCase() + cl.class.slice(1)}${cl.year ? ' · ' + cl.year : ''}. Based on up to four seasons of samples; not today’s water quality.`
+      : s.source === 'designated' ? 'Designated bathing water; no rating available in this update.' : 'Not an Environment Agency designated bathing water. No bathing-water rating shown.'],
     ['Water samples', 'Individual bacterial sample results are not included here.' + (cl?.url ? ' Check the EA page for dated results and current advice.' : ' No current water test is shown.')],
     ['Model limits', total && !s.error && s.location?.mode !== 'lake'
       ? (offSeason ? 'Outside May–September: the E. coli estimate is untested for this season.' : 'E. coli model tested on river bathing waters in May–September; it is not a test of this spot today.')
