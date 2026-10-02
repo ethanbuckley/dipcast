@@ -35,36 +35,46 @@
   --k-low: #326a43; --k-moderate: #855817; --k-high: #a04623; --k-veryhigh: #992a2a; --k-na: #4f5a62; --k-clear: #0f5a61;
   /* Notices */
   --control-low: #326a43; --focus: #0f5a61; --notice-bg: #fff6e8; --notice-line: #e5a53a;
-  --radius: 8px;
+  /* One corner radius. The mark's 6 px corner and the 4 px of a focus ring round a link are their
+     own tokens, used for nothing else. */
+  --radius: 8px; --radius-mark: 6px; --radius-ring: 4px;
+  /* White text and rules on a filled surface: the bar, the brand, a chosen control. */
+  --on-fill: #fff;
   /* Six type sizes: meta, notes, body, section headings, a figure or headline, titles and the app's
      answer (30 on phones). */
   --fs-meta: 13px; --fs-note: 15px; --fs-body: 17px; --fs-head: 20px; --fs-level: 30px; --fs-title: 36px;
   /* The app's sky and glass (index.html): the picture's top colour, a frosted tile, the empty part of
      a bar, and an overflow quiet or not reporting. Here so that the two stylesheets keep one set. */
   --sky: #dfe6e7; --glass: rgba(255, 255, 255, .76); --track: rgba(27, 35, 40, .13); --ov-quiet: #5b6470; --ov-off: #b3bac2;
+  /* The app's map and what floats on it, and the rain bars (index.html); unused here, kept so that
+     the two files hold one set (tests/test_design_tokens.py). */
+  --map-bg: #e4e2dc; --float: #fff; --veil: rgba(255, 255, 255, .9); --scrim: rgba(20, 33, 43, .55);
+  --lift: 0 1px 2px rgba(0, 0, 0, .12), 0 0 0 1px var(--hair); --rain: #3d8bd4;
+  /* A select's arrow, in the icons' 1.75 px stroke. */
+  --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235a6166' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 }
 @media (max-width: 540px) { :root { --fs-title: 30px; } }
 
 * { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; font-optical-sizing:auto; }
-body { margin: 0; font: 400 var(--fs-body)/1.55 var(--font-text); color: var(--ink); background: var(--bg); }
+body { margin: 0; font: 400 var(--fs-body)/1.5 var(--font-text); color: var(--ink); background: var(--bg); }
 a { color: var(--link); text-decoration-thickness: 1px; text-underline-offset: 2px; }
 a:hover { text-decoration-thickness: 2px; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
-a:focus-visible { border-radius: 4px; }   /* a rounded ring on text links; controls keep their own radius */
+a:focus-visible { border-radius: var(--radius-ring); }   /* a rounded ring on text links; controls keep their own radius */
 b, strong { font-weight: 600; }
-code { font: 0.92em var(--font-mono); }
+code { font: var(--fs-note) var(--font-mono); }   /* file names on the terms page, at the note size: at the body size the monospaced face looks larger than the text round it */
 
 /* The header every page shares: the slate bar, the mark, the wordmark and the main links in white,
    the current page underlined in white. */
-.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 10px 20px; background: var(--bar); color: #fff; }
-.brand { display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; margin: -8px 0; color: #fff; text-decoration: none; font: 600 var(--fs-head)/1 var(--font-display); letter-spacing: -.005em; }   /* a 44 px target that moves nothing */
-.brand svg { display: block; width: 28px; height: 28px; border-radius: 6px; }
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 10px 20px; background: var(--bar); color: var(--on-fill); }
+.brand { display: inline-flex; align-items: center; gap: 10px; padding: 8px 0; margin: -8px 0; color: var(--on-fill); text-decoration: none; font: 600 var(--fs-head)/1 var(--font-display); }   /* a 44 px target that moves nothing */
+.brand svg { display: block; width: 28px; height: 28px; border-radius: var(--radius-mark); }
 .top nav { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; margin-left: auto; }
-.top nav a { color: var(--bar-ink); text-decoration: none; font-size: var(--fs-note); font-weight: 600; line-height: 1.2; min-height:44px; display:inline-flex; align-items:center; padding: 8px 10px; border-radius: 6px; }
-.top nav a:hover { color: #fff; background: var(--bar-hover); }
-.top nav a[aria-current=page] { color: #fff; box-shadow: inset 0 -2px 0 #fff; border-radius: 0; }
-.top :focus-visible { outline-color: #fff; }
+.top nav a { color: var(--bar-ink); text-decoration: none; font-size: var(--fs-note); font-weight: 600; line-height: 1.2; min-height:44px; display:inline-flex; align-items:center; padding: 8px 10px; border-radius: var(--radius); }
+.top nav a:hover { color: var(--on-fill); background: var(--bar-hover); }
+.top nav a[aria-current=page] { color: var(--on-fill); box-shadow: inset 0 -2px 0 var(--on-fill); border-radius: 0; }
+.top :focus-visible { outline-color: var(--on-fill); }
 
 /* On a phone the brand and the four links each get a complete row. */
 @media (max-width: 540px) {
@@ -124,7 +134,7 @@ details.fold { border-top: 1px solid var(--line); border-bottom: 1px solid var(-
 details.fold + details.fold { border-top: 0; margin-top: -16px; }
 details.fold > summary { cursor: pointer; list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; font-weight: 600; }
 details.fold > summary::-webkit-details-marker { display: none; }
-details.fold > summary::after { content: ""; flex: none; width: 9px; height: 9px; margin-right: 4px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); transition: transform .15s; }
+details.fold > summary::after { content: ""; flex: none; width: 9px; height: 9px; margin-right: 4px; border-right: 1.75px solid var(--muted); border-bottom: 1.75px solid var(--muted); transform: rotate(45deg); transition: transform .15s; }
 details.fold[open] > summary::after { transform: rotate(-135deg); }
 details.fold > :not(summary) { margin-bottom: 14px; }
 
@@ -132,14 +142,14 @@ details.fold > :not(summary) { margin-bottom: 14px; }
 label { display: block; font-weight: 600; margin: 20px 0 6px; }
 input, select, textarea { font: inherit; font-size: var(--fs-body); width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--radius); color: var(--ink); background: var(--field); }
 select { -webkit-appearance: none; appearance: none; padding-right: 36px;
-         background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235a6166' stroke-width='2'/%3E%3C/svg%3E");
+         background-image: var(--arrow);
          background-repeat: no-repeat; background-position: right 12px center; }
 textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
 .hint { font-size: var(--fs-note); color: var(--muted); margin: 6px 0 0; }
 .btn, button.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 9px 16px; font: 600 var(--fs-note)/1.2 var(--font-text);
        color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; cursor: pointer; }
 .btn:hover { background: var(--hover); }
-.btn.primary { color: #fff; background: var(--brand); border-color: var(--brand); }
+.btn.primary { color: var(--on-fill); background: var(--brand); border-color: var(--brand); }
 .btn.primary:hover { background: var(--brand-deep); border-color: var(--brand-deep); }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0 0; }
 .panel { border-radius: var(--radius); background: var(--card); padding: 16px 20px; margin: 24px 0 0; }   /* the one white surface, as .summary */
