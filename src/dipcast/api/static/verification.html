@@ -130,7 +130,7 @@ async function main() {
   const why = `bathing-water service: ${Object.entries(bw.errors || {}).map(([k, n]) => `${k} ×${n}`).join(', ') || 'answered'}; Water Quality Archive: ${ar.error || 'answered'}`;
   const stalled = S && S.all_failed ? `<div class="notice"><b>E. coli scoring is stalled.</b> At ${when(S.checked_at)} neither Environment Agency source of lab samples answered (${why}). ${S.last_ok_at ? `Scores below use samples fetched ${when(S.last_ok_at)} and will not change until a fetch succeeds.` : `No samples have been fetched, so ${E.n_forecasts ? `none of the ${E.n_forecasts.toLocaleString()} logged E. coli forecasts` : 'no forecast'} can be scored. A zero here is a data-feed failure, not a result.`}</div>` : '';
   const via = S && !S.all_failed && bw.refused && ar.answered ? `<p class="small muted">Samples come from the Environment Agency's Water Quality Archive, because the bathing-water service refuses the build server (HTTP 403). The archive publishes the same results, usually 3–7 days later, so the latest week's samples may not be scored yet.</p>` : '';
-  const partial = S && !S.all_failed && S.n_failed ? `<p class="small muted">At the last fetch (${when(S.checked_at)}) no source answered for ${S.n_failed} of ${S.n_sites} bathing waters (${why}); their earlier samples are kept.</p>` : '';
+  const partial = S && !S.all_failed && S.n_failed ? `<p class="small muted">At the last fetch (${when(S.checked_at)}) no source returned samples for ${S.n_failed} of ${S.n_sites} bathing waters (${why}); their earlier samples are kept.</p>` : '';
   const ECOLI_H = 'Live scoring: E. coli forecasts against new lab samples';
   if (E && E.n_scored) {
     const eo = E.overall;
