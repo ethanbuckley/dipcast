@@ -1,0 +1,53 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- One spot's forecast for another site's page, in an iframe: embed.html?spot=<id>. embed.js fills
+     the card; scripts/build_site.py (write_embed) copies both and asks for the scripts at ?v=<hash>.
+     A spot's own page is the one for search engines, so this one asks to be left out. -->
+<title>Pollution risk forecast · SwimSignal</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="page.css">
+<link rel="preload" href="fonts/SourceSans3-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/SourceSerif4-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+  /* The tokens are page.css's (docs/DESIGN.md). The frame shows the host page behind it, so only the
+     card is white: a hairline round it and the one radius, as a tile on the paper. From 320 px wide. */
+  html, body { background:transparent; }
+  body { margin:0; font:400 var(--fs-note)/1.45 var(--font-text); }
+  .card { max-width:480px; padding:12px 14px; border:1px solid var(--line); border-radius:var(--radius); background:var(--card); }
+  .card p { margin:0; }
+  .name { margin:0; font:600 var(--fs-head)/1.25 var(--font-display); text-wrap:balance; }
+  .name a { color:var(--ink); text-decoration:none; }
+  .name a:hover { text-decoration:underline; }
+  .card .notice { margin:8px 0 0; padding:8px 12px; }
+  /* The headline as a saved spot's card has its level: 20 px bold, in the level's text shade. */
+  .card .hl { margin:6px 0 0; font:700 var(--fs-head)/1.3 var(--font-text); color:var(--k-na); }
+  .hl.low { color:var(--k-low); } .hl.moderate { color:var(--k-moderate); } .hl.high { color:var(--k-high); }
+  .hl.veryhigh { color:var(--k-veryhigh); } .hl.clear { color:var(--k-clear); }
+  .card .next { margin:2px 0 0; }
+  .lab { margin:12px 0 2px; font:600 var(--fs-meta)/1.3 var(--font-text); color:var(--muted); }
+  /* The five days: the spot's page's rows, shorter, since nothing here is a button. */
+  .drows { list-style:none; margin:0; padding:0; }
+  .drow { display:grid; grid-template-columns:52px 76px minmax(0, 1fr); align-items:center; gap:8px; min-height:32px; border-top:1px solid var(--hair); }
+  .drow:first-child { border-top:0; }
+  .drow .d { font-weight:600; }
+  .drow .l { font-weight:700; white-space:nowrap; color:var(--k-na); }
+  .drow.low .l { color:var(--k-low); } .drow.moderate .l { color:var(--k-moderate); } .drow.high .l { color:var(--k-high); } .drow.veryhigh .l { color:var(--k-veryhigh); }
+  .dbar { position:relative; height:6px; background:var(--track);
+          -webkit-mask:linear-gradient(90deg, #000 calc(25% - 1px), transparent 0 calc(25% + 1px), #000 0 calc(50% - 1px), transparent 0 calc(50% + 1px), #000 0 calc(75% - 1px), transparent 0 calc(75% + 1px), #000 0);
+                  mask:linear-gradient(90deg, #000 calc(25% - 1px), transparent 0 calc(25% + 1px), #000 0 calc(50% - 1px), transparent 0 calc(50% + 1px), #000 0 calc(75% - 1px), transparent 0 calc(75% + 1px), #000 0); }
+  .dbar i { position:absolute; left:0; top:0; bottom:0; background:var(--unknown); }
+  .drow.low .dbar i { background:var(--low); } .drow.moderate .dbar i { background:var(--moderate); } .drow.high .dbar i { background:var(--high); } .drow.veryhigh .dbar i { background:var(--veryhigh); }
+  .card .check { margin:10px 0 0; padding-top:8px; border-top:1px solid var(--hair); }
+  .card .say { margin:6px 0 0; }
+  .card code { font-size:var(--fs-meta); }   /* the monospaced face looks larger than the text round it at the same size */
+  .card .foot { margin:8px 0 0; font-size:var(--fs-meta); color:var(--muted); }
+  .foot .back { font-weight:600; }
+  .card .credit { margin:6px 0 0; font-size:var(--fs-meta); line-height:1.4; color:var(--muted); }
+  .credit a { color:var(--muted); }
+</style>
+</head><body>
+<main class="card" id="card" aria-live="polite"><p class="say">Loading the forecast…</p></main>
+<noscript><p class="card say">This forecast needs JavaScript. <a href="./" target="_blank" rel="noopener">Open SwimSignal</a>.</p></noscript>
+<script src="levels.js"></script>
+<script src="embed.js"></script>
+</body></html>

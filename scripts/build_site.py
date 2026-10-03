@@ -899,6 +899,8 @@ def write_pages(site: Path, results: list[dict], token: str | None = None, root:
     (site / "404.html").write_text(with_counter(not_found_page(root), token))
     (site / "robots.txt").write_text(robots(root))
     (site / ".nojekyll").write_text("")
+    write_data_page(site, token)   # lists what is in data/, so build() writes the data files first
+    write_embed(site)
     return len(ids)
 
 
@@ -907,6 +909,86 @@ def announce(warning: str) -> None:
     log.warning("%s", warning)
     if os.environ.get("GITHUB_ACTIONS") == "true":
         print("::warning title=dipcast build health::" + warning.replace("%", "%25").replace("\n", "%0A"), flush=True)
+
+
+# The data page, data.html: every file under data/, what it holds, its fields and its licence. The
+# words are the page's (src/dipcast/api/static/data.html), one table row and one section a file. The
+# build fills in each file's size, marks a described file this build did not write, and adds a row
+# for any file in data/ the page does not describe, with a build warning, so the list is always
+# every file published. REWRITES gains the links to it, to About's embed section and to About's
+# example card.
+REWRITES += [('href="/data"', 'href="data.html"'), ('href="/about#embed"', 'href="about.html#embed"'),
+             ('href="/embed.html?spot=wharfe-burnsall"', 'href="embed.html?spot=wharfe-burnsall"')]
+DATA_ROW = re.compile(r'(<tr data-file="([^"]+)">[^\n]*?<td class="num">)[^<]*(</td></tr>)')
+MORE_FILES = "<!-- more files -->"
+
+
+def file_size(n: int) -> str:
+    return f"{n / 1e6:.1f} MB" if n >= 1e6 else f"{max(1, round(n / 1e3))} kB"
+
+
+def data_files(data: Path) -> dict[str, int]:
+    """Every entry in data/ and its size in bytes; a folder counts whole, as name/."""
+    if not data.is_dir():
+        return {}
+    return {p.name + "/" * p.is_dir(): sum(f.stat().st_size for f in p.rglob("*") if f.is_file()) if p.is_dir() else p.stat().st_size
+            for p in sorted(data.iterdir()) if not p.name.startswith(".")}
+
+
+def with_data_files(html: str, data: Path) -> tuple[str, list[str]]:
+    """The data page with this build's file sizes, and the files it does not describe."""
+    files, described = data_files(data), set()
+
+    def size(m: re.Match) -> str:
+        described.add(m.group(2))
+        return m.group(1) + (file_size(files[m.group(2)]) if m.group(2) in files else "Not in this build") + m.group(3)
+
+    html = DATA_ROW.sub(size, html)
+    if MORE_FILES not in html:
+        raise ValueError(f"data.html has lost its {MORE_FILES!r} marker, where undescribed files are listed")
+    extra = [n for n in files if n not in described]
+    name = lambda n: escape(n) if n.endswith("/") else f'<a href="data/{escape(n)}">{escape(n)}</a>'   # a folder has no page
+    rows = "".join(f'<tr data-file="{escape(n)}"><td>{name(n)}</td><td>Not described here yet.</td>'
+                   f'<td class="num">{file_size(files[n])}</td></tr>\n' for n in extra)
+    return html.replace(MORE_FILES, rows, 1), extra
+
+
+def write_data_page(site: Path, token: str | None = None) -> list[str]:
+    """data.html, from the files in site/data. Returns the ones it does not describe."""
+    page = (STATIC / "data.html").read_text()
+    for a, b in REWRITES:
+        page = page.replace(a, b)
+    page, extra = with_data_files(page, site / "data")
+    if extra:
+        announce(f"data.html does not describe {', '.join(extra)}: listed without a description. "
+                 "Add a row and a section for each to src/dipcast/api/static/data.html")
+    (site / "data.html").write_text(with_counter(page, token))
+    return extra
+
+
+# The embed, embed.html?spot=<id>: one spot's card for a club's or a council's page (embed.js says
+# what is on it). Its two scripts are asked for at ?v=<a hash of both>, so that a card and its level
+# rules come from one build, as the app's do (VERSIONED_SCRIPTS). It has no page-view counter: inside
+# another site's page it could not see a visitor's choice not to be counted, which is kept on this one.
+EMBED = TEMPLATE.parent / "embed.html"
+EMBED_SCRIPTS = ('<script src="levels.js"></script>', '<script src="embed.js"></script>')
+
+
+def write_embed(site: Path) -> str:
+    """embed.html and embed.js beside the app (which has levels.js, page.css and the fonts). Returns
+    the scripts' version."""
+    h = hashlib.sha256()
+    for f in ("levels.js", "embed.js"):
+        h.update((TEMPLATE.parent / f).read_bytes())
+    v = h.hexdigest()[:8]
+    page = EMBED.read_text()
+    for tag in EMBED_SCRIPTS:
+        if tag not in page:
+            raise ValueError(f"embed.html has lost {tag}, which the build versions")
+        page = page.replace(tag, tag.replace('.js"', f'.js?v={v}"'), 1)
+    shutil.copy(TEMPLATE.parent / "embed.js", site / "embed.js")
+    (site / "embed.html").write_text(page)
+    return v
 
 
 def build(refresh: bool = True) -> dict:
