@@ -47,7 +47,8 @@ part is the transport step: an overflow 2 km upstream on the same river and one
 The notices each provider asks for are on the site's terms page ("Data sources
 and credits"), and `data/spots.json`, `data/overflows.geojson` and
 `data/verification.json` carry them in a `credits` field (`data_credits` in
-`scripts/build_site.py`). The MIT licence covers the code, not the data.
+`scripts/build_site.py`); `data/verification_live.csv` carries them in comment
+lines at its top. The MIT licence covers the code, not the data.
 
 Dwr Cymru (Wales) publishes no live feed to ArcGIS; its 128 overflows appear with
 annual spill history only and no "right now" status. Every English company is live.
@@ -352,6 +353,26 @@ is recorded (`ecoli_samples_status.json` in the state directory), and a site no
 source answered for keeps its earlier samples. If no source answers at all, the
 build log, the Actions run page (as an annotation) and the verification page say
 so, instead of showing zero scores as if nothing had been sampled yet.
+
+**Beside the Environment Agency's daily risk prediction (3 Oct 2026).** The EA
+publishes a prediction for each designated bathing water every day of the season,
+"normal" or "increased" (`stp-risk-prediction.json?predictedOn=<day>`); where it runs
+a pollution risk forecast (PRF) for the site, `prfOriginType` is `PRF_PROVIDED`.
+`scripts/compare_prf.py` fetched all 139 days of the 2026 season (15 May to 30 Sep)
+and found that none of the 38 inland bathing waters had a PRF on any day; 34 appear
+in the predictions at all, and there "increased" follows a posted notice (a
+pollution incident, harmful algae), not a forecast. It scores the prediction in
+force when each EA sample was taken, read as 1 or 0, beside SwimSignal's latest E.
+coli estimate issued before the sample. The estimate has been logged since 15 Sep,
+so the two meet on 30 samples at 22 sites (16-28 Sep), 2 of them over 900: Brier
+0.072 for SwimSignal, 0.133 for the EA, 0.079 for the long-run rate, and neither
+warned before either exceedance. Too few to judge. Over the whole season the
+prediction was "increased" before 13 of the 598 samples it covered (1 over 900) and
+"normal" before 44 of the 45 over 900. The EA's gateway refuses GitHub's runners, so
+the script runs by hand and `data/processed/prf_comparison.json` is committed; from a
+home connection it refused twice, after 55 and 62 requests, and answered again within
+90 s, so the script pauses 2 s between requests, retries a refusal once after 90 s,
+and caches each day's response under `DIPCAST_CACHE/ea_prf/`.
 
 **Live scoring rules for the spill forecasts (16-17 Sep 2026).** The forecast
 scored for each overflow and day is the latest one issued by 08:00 local time on

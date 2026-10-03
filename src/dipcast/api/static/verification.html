@@ -39,7 +39,7 @@ td.bars { width:38%; padding-top:10px; }
 <nav aria-label="Site"><a href="/">Explore</a><a aria-current="page" href="/verification">Accuracy</a><a href="/about">About</a><a href="/feedback">Feedback</a></nav></header>
 <main class="doc">
 <h1>How good is the forecast?</h1>
-<p class="lead">Every forecast SwimSignal issues is logged and scored later against what the overflows actually did. This page updates itself. It also shows the offline tests the model was built on.</p>
+<p class="lead">Every forecast SwimSignal issues is logged and scored later against what the overflows actually did. This page updates itself. It also shows the offline tests the model was built on. How the forecast is made is on the <a href="/methods">method page</a>.</p>
 
 <div id="short"><p class="muted">Loading the scores…</p></div>
 
@@ -50,10 +50,10 @@ td.bars { width:38%; padding-top:10px; }
 <div id="live"></div>
 <div id="offline"></div>
 
-<p class="note">Model and verification code: open source under MIT. Live scores use the water companies' published overflow status; an overflow counts as spilling on a day if any published event overlaps it. An overflow-day counts as "no spill" only if that overflow was observed with a known status at least six times that day and once the next day; a poll gap, an offline monitor or a dead feed is a missing observation, not a dry day. The forecast scored for each day is the one available at 08:00 local time on the day it was issued.<br><br>Data: storm overflow status and United Utilities' event history from the water companies via the National Storm Overflow Hub and Stream, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Bathing water ratings and in-season samples © Environment Agency copyright and/or database right 2016, and E. coli results from the Water Quality Explorer © Environment Agency copyright and/or database right 2025, <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">OGL v3.0</a>. <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a>, CC BY 4.0, from Met Office forecasts © Crown copyright, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>, and ERA5-Land reanalysis (<a href="https://doi.org/10.24381/cds.e2161bac">doi:10.24381/cds.e2161bac</a>): contains modified Copernicus Climate Change Service information 2026; neither the European Commission nor ECMWF is responsible for any use that may be made of the Copernicus information or data it contains. Scores are SwimSignal's; none of these bodies endorses it. <a href="/terms#data">All credits and licences</a>.</p>
+<p class="note">Model and verification code: open source under MIT. Live scores use the water companies' published overflow status; an overflow counts as spilling on a day if any published event overlaps it. An overflow-day counts as "no spill" only if that overflow was observed with a known status at least six times that day and once the next day; a poll gap, an offline monitor or a dead feed is a missing observation, not a dry day. The forecast scored for each day is the one available at 08:00 local time on the day it was issued.<br><br>Data: storm overflow status and United Utilities' event history from the water companies via the National Storm Overflow Hub and Stream, <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>. Bathing water ratings, in-season samples and daily risk predictions © Environment Agency copyright and/or database right 2016, and E. coli results from the Water Quality Explorer © Environment Agency copyright and/or database right 2025, <a href="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/">OGL v3.0</a>. <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a>, CC BY 4.0, from Met Office forecasts © Crown copyright, <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>, and ERA5-Land reanalysis (<a href="https://doi.org/10.24381/cds.e2161bac">doi:10.24381/cds.e2161bac</a>): contains modified Copernicus Climate Change Service information 2026; neither the European Commission nor ECMWF is responsible for any use that may be made of the Copernicus information or data it contains. Scores are SwimSignal's; none of these bodies endorses it. <a href="/terms#data">All credits and licences</a>.</p>
 </main>
 <footer class="site-foot"><div class="rule"><p>SwimSignal is a free, non-commercial pollution risk forecast for river and lake swim spots in England, run by Ethan Buckley. A forecast, not a water test: check the signs at the water before you swim.</p>
-<p><a href="/terms">Terms of use</a> · <a href="/privacy">Privacy</a> · <a href="/feedback">Feedback</a> · <a href="/terms#data">Data credits</a> · <a href="https://github.com/ethanbuckley/swimsignal">Source code</a> (MIT)</p></div></footer>
+<p><a href="/terms">Terms of use</a> · <a href="/privacy">Privacy</a> · <a href="/feedback">Feedback</a> · <a href="/methods">Method</a> · <a href="/terms#data">Data credits</a> · <a href="https://github.com/ethanbuckley/swimsignal">Source code</a> (MIT)</p></div></footer>
 <script>
 const f = (x, d=4) => (x === null || x === undefined || Number.isNaN(x)) ? '–' : Number(x).toFixed(d);
 const pct = x => (x === null || x === undefined) ? '–' : (100*x).toFixed(1) + '%';
@@ -92,6 +92,9 @@ async function main() {
   } else {
     const o = L.overall;
     live += `<p class="small muted">${L.n_scored.toLocaleString()} overflow-day forecasts scored${fromClause(L)}; updated ${new Date(L.generated_at).toLocaleString('en-GB', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'})}.</p>`;
+    // The rows behind these scores, published beside the site's data files with the credits (build_site.publish_scored_csv).
+    // The API server does not serve the file, and its payload carries no credits, so it gets no link.
+    if (L.scored_csv && d.credits) live += `<p class="small muted"><a href="data/verification_live.csv" download>Download every scored overflow-day</a> (CSV, ${L.scored_csv.rows.toLocaleString()} rows: the overflow, its company, the day, the lead, the forecast before and after lead calibration, climatology and what happened), to check these scores or recompute them.</p>`;
     live += `<table><tr><th>Forecast</th><th class="num">Brier</th><th class="num">AUC</th><th class="num">Skill vs climatology</th></tr>`;
     for (const [k, lab] of [['calibrated','SwimSignal (as shown on the map)'],['raw','SwimSignal before lead calibration']]) {
       const s = o[k]; live += `<tr><td>${lab}</td><td class="num">${f(s.brier)}</td><td class="num">${f(s.auc,3)}</td><td class="num">${f(1 - s.brier/o.climatology_brier, 2)}</td></tr>`;
@@ -151,6 +154,7 @@ async function main() {
   } else if (L && L.n_scored) {
     h += section('ecoli-live', ECOLI_H, `${via}${partial}<p class="muted">E. coli estimates are logged from 15 September 2026 and scored against Environment Agency samples as they are published, usually within a week of sampling. Nothing to show yet.</p>`);
   }
+  if (d.prf && d.prf.both) h += section('prf', "Beside the Environment Agency's daily risk prediction", prfSection(d.prf));
   document.getElementById('live').innerHTML = scrolling(h);
 
   let o = '';
@@ -210,7 +214,33 @@ async function main() {
   // The sections exist only now, so a link to one (#reliability, the In short list's #live-scoring) scrolls here.
   if (location.hash) { const el = document.getElementById(location.hash.slice(1)); if (el) el.scrollIntoView(); }
 }
-// The page's answer: the four figures that matter as tiles, then five plain lines, from the same
+// SwimSignal's E. coli estimate beside the Environment Agency's daily risk prediction at the inland bathing waters,
+// both scored against the Agency's samples (scripts/compare_prf.py, run by hand after the season:
+// data/processed/prf_comparison.json). The verdict sentence comes from the script.
+function prfSection(P) {
+  const S = P.sites || {}, B = P.both || {}, R = P.both_rivers || {}, A = P.season_samples || {}, Ae = A.ea || {}, F = P.fetch || {};
+  const warnAt = Math.round(100 * ((P.rules || {}).swimsignal_warns_at ?? 0.25));
+  const clean = B.n_samples - B.n_over_threshold;
+  const row = (lab, r) => `<tr><td>${lab}</td><td class="num">${f(r.brier, 3)}</td><td class="num">${r.hits} of ${B.n_over_threshold}</td><td class="num">${r.false_alarms} of ${clean}</td></tr>`;
+  let t = `<p>${P.verdict}</p>`;
+  if (B.n_samples) {
+    t += `<table><tr><th>Forecast</th><th class="num">Brier score</th><th class="num">Warned, over 900</th><th class="num">Warned, under 900</th></tr>`;
+    t += row('Environment Agency', B.ea);
+    t += row('SwimSignal', B.swimsignal);
+    t += `<tr><td>Long-run rate (climatology)</td><td class="num">${f(B.climatology_brier, 3)}</td><td class="num">–</td><td class="num">–</td></tr></table>`;
+    t += `<p class="small muted">A warning is the Agency's "increased", or a SwimSignal estimate of ${warnAt}% or more (a high level). The Brier score reads the Agency's prediction as 100% when "increased" and 0% when "normal"; the long-run rate is the training-period rate for rivers and lakes.</p>`;
+    if (R.n_samples && R.ea && R.swimsignal) t += `<p class="small muted">Rivers only, where the site shows the E. coli estimate: ${R.n_samples} samples, ${R.n_over_threshold} over 900. Brier score ${f(R.swimsignal.brier, 3)} for SwimSignal, ${f(R.ea.brier, 3)} for the Environment Agency and ${f(R.climatology_brier, 3)} for the long-run rate.</p>`;
+  }
+  const prf = S.n_with_prf === 0
+    ? `None of the ${S.n_inland} inland bathing waters had one on any day of the season; ${S.n_in_predictions} of them appear in the predictions at all. At these sites the prediction turns "increased" only when the Agency has posted a notice, such as a pollution incident or harmful algae: it reflects known incidents, not a forecast from the weather.`
+    : `${S.n_with_prf} of the ${S.n_inland} inland bathing waters had one on at least one day of the season.`;
+  t += `<p class="small muted">The Environment Agency publishes a risk prediction for each designated bathing water every day of the season, "normal" or "increased". At some bathing waters it runs a pollution risk forecast, and there "increased" is that forecast's warning. ${prf} Each sample is matched with the Agency's prediction in force when it was taken, and with SwimSignal's latest E. coli estimate issued before it. SwimSignal has logged its estimate since 15 September 2026, so the two meet only in the last two weeks of the season.</p>`;
+  if (A.n_with_ea_prediction) t += `<p class="small muted">Over the whole season, ${A.n_with_ea_prediction} samples were taken while a prediction was in force. It was "increased" before ${Ae.n_increased} of them, ${Ae.hits} over 900, and "normal" before ${Ae.misses} of the ${Ae.hits + Ae.misses} samples over 900.</p>`;
+  const fetched = F.days_fetched === F.days_requested ? `every day from ${day(F.first_day)} to ${day(F.last_day)}` : `${F.days_fetched} of ${F.days_requested} days, ${day(F.first_day)} to ${day(F.last_day)}; the Agency's server refused the rest`;
+  t += `<p class="small muted">Predictions fetched for ${fetched}; compared on ${day(String(P.generated_at).slice(0, 10))}. Environment Agency data, Open Government Licence v3.0.</p>`;
+  return t;
+}
+// The page's answer: the four figures that matter as tiles, then a few plain lines, from the same
 // data as the tables below.
 function inShort(d) {
   const L = d.live || {}, ho = (d.holdout || [])[0], hi = (d.reliability || []).find(r => r.lo === 0.8), E = L.ecoli_live || {}, pts = [];
@@ -244,6 +274,9 @@ function inShort(d) {
     else if (flatWins) pts.push(`<b>Live, the forecast is pitched at the wrong level:</b> ${flat}. <a href="#live-scoring">Details</a>`);
   } else pts.push(`<b>Live, against what the overflows then did:</b> nothing scored yet${L.observations_from ? `: the observation records the scoring rule needs start on ${day(L.observations_from)}` : ''}. <a href="#live-scoring">Details</a>`);
   pts.push(`<b>E. coli estimate, against new Environment Agency lab samples:</b> ${E.n_scored ? `${ecoliVerdict} so far (${E.n_scored} forecast–sample pairs from ${E.n_samples} sample${E.n_samples === 1 ? '' : 's'} at ${E.n_sites} site${E.n_sites === 1 ? '' : 's'}${E.n_scored < 500 ? ', too few to judge' : ''})` : 'none scored yet'}. The sampling season ends in September, so the first full season to judge it is May to September 2027.`);
+  const P = d.prf && d.prf.both;
+  if (P && P.n_samples && P.ea && P.swimsignal) { const ssBetter = P.swimsignal.brier < P.ea.brier;
+    pts.push(`<b>Beside the Environment Agency's daily risk prediction</b> at the inland bathing waters: ${ssBetter ? "SwimSignal's E. coli estimate" : "the Agency's prediction"} scored better on ${P.n_samples} samples, ${P.n_over_threshold} of them over 900${P.n_over_threshold && !P.ea.hits && !P.swimsignal.hits ? ', which neither warned of' : ''}.${P.n_samples < 100 || P.n_over_threshold < 10 ? ' Too few to judge.' : ''} <a href="#prf">Details</a>`); }
   pts.push(`<b>The exposure index</b> is a 0–100 score of how likely sewage from upstream is to reach the spot. Its spill part is scored above against what the overflows did; its die-off and dilution steps are physical estimates, not checked against water samples.`);
   return `<dl class="stats">${tiles}</dl><section class="summary" aria-labelledby="short-h"><h2 id="short-h">In short</h2><ul>${pts.map(x => `<li>${x}</li>`).join('')}</ul></section>`;
 }

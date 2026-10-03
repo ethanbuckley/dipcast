@@ -1,0 +1,523 @@
+{
+ "generated_at": "2026-10-03T15:01:30+01:00",
+ "season": [
+  "2026-05-15",
+  "2026-09-30"
+ ],
+ "fetch": {
+  "days_requested": 139,
+  "days_fetched": 139,
+  "first_day": "2026-05-15",
+  "last_day": "2026-09-30",
+  "failed": {},
+  "refused": false,
+  "requests_this_run": 0,
+  "refusals_this_run": 0,
+  "user_agent": "dipcast/0.1.0 (+https://github.com/ethanbuckley/swimsignal; hello@swimsignal.co.uk)",
+  "source": "https://environment.data.gov.uk/doc/bathing-water-quality/stp-risk-prediction.json"
+ },
+ "rules": {
+  "threshold": 900,
+  "swimsignal_warns_at": 0.25,
+  "ea": "the latest prediction for the site published before the sample was taken and not yet expired",
+  "swimsignal": "the latest forecast for the spot and day issued before the sample was taken",
+  "brier_ea": "the EA's level read as 1 (increased) or 0 (normal)",
+  "climatology": "the E. coli model's training-period exceedance rate for rivers and lakes"
+ },
+ "sites": {
+  "n_inland": 38,
+  "n_in_predictions": 34,
+  "n_with_prf": 0,
+  "with_prf": [],
+  "not_in_predictions": [
+   {
+    "bw_id": "uke2204-08905",
+    "name": "Swale above Richmond Falls"
+   },
+   {
+    "bw_id": "ukh1406-10712",
+    "name": "Falcon Meadow, River Waveney"
+   },
+   {
+    "bw_id": "ukj1102-11941",
+    "name": "Pangbourne Meadow, River Thames"
+   },
+   {
+    "bw_id": "ukd6300-40752",
+    "name": "Sandy Lane, Chester"
+   }
+  ],
+  "origin_rows": {
+   "NON_PRF_SITE": 4448,
+   "none": 15
+  },
+  "days_with_any_prediction": 139
+ },
+ "season_samples": {
+  "n_samples": 720,
+  "n_with_ea_prediction": 598,
+  "n_over_threshold": 61,
+  "first": "2026-05-15",
+  "last": "2026-09-28",
+  "ea": {
+   "n_increased": 13,
+   "hits": 1,
+   "misses": 44,
+   "false_alarms": 12,
+   "quiet_correct": 541,
+   "increased_because": {
+    "Advice against bathing: pollution incident": 12,
+    "Risk of reduced water quality due to harmful algae": 1
+   },
+   "increased_at": {
+    "River Teme in Ludlow": 9,
+    "Frensham Great Pond": 3,
+    "Windermere, Fellfoot": 1
+   }
+  }
+ },
+ "both": {
+  "n_samples": 30,
+  "n_sites": 22,
+  "n_over_threshold": 2,
+  "ea": {
+   "brier": 0.13333333333333333,
+   "n_increased": 2,
+   "hits": 0,
+   "misses": 2,
+   "false_alarms": 2,
+   "quiet_correct": 26
+  },
+  "swimsignal": {
+   "brier": 0.07180407575317783,
+   "mean_estimate": 0.11345795254757343,
+   "warn_at": 0.25,
+   "n_warned": 3,
+   "hits": 0,
+   "misses": 2,
+   "false_alarms": 3,
+   "quiet_correct": 25
+  },
+  "climatology_brier": 0.07886285933333331,
+  "first": "2026-09-16",
+  "last": "2026-09-28"
+ },
+ "both_rivers": {
+  "n_samples": 18,
+  "n_sites": 12,
+  "n_over_threshold": 1,
+  "ea": {
+   "brier": 0.16666666666666666,
+   "n_increased": 2,
+   "hits": 0,
+   "misses": 1,
+   "false_alarms": 2,
+   "quiet_correct": 15
+  },
+  "swimsignal": {
+   "brier": 0.06618064309710087,
+   "mean_estimate": 0.1681272244747746,
+   "warn_at": 0.25,
+   "n_warned": 3,
+   "hits": 0,
+   "misses": 1,
+   "false_alarms": 3,
+   "quiet_correct": 14
+  },
+  "climatology_brier": 0.07824365444444442
+ },
+ "rows": [
+  {
+   "site": "Rutland Water Whitwell Creek",
+   "bw_id": "ukf2208-09701",
+   "kind": "lake",
+   "sampled": "2026-09-16T11:03+01:00",
+   "ecoli": 10,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.019,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-16T07:32+01:00"
+  },
+  {
+   "site": "Coniston Water, Monk Coniston",
+   "bw_id": "ukd1230-45775",
+   "kind": "lake",
+   "sampled": "2026-09-16T11:16+01:00",
+   "ecoli": 91,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.048,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-16T07:32+01:00"
+  },
+  {
+   "site": "Coniston Water, Boating Centre",
+   "bw_id": "ukd1230-45750",
+   "kind": "lake",
+   "sampled": "2026-09-16T11:16+01:00",
+   "ecoli": 91,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.054,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-16T07:32+01:00"
+  },
+  {
+   "site": "Coniston Water, Brown Howe",
+   "bw_id": "ukd1230-45725",
+   "kind": "lake",
+   "sampled": "2026-09-16T11:55+01:00",
+   "ecoli": 91,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.034,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-16T07:32+01:00"
+  },
+  {
+   "site": "River Teme in Ludlow",
+   "bw_id": "ukg2200-36060",
+   "kind": "river",
+   "sampled": "2026-09-17T10:05+01:00",
+   "ecoli": 280,
+   "ea_level": "increased",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "Advice against bathing: pollution incident",
+   "swimsignal": 0.13,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-17T07:57+01:00"
+  },
+  {
+   "site": "River Severn at Ironbridge",
+   "bw_id": "ukg2100-36070",
+   "kind": "river",
+   "sampled": "2026-09-17T10:30+01:00",
+   "ecoli": 180,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.212,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-17T07:57+01:00"
+  },
+  {
+   "site": "Windermere, Millerground Landing",
+   "bw_id": "ukd1203-45650",
+   "kind": "lake",
+   "sampled": "2026-09-17T11:30+01:00",
+   "ecoli": 27,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.033,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-17T07:57+01:00"
+  },
+  {
+   "site": "River Severn in Shrewsbury",
+   "bw_id": "ukg2200-36071",
+   "kind": "river",
+   "sampled": "2026-09-17T11:39+01:00",
+   "ecoli": 210,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.305,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-17T07:57+01:00"
+  },
+  {
+   "site": "Windermere, Rayrigg Meadow",
+   "bw_id": "ukd1203-45675",
+   "kind": "lake",
+   "sampled": "2026-09-17T11:40+01:00",
+   "ecoli": 18,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.034,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-17T07:57+01:00"
+  },
+  {
+   "site": "Windermere, Fellfoot",
+   "bw_id": "ukd1203-45700",
+   "kind": "lake",
+   "sampled": "2026-09-17T12:40+01:00",
+   "ecoli": 18,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.021,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-17T07:57+01:00"
+  },
+  {
+   "site": "Windermere, Lakeside YMCA",
+   "bw_id": "ukd1203-45625",
+   "kind": "lake",
+   "sampled": "2026-09-17T13:07+01:00",
+   "ecoli": 18,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.026,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-17T07:57+01:00"
+  },
+  {
+   "site": "Sheep's Green, River Cam",
+   "bw_id": "ukh1201-09801",
+   "kind": "river",
+   "sampled": "2026-09-18T10:00+01:00",
+   "ecoli": 480,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.135,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-18T07:10+01:00"
+  },
+  {
+   "site": "Wallingford Beach, River Thames",
+   "bw_id": "ukj1403-11947",
+   "kind": "river",
+   "sampled": "2026-09-18T11:20+01:00",
+   "ecoli": 290,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.103,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-18T07:10+01:00"
+  },
+  {
+   "site": "Wolvercote Mill Stream",
+   "bw_id": "ukj1402-11946",
+   "kind": "river",
+   "sampled": "2026-09-18T12:05+01:00",
+   "ecoli": 430,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.13,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-18T07:10+01:00"
+  },
+  {
+   "site": "River Frome at Farleigh Hungerford",
+   "bw_id": "ukk2301-36051",
+   "kind": "river",
+   "sampled": "2026-09-21T13:30+01:00",
+   "ecoli": 590,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.278,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-21T09:07+01:00"
+  },
+  {
+   "site": "River Severn at Ironbridge",
+   "bw_id": "ukg2100-36070",
+   "kind": "river",
+   "sampled": "2026-09-22T10:15+01:00",
+   "ecoli": 450,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.118,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-22T08:05+01:00"
+  },
+  {
+   "site": "River Teme in Ludlow",
+   "bw_id": "ukg2200-36060",
+   "kind": "river",
+   "sampled": "2026-09-22T11:04+01:00",
+   "ecoli": 160,
+   "ea_level": "increased",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "Advice against bathing: pollution incident",
+   "swimsignal": 0.104,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-22T08:05+01:00"
+  },
+  {
+   "site": "River Avon at Fordingbridge",
+   "bw_id": "ukj3308-19001",
+   "kind": "river",
+   "sampled": "2026-09-22T12:47+01:00",
+   "ecoli": 530,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.157,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-22T08:05+01:00"
+  },
+  {
+   "site": "River Severn in Shrewsbury",
+   "bw_id": "ukg2200-36071",
+   "kind": "river",
+   "sampled": "2026-09-22T15:17+01:00",
+   "ecoli": 400,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.199,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-22T13:44+01:00"
+  },
+  {
+   "site": "Colwick Country Park (West Lake)",
+   "bw_id": "ukf1400-09750",
+   "kind": "lake",
+   "sampled": "2026-09-23T09:39+01:00",
+   "ecoli": 82,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.027,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-23T08:01+01:00"
+  },
+  {
+   "site": "Wolvercote Mill Stream",
+   "bw_id": "ukj1402-11946",
+   "kind": "river",
+   "sampled": "2026-09-23T11:30+01:00",
+   "ecoli": 300,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.119,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-23T08:01+01:00"
+  },
+  {
+   "site": "Wallingford Beach, River Thames",
+   "bw_id": "ukj1403-11947",
+   "kind": "river",
+   "sampled": "2026-09-23T14:04+01:00",
+   "ecoli": 270,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.088,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-23T13:50+01:00"
+  },
+  {
+   "site": "Rutland Water Sykes Lane",
+   "bw_id": "ukf2208-09702",
+   "kind": "lake",
+   "sampled": "2026-09-24T11:00+01:00",
+   "ecoli": 3800,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.025,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-24T07:58+01:00"
+  },
+  {
+   "site": "Rutland Water Whitwell Creek",
+   "bw_id": "ukf2208-09701",
+   "kind": "lake",
+   "sampled": "2026-09-24T11:30+01:00",
+   "ecoli": 10,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.025,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-24T07:58+01:00"
+  },
+  {
+   "site": "Sheep's Green, River Cam",
+   "bw_id": "ukh1201-09801",
+   "kind": "river",
+   "sampled": "2026-09-24T11:37+01:00",
+   "ecoli": 280,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.125,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-24T07:58+01:00"
+  },
+  {
+   "site": "Wharfe at Cromwheel, Ilkley",
+   "bw_id": "uke4100-08901",
+   "kind": "river",
+   "sampled": "2026-09-24T13:02+01:00",
+   "ecoli": 380,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.306,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-24T07:58+01:00"
+  },
+  {
+   "site": "Nidd at the Lido, Knaresborough",
+   "bw_id": "uke2203-08903",
+   "kind": "river",
+   "sampled": "2026-09-24T14:15+01:00",
+   "ecoli": 3900,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.202,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-24T13:32+01:00"
+  },
+  {
+   "site": "Wharfe at Wilderness Carpark",
+   "bw_id": "uke4200-08904",
+   "kind": "river",
+   "sampled": "2026-09-24T14:54+01:00",
+   "ecoli": 250,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.213,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-24T13:32+01:00"
+  },
+  {
+   "site": "Friars Meadow, River Stour",
+   "bw_id": "ukh1401-11051",
+   "kind": "river",
+   "sampled": "2026-09-25T13:35+01:00",
+   "ecoli": 82,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.101,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-25T09:22+01:00"
+  },
+  {
+   "site": "Colwick Country Park (West Lake)",
+   "bw_id": "ukf1400-09750",
+   "kind": "lake",
+   "sampled": "2026-09-28T13:13+01:00",
+   "ecoli": 10,
+   "ea_level": "normal",
+   "ea_origin": "NON_PRF_SITE",
+   "ea_comment": "No pollution incidents reported",
+   "swimsignal": 0.031,
+   "swimsignal_lead": 0,
+   "swimsignal_issued": "2026-09-28T10:10+01:00"
+  }
+ ],
+ "credit": "Environment Agency bathing water risk predictions and samples \u00a9 Environment Agency copyright and/or database right, Open Government Licence v3.0. Compared by SwimSignal; the EA does not endorse it.",
+ "verdict": "SwimSignal's E. coli estimate did better than the Environment Agency's daily risk prediction on the 30 samples both covered, at 22 sites, 16 to 28 September 2026: Brier score 0.072 against 0.133, where always forecasting the long-run rate scores 0.079. Neither warned before either of the 2 samples over 900. Too few samples to judge either forecast."
+}
