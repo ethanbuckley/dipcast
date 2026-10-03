@@ -7,7 +7,7 @@ It is off until you set it up and set one repository variable. Until then the si
 ## How a review travels
 
 1. The page shrinks each photo on the swimmer's phone (1280 px on the long side, and a 240 px thumbnail) and saves it again from a canvas, which leaves out the GPS position and everything else the camera recorded. It then sends the review to this Worker (`POST /reviews`).
-2. The Worker checks it, strips any camera metadata a different client left in the photos (`src/jpeg.js`), and stores it as waiting: the text in D1, the photos in Workers KV. It hands the swimmer's browser the review's id and a random key, and keeps only a hash of the key. The browser keeps both, so the swimmer sees their review while it waits and can delete it at any time.
+2. The Worker checks it, strips camera metadata and untrusted colour profiles a different client left in the photos (`src/jpeg.js`), and stores it as waiting: the text in D1, the photos in Workers KV. It hands the swimmer's browser the review's id and a random key, and keeps only a hash of the key. The browser keeps both, so the swimmer sees their review while it waits and can delete it at any time.
 3. You open `/moderate`, read it, and press Publish or Delete. Nothing is published without you.
 4. The next site build (`src/dipcast/reviews.py`) fetches the published reviews (`GET /published`) and their photos and writes them into the site, `reviews/index.json` and `reviews/photos/`. So a visitor reading reviews gets them from GitHub Pages with the rest of the site and never contacts the Worker. The site's rule that nothing is fetched from another site but the map's tiles still holds (docs/DESIGN.md, rule 8). The cost is a delay: a review appears at the next build after you publish it, usually within a few hours.
 
@@ -18,7 +18,7 @@ The build keeps the photos in its cache between runs, so each photo is downloade
 - A review: the spot's id, yes or no, the day they swam, the text (at most 1,500 characters), the name to show (at most 40, may be empty), each photo's size, when it arrived and when it was published, and a SHA-256 hash of its key.
 - The photos, in KV, under keys made from the review's id. A deleted review takes its photos with it.
 - A report: the review's id, the reason picked from a list, and the time. Cleared when you keep or delete the review.
-- Rate-limit counts: requests a day from one connection, under an HMAC of the IP address, the kind of request and the day, keyed with `ADMIN_TOKEN`. Never the address itself. The daily cron deletes days before yesterday. Ten reviews, 20 reports and 30 deletions a day from one connection.
+- Rate-limit counts: requests a day from one connection, under an HMAC of the IP address, the kind of request and the day, keyed with `ADMIN_TOKEN`. Never the address itself. The daily cron deletes days before yesterday. Ten reviews, 20 reports, 30 deletions and 60 status checks a day from one connection (an IPv6 /64 or an IPv4 address). The service also caps photos at 300 a day and pending reviews at 300, including simultaneous submissions. Published photos accumulate, so monitor total storage.
 
 A review waiting for you is never public: `/published` lists only published ones, and a waiting review's photos answer only to the admin token.
 
@@ -134,3 +134,7 @@ Locally the moderation page shows spot ids rather than names and falls back to o
 Before deploying a change, run it once in Cloudflare's own runtime as well: `npx wrangler d1 migrations apply swimsignal-reviews --local`, then `npx wrangler dev --local --var ALLOWED_ORIGIN:http://localhost:8771 --var SITE_URL:http://localhost:8771/ --var ADMIN_TOKEN:local-admin-token`. Node does not catch everything: on 3 Oct 2026 workerd refused to start a version whose `src/index.js` exported a number, which every Node test had passed (`src/rules.js` explains; a test now guards it).
 
 Not tested: the Worker against Cloudflare's hosted D1 and KV (only their local stand-ins in workerd), and a photo from a real iPhone (HEIC turned into JPEG by Safari).
+
+Photos from the page are converted to sRGB. The Worker drops ICC profiles from other clients because they can contain arbitrary identifying text; such uploads may have different colours. It retains only a plain JFIF header and a rebuilt Adobe colour transform, scans the whole JPEG, drops metadata between scans, and discards data after the image ends.
+
+The browser checks the status of its own unpublished reviews when the spot is opened, and forgets reviews the operator has declined or removed. The moderation page searches the newest 500 published reviews; use the deletion endpoint by id for older ones.

@@ -62,6 +62,11 @@ def test_off_writes_a_file_that_says_so_and_nothing_else(tmp_path):
     assert json.loads((tmp_path / "reviews" / "index.json").read_text())["on"] is False
     assert (tmp_path / "privacy.html").read_text() == "<h2>The server version</h2>"
     assert not (tmp_path / "cache").exists()
+    # Switched off after being on: the build's copy of the reviews and their photos goes too.
+    rv.write_reviews(tmp_path, URL, get=Worker([review(1, photos=1)]), cache=tmp_path / "cache")
+    assert list((tmp_path / "cache" / "photos").iterdir())
+    rv.write_reviews(tmp_path, "", cache=tmp_path / "cache")
+    assert not (tmp_path / "cache").exists()
 
 
 def test_published_reviews_and_their_photos_reach_the_site(tmp_path):
@@ -155,3 +160,19 @@ def test_the_page_loads_the_reviews_script_from_its_build(tmp_path):
     assert (tmp_path / "reviews.js").read_bytes() == (bs.TEMPLATE.parent / "reviews.js").read_bytes()
     sw = (tmp_path / "sw.js").read_text()
     assert "`reviews.js?v=${BUILD}`" in sw and "/reviews/photos/" in sw
+
+
+def test_a_failing_photo_service_costs_the_build_little(tmp_path):
+    # Every photo fails: after three failures in a row the build stops asking, and publishes the
+    # reviews without their photos.
+    worker = Worker([review(i, photos=3) for i in range(1, 6)], bad_photo="*")
+    worker_get = lambda url: (_ for _ in ()).throw(httpx.ReadTimeout("slow")) if "/photos/" in url else worker(url)
+    out = rv.write_reviews(tmp_path, URL, get=worker_get, cache=tmp_path / "cache")
+    assert out["published"] == 5 and out["photos"] == 0
+    assert "kept failing" in out["warning"]
+    # Out of time: past the budget, no more photos are asked for.
+    clock = iter([0, 0] + [rv.PHOTO_BUDGET_S + 1] * 100)
+    worker = Worker([review(i, photos=1) for i in range(1, 4)])
+    out = rv.write_reviews(tmp_path, URL, get=worker, cache=tmp_path / "cache2", now=lambda: next(clock))
+    asked = [u for u in worker.asked if "/photos/" in u]
+    assert len(asked) == 1 and "ran out of time" in out["warning"]

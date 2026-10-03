@@ -753,7 +753,10 @@ def build(refresh: bool = True) -> dict:
     health["spot_pages"] = write_pages(SITE, results, token, day=generated.date().isoformat(), push=push is not None)
     # Swimmers' reviews: the published ones into site/reviews/, and their sections into the pages just written.
     from dipcast.reviews import write_reviews
-    health["reviews"] = write_reviews(SITE, spot_ids=[r["id"] for r in results], fetch=refresh)
+    try:
+        health["reviews"] = write_reviews(SITE, spot_ids=[r["id"] for r in results], fetch=refresh)
+    except Exception as e:  # noqa: BLE001 - reviews beside the forecast must never stop the site publishing
+        health["reviews"] = {"warning": f"reviews not written, so the site shows none this time: {e}"}
     if health["reviews"].get("warning"):
         announce(health["reviews"]["warning"])
     summary = {**health, "seconds": round(time.time() - t0, 1), "generated_at": generated.isoformat()}

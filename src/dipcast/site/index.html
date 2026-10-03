@@ -2116,7 +2116,7 @@ function render(d) {
     if (dayFromURL()) history.replaceState(history.state, '', location.pathname + location.search);
     h += `<div class="stack"><div class="tile">${factors(d)}${check(d)}</div>${where}${tiles}`
       + `<div class="tile phone-only"><h2 class="t-lab">${ICON.map}<span>Where it is</span></h2><div id="spot-map"></div></div></div>` + actions(d);
-    setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); placeMap(); miniMap(d); mountReviews(d); return;
+    setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); placeMap(); miniMap(d); reviewsFor(d); return;
   }
   h += `<div class="stack"><section class="tile" aria-labelledby="days-h"><h2 class="t-lab" id="days-h">${ICON.days}<span>Pollution risk, next five days</span></h2>`
     + `<p class="t-sent">${daysSentence(d)}</p>${dayRows(d)}<div id="day-view"></div>${check(d)}</section>${where}`
@@ -2127,12 +2127,14 @@ function render(d) {
   if (d.contributors.length) h += overflowTile(d, total);
   h += dayTable(d, total, loc.mode === 'lake', d.ecoli_scope || {}) + '</div>';
   h += actions(d) + tech(d);
-  setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); bindNearby(); bindDays(d); miniMap(d); mountReviews(d);
+  setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); bindNearby(); bindDays(d); miniMap(d); reviewsFor(d);
   const more = document.getElementById('more-contrib');
   if (more) more.addEventListener('click', () => { const t = document.getElementById('contrib'), all = t.classList.toggle('all');
     more.setAttribute('aria-expanded', String(all)); more.textContent = all ? `Show the top 3` : `Show all ${d.contributors.length}`; });
   placeMap();
 }
+// Swimmers' reviews (reviews.js), if that script arrived: without it the rest of the spot still draws.
+const reviewsFor = d => { if (typeof mountReviews === 'function') mountReviews(d); };
 function bindBack() { const b = document.getElementById('back'); if (b) b.addEventListener('click', e => { if (!plainClick(e)) return; e.preventDefault();
   if (history.state && history.state.from) history.back();   // came from the list, Saved or the map: back to it, where it was (popstate)
   else { keepPlace(); history.pushState(null, '', ROOT.pathname); renderList(); scrollTop(); } }); }   // a shared link: stay on the site

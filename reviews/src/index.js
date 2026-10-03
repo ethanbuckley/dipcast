@@ -9,7 +9,7 @@
 
 import { BadImage, cleanJpeg } from './jpeg.js';
 import { MODERATE_CSS, MODERATE_JS, moderatePage } from './moderate.js';
-import { LIMITS, MAX_NAME, MAX_PHOTOS, MAX_TEXT, REASONS } from './rules.js';
+import { LIMITS, MAX_NAME, MAX_PENDING, MAX_PHOTOS, MAX_TEXT, PHOTOS_PER_DAY, PUBLISHED_LISTED, REASONS } from './rules.js';
 
 const SPOT_ID = /^[A-Za-z0-9_-]{1,80}$/;   // the site's own rule for a spot's id (index.html PAGE_ID)
 const REVIEW_ID = /^[0-9a-f]{20}$/;
@@ -41,8 +41,10 @@ const nowISO = () => new Date().toISOString();
 
 // ---- routes ----
 
-// From the site's pages: browsers send Origin on these, and only the site's is accepted.
-const PUBLIC_POSTS = new Map([['/reviews', submit], ['/reviews/delete', removeOwn], ['/reviews/report', report]]);
+// From the site's pages: browsers send Origin on these, and only the site's is accepted. With each,
+// the status of a successful answer that carries a body.
+const PUBLIC_POSTS = new Map([['/reviews', [submit, 201]], ['/reviews/status', [status, 200]], ['/reviews/delete', [removeOwn]],
+  ['/reviews/report', [report]]]);
 
 export async function handleRequest(request, env) {
   const url = new URL(request.url), path = url.pathname;
@@ -71,7 +73,7 @@ export async function handleRequest(request, env) {
   }
 }
 
-async function publicPost(request, env, route) {
+async function publicPost(request, env, [route, ok]) {
   if (request.method !== 'POST' && request.method !== 'OPTIONS') return reply(405, 'Method not allowed', { Allow: 'POST, OPTIONS' });
   if (!env.ALLOWED_ORIGIN || request.headers.get('Origin') !== env.ALLOWED_ORIGIN) return reply(403, 'Origin not allowed');
   const cors = { 'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN, Vary: 'Origin' };
@@ -85,11 +87,14 @@ async function publicPost(request, env, route) {
   }
   try {
     const out = await route(request, env);
-    return out === undefined ? new Response(null, { status: 204, headers: { ...cors, ...SAFE } }) : json(201, out, cors);
+    return out === undefined ? new Response(null, { status: 204, headers: { ...cors, ...SAFE } }) : json(ok, out, cors);
   } catch (err) {
     if (err instanceof Invalid) return reply(400, err.message, cors);
     if (err instanceof Refused) return reply(err.status, err.message, cors);
-    throw err;
+    // Anything else (a missing table, a used-up quota) still answers the page with its CORS header,
+    // or the browser hides the answer and the page can only guess at the connection.
+    console.error('reviews: unexpected error', err && err.stack ? err.stack : err);
+    return reply(500, 'The review service had a problem', cors);
   }
 }
 
@@ -153,10 +158,21 @@ export function checkDay(value, now = Date.now()) {
 
 const checkId = (id) => { check(typeof id === 'string' && REVIEW_ID.test(id), 'bad review id'); return id; };
 
-// A connection's requests of one kind today. The key is a keyed hash of the IP address, the kind and
+// The connection to count: an IPv4 address whole, an IPv6 one by its first 64 bits, the block one
+// home or phone is given, so that one host cannot count as millions of connections.
+export function connectionOf(ip) {
+  const a = String(ip || '').trim().toLowerCase();
+  if (!a.includes(':')) return a || 'unknown';
+  if (a.includes('.')) return a.slice(a.lastIndexOf(':') + 1);   // an IPv4 address written as IPv6
+  const [head, tail] = a.split('::'), h = head ? head.split(':') : [], t = tail ? tail.split(':') : [];
+  const groups = tail === undefined ? h : [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill('0'), ...t];
+  return groups.slice(0, 4).map((g) => g.padStart(4, '0')).join(':') + '::/64';
+}
+
+// A connection's requests of one kind today. The key is a keyed hash of the connection, the kind and
 // the day, so the table never holds an address, and yesterday's counts cannot be matched to today's.
 async function overLimit(request, env, kind) {
-  const day = nowISO().slice(0, 10), ip = request.headers.get('CF-Connecting-IP') || 'unknown';
+  const day = nowISO().slice(0, 10), ip = connectionOf(request.headers.get('CF-Connecting-IP'));
   const key = (await hmac(env.ADMIN_TOKEN || 'no admin token', `${kind}|${day}|${ip}`)).slice(0, 32);
   const row = await env.DB.prepare('INSERT INTO hits (key, day, n) VALUES (?, ?, 1) ON CONFLICT (key, day) DO UPDATE SET n = n + 1 RETURNING n')
     .bind(key, day).first();
@@ -223,6 +239,15 @@ async function submit(request, env) {
   }
   check(form.get(`photo${photos.length}`) === null && form.get(`thumb${photos.length}`) === null, `at most ${MAX_PHOTOS} photos, numbered from 0`);
   check(!photos.length || field('consent') === 'yes', 'confirm that the photos are yours to share');
+  // The caps for everyone together (rules.js): the queue waiting for the operator, and the day's photos.
+  const waiting = await env.DB.prepare("SELECT count(*) AS n FROM reviews WHERE status = 'pending'").first();
+  if (waiting.n >= MAX_PENDING) throw new Refused(503, 'The queue of reviews to check is full just now. Try again in a few days');
+  if (photos.length) {
+    const day = nowISO().slice(0, 10);
+    const sent = await env.DB.prepare('INSERT INTO hits (key, day, n) VALUES (?, ?, ?) ON CONFLICT (key, day) DO UPDATE SET n = n + excluded.n WHERE n + excluded.n <= ? RETURNING n')
+      .bind('photos', day, photos.length, PHOTOS_PER_DAY).first();
+    if (!sent) throw new Refused(503, 'No more photos can be taken today. Send the review without them, or try again tomorrow');
+  }
 
   const id = randomHex(10), token = b64url(crypto.getRandomValues(new Uint8Array(32)));
   const sizes = photos.map((p) => ({ w: p.full.width, h: p.full.height, tw: p.thumb.width, th: p.thumb.height }));
@@ -234,8 +259,11 @@ async function submit(request, env) {
       await env.PHOTOS.put(fk, p.full.bytes);
       await env.PHOTOS.put(tk, p.thumb.bytes);
     }
-    await env.DB.prepare('INSERT INTO reviews (id, spot, again, swam_on, body, name, photos, created_at, token_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)')
-      .bind(id, spot, again, swamOn, body, name, JSON.stringify(sizes), nowISO(), await sha256(token)).run();
+    // Check and insert in one SQL statement: simultaneous submissions cannot both take the
+    // last queue slot. If it filled while the photos were stored, the catch removes them.
+    const stored = await env.DB.prepare("INSERT INTO reviews (id, spot, again, swam_on, body, name, photos, created_at, token_hash) SELECT ?, ?, ?, ?, ?, ?, ?, ?, ? WHERE (SELECT count(*) FROM reviews WHERE status = 'pending') < ? RETURNING id")
+      .bind(id, spot, again, swamOn, body, name, JSON.stringify(sizes), nowISO(), await sha256(token), MAX_PENDING).first();
+    if (!stored) throw new Refused(503, 'The queue of reviews to check is full just now. Try again in a few days');
   } catch (err) {
     await Promise.allSettled(keys.map((k) => env.PHOTOS.delete(k)));   // no photos without their review
     throw err;
@@ -255,6 +283,19 @@ async function removeOwn(request, env) {
   if (!(await same(row.token_hash, await sha256(data.token)))) throw new Refused(403, 'That key does not open this review');
   await deleteReview(env, id, row.photos);
   return undefined;
+}
+
+// The sender's browser asks after its own reviews that have not reached the site: still waiting,
+// published (the site not rebuilt since), or gone (turned down, or deleted). An id alone is enough to
+// ask: a waiting review's id is known only to the browser that sent it, and a published one is public.
+async function status(request, env) {
+  const data = await readJson(request);
+  check(isObject(data) && Array.isArray(data.ids) && data.ids.length >= 1 && data.ids.length <= 20, 'ids must be a list of 1 to 20 review ids');
+  const ids = [...new Set(data.ids.map(checkId))];
+  if (await overLimit(request, env, 'status')) throw new Refused(429, 'Too many requests from this connection today');
+  const { results } = await env.DB.prepare(`SELECT id, status FROM reviews WHERE id IN (${ids.map(() => '?').join(', ')})`).bind(...ids).all();
+  const found = new Map(results.map((r) => [r.id, r.status]));
+  return Object.fromEntries(ids.map((id) => [id, found.get(id) || 'gone']));
 }
 
 async function report(request, env) {
@@ -312,7 +353,7 @@ async function queue(env) {
   const pending = await all("SELECT * FROM reviews WHERE status = 'pending' ORDER BY created_at LIMIT 200");
   const reported = await all(`SELECT r.*, group_concat(p.reason) AS reasons, max(p.created_at) AS reported_at FROM reviews r
     JOIN reports p ON p.review = r.id GROUP BY r.id ORDER BY reported_at DESC LIMIT 200`);
-  const recent = await all("SELECT * FROM reviews WHERE status = 'published' ORDER BY published_at DESC LIMIT 50");
+  const recent = await all(`SELECT * FROM reviews WHERE status = 'published' ORDER BY published_at DESC LIMIT ${PUBLISHED_LISTED}`);
   return {
     pending: pending.map(fromRow),
     reported: reported.map((r) => ({ ...fromRow(r), reasons: String(r.reasons || '').split(',').filter(Boolean), reported_at: r.reported_at })),

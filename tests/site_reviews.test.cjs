@@ -93,3 +93,8 @@ test('only a listed spot has reviews, never a point clicked off the list', () =>
   assert.equal(r.reviewable({ id: 'Bad Id' }), false);   // an id the site gives no page of its own
   assert.equal(r.reviewable(null), false);
 });
+
+test('a review of yours the service has published says it is on its way to the site', () => {
+  const html = r.reviewItem({ ...pub(6), mine: true, waiting: true, photos: 0, token: 'k', state: 'published' }, false);
+  assert.ok(html.includes('published: on the site at its next update') && !html.includes('waiting to be checked'));
+});

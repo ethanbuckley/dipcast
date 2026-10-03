@@ -41,7 +41,11 @@ export function moderatePage(site) {
 <div id="queue" hidden>
 <h2>Waiting <span class="muted" id="n-pending"></span></h2><ol class="mq-list" id="pending"></ol>
 <h2>Reported <span class="muted" id="n-reported"></span></h2><ol class="mq-list" id="reported"></ol>
-<h2>Published lately <span class="muted" id="n-published"></span></h2><ol class="mq-list" id="published"></ol>
+<h2>Published <span class="muted" id="n-published"></span></h2>
+<label for="find">Find one, to delete it on request</label>
+<input type="search" id="find" placeholder="A spot, a name or words from it" autocomplete="off">
+<p class="hint">The newest 500 are listed. README.md says how to delete an older one by its id.</p>
+<ol class="mq-list" id="published"></ol>
 <div class="actions"><button type="button" class="btn" id="reload">Check again</button><button type="button" class="btn" id="signout">Forget the token on this device</button></div>
 </div>
 </main>
@@ -154,6 +158,7 @@ async function load() {
     fill('pending', q.pending, 'pending', 'Nothing waiting.');
     fill('reported', q.reported, 'reported', 'Nothing reported.');
     fill('published', q.published, 'published', 'Nothing published yet.');
+    $('find').value = '';
     $('queue').hidden = false; say('');
   } catch (e) { if (token) say('The queue could not be loaded: ' + e.message); }
 }
@@ -165,6 +170,11 @@ $('signin').addEventListener('submit', (e) => {
 });
 $('signout').addEventListener('click', () => forget('The token is forgotten on this device.'));
 $('reload').addEventListener('click', load);
+// The published list, narrowed to the cards whose words include what is typed.
+$('find').addEventListener('input', () => {
+  const q = $('find').value.trim().toLowerCase();
+  for (const li of $('published').children) li.hidden = Boolean(q) && !li.textContent.toLowerCase().includes(q);
+});
 // The spots' names, from the site's alerts file (small: a name and a level a spot); ids without.
 fetch(SITE + 'data/alerts.json').then((r) => r.json()).then((d) => { for (const [id, s] of Object.entries(d.spots || {})) names[id] = s.name; })
   .catch(() => {}).finally(() => { if (token) load(); else forget(''); });

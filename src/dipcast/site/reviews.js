@@ -100,6 +100,21 @@ function reviewsTidy(mine, index) {
 // ------------------------------------------------------------------------------ the page
 
 let REVIEWS = null, reviewsLoading = null, reviewTurn = 0, reviewViewer = null;
+// What the service said of this browser's own reviews missing from the site, asked once a visit:
+// 'pending', 'published' (the site not rebuilt since) or 'gone' (turned down, or removed).
+const reviewAsked = new Map();
+async function reviewsAsk(data, ids) {
+  const want = ids.filter(id => !reviewAsked.has(id)).slice(0, 20);
+  if (want.length && data.submit) {
+    let out = {};
+    try {
+      const res = await fetch(data.submit + 'reviews/status', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: want }) });
+      if (res.ok) out = await res.json();
+    } catch (e) { /* asked again on the next visit */ }
+    for (const id of want) if (['pending', 'published', 'gone'].includes(out[id])) reviewAsked.set(id, out[id]);
+  }
+  return ids.filter(id => reviewAsked.has(id)).map(id => [id, reviewAsked.get(id)]);
+}
 // Once a visit. no-cache: asked of the server, as the forecast is (the offline copy keeps the last one).
 const reviewsLoad = () => reviewsLoading || (reviewsLoading = fetch('reviews/index.json', { cache: 'no-cache' })
   .then(r => (r.ok ? r.json() : null)).catch(() => null).then(d => (REVIEWS = d && typeof d === 'object' ? d : null)));
@@ -122,12 +137,23 @@ async function mountReviews(d) {
   sec.className = 'tile rv-tile'; sec.id = 'reviews'; sec.tabIndex = -1; sec.setAttribute('aria-labelledby', 'rv-h');
   after.after(sec);
   drawReviews(sec, d, data);
+  // A review of yours that is not on the site yet: ask the service whether it is still waiting. One
+  // turned down or removed is forgotten here, once, with a line to say so.
+  const waiting = reviewRows((data.spots || {})[d.id], reviewsNow(), d.id).filter(r => r.waiting).map(r => r.id);
+  if (!waiting.length) return;
+  const states = await reviewsAsk(data, waiting);
+  if (turn !== reviewTurn || !sec.isConnected) return;
+  const gone = new Set(states.filter(([, st]) => st === 'gone').map(([id]) => id));
+  if (gone.size) reviewsKeep(reviewsNow().map(x => (gone.has(x.id) ? { id: x.id, spot: x.spot, gone: true } : x)));
+  if (gone.size || states.some(([, st]) => st === 'published')) drawReviews(sec, d, data, !gone.size ? ''
+    : gone.size === 1 ? 'A review you sent was not published, or has since been removed.' : 'Reviews you sent were not published, or have since been removed.');
 }
 
 function reviewItem(r, extra) {
   const who = r.mine ? 'Your review' : rvEsc(r.name || 'A swimmer');
   const n = Array.isArray(r.photos) ? r.photos.length : Number(r.photos) || 0;
-  const meta = [who, `swam ${rvDay(r.swam_on)}`, r.waiting ? `waiting to be checked${n ? `, with ${n} photo${n === 1 ? '' : 's'}` : ''}` : ''].filter(Boolean).join(' · ');
+  const state = r.waiting && r.state === 'published' ? 'published: on the site at its next update' : r.waiting ? 'waiting to be checked' : '';
+  const meta = [who, `swam ${rvDay(r.swam_on)}`, state ? `${state}${n ? `, with ${n} photo${n === 1 ? '' : 's'}` : ''}` : ''].filter(Boolean).join(' · ');
   const of = r.mine ? 'your review' : `${rvEsc(r.name || 'a swimmer')}'s review`;
   const pics = r.waiting || !n ? '' : `<ul class="rv-pics">${r.photos.map((p, k) => `<li><button type="button" class="rv-pic" data-photo="${rvEsc(r.id)}-${Number(p.n)}"`
     + ` data-w="${Number(p.w)}" data-h="${Number(p.h)}" aria-label="Photo ${k + 1} of ${n} from ${of}"><img src="reviews/photos/${rvEsc(r.id)}-${Number(p.n)}-t.jpg"`
@@ -141,7 +167,9 @@ function reviewItem(r, extra) {
 // The tile: the label, the score as its figure with the share drawn, one sentence, the reviews, and
 // the way to write one. `say` is a line to show where the button was (after sending or deleting).
 function drawReviews(sec, d, data, say = '') {
-  const rows = reviewRows((data.spots || {})[d.id], reviewsNow(), d.id), score = reviewScore(rows.filter(r => !r.waiting));
+  if (!sec.isConnected) return;   // another spot was opened while this waited on the network
+  const rows = reviewRows((data.spots || {})[d.id], reviewsNow(), d.id).map(r => (r.waiting ? { ...r, state: reviewAsked.get(r.id) } : r));
+  const score = reviewScore(rows.filter(r => !r.waiting));
   let h = `<h2 class="t-lab" id="rv-h">${REVIEW_ICON}<span>Swimmers' reviews</span></h2>`;
   if (score.pct !== null) h += `<p class="t-fig">${score.pct}%<small>would swim here again</small></p>`
     + `<div class="rv-bar" role="img" aria-label="${score.yes} of ${score.n} would swim here again"><i style="width:${score.pct}%"></i></div>`;
@@ -296,7 +324,7 @@ function reviewOpenForm(sec, d, data) {
       const why = !res ? 'Your review could not be sent. Check your connection and try again.'
         : res.status === 429 ? 'Too many reviews from this connection today. Try again tomorrow.'
         : res.status === 413 ? 'The photos are too large together. Try fewer.'
-        : res.status === 400 ? (t => `${t.charAt(0).toUpperCase()}${t.slice(1)}.`)((await res.text()).trim())
+        : res.status === 400 || res.status === 503 ? (t => `${t.charAt(0).toUpperCase()}${t.slice(1)}.`)((await res.text()).trim())
         : 'The review service did not answer. Try again later.';
       send.disabled = false; say(why, true); return;
     }
@@ -316,13 +344,16 @@ function reviewOpenForm(sec, d, data) {
 // and every other detail it recorded. The service strips any that a different client sends.
 async function reviewShrink(file) {
   const src = await reviewDecode(file);
+  let big, small;
+  try { big = reviewCanvas(src, ...reviewFit(...rvSize(src), REVIEW_LIMITS.side)); } finally { if (src.close) src.close(); }
   try {
-    const [w, h] = rvSize(src);
-    const full = await reviewJpeg(src, ...reviewFit(w, h, REVIEW_LIMITS.side), 0.82);
-    const thumb = await reviewJpeg(src, ...reviewThumb(w, h), 0.78);
+    small = reviewCanvas(big, ...reviewThumb(big.width, big.height));
+    const full = await reviewBlob(big, 0.82), thumb = await reviewBlob(small, 0.78);
     return { full, thumb, url: URL.createObjectURL(thumb) };
-  } finally { if (src.close) src.close(); }
+  } finally { rvFree(big); rvFree(small); }
 }
+const rvFree = c => { if (c) { c.width = 0; c.height = 0; } };   // Safari keeps a canvas's memory until it shrinks
+const reviewBlob = (c, quality) => new Promise((ok, no) => c.toBlob(b => (b ? ok(b) : no(new Error('the photo could not be saved'))), 'image/jpeg', quality));
 const rvSize = src => [src.naturalWidth || src.width, src.naturalHeight || src.height];   // an <img>, or an ImageBitmap
 async function reviewDecode(file) {
   if (window.createImageBitmap) { try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); } catch (e) { /* the <img> below */ } }
@@ -330,15 +361,19 @@ async function reviewDecode(file) {
   try { img.src = url; await img.decode(); return img; } finally { setTimeout(() => URL.revokeObjectURL(url), 0); }
 }
 // Halving until within twice the size, then the last step: a single big step looks jagged in Safari.
-function reviewJpeg(src, w, h, quality) {
+// Each step's canvas is let go once the next is drawn, so at most two are held.
+function reviewCanvas(src, w, h) {
   let cur = src, [cw, ch] = rvSize(src);
   while (cw / 2 >= w && ch / 2 >= h) {
     const c = document.createElement('canvas'); c.width = Math.round(cw / 2); c.height = Math.round(ch / 2);
-    c.getContext('2d').drawImage(cur, 0, 0, c.width, c.height); cur = c; cw = c.width; ch = c.height;
+    c.getContext('2d').drawImage(cur, 0, 0, c.width, c.height);
+    if (cur !== src) rvFree(cur);
+    cur = c; cw = c.width; ch = c.height;
   }
   const out = document.createElement('canvas'); out.width = w; out.height = h;
   const g = out.getContext('2d'); g.imageSmoothingQuality = 'high'; g.drawImage(cur, 0, 0, w, h);
-  return new Promise((ok, no) => out.toBlob(b => (b ? ok(b) : no(new Error('the photo could not be saved'))), 'image/jpeg', quality));
+  if (cur !== src) rvFree(cur);
+  return out;
 }
 
 if (typeof module === 'object' && module.exports) {

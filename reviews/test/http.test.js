@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import worker, { forgetOldHits, sha256 } from '../src/index.js';
-import { LIMITS } from '../src/rules.js';
+import worker, { connectionOf, forgetOldHits, sha256 } from '../src/index.js';
+import { LIMITS, MAX_PENDING, PHOTOS_PER_DAY } from '../src/rules.js';
 import { FakeD1, FakeKV, hasBytes, jpeg } from './helpers.js';
 
 const ORIGIN = 'https://swimsignal.co.uk';
@@ -222,4 +222,89 @@ test('the main module exports nothing but functions: the Workers runtime will no
   }
   assert.equal(typeof mod.default.fetch, 'function');
   assert.equal(typeof mod.default.scheduled, 'function');
+});
+
+test('the sender\'s browser asks after its reviews: waiting, published, or gone', async () => {
+  const env = makeEnv();
+  const { id: waiting } = await (await send(env)).json();
+  const { id: published } = await (await send(env, REVIEW, [], { ip: '198.51.100.3' })).json();
+  await publish(env, published);
+  const gone = 'e'.repeat(20);
+  const res = await post(env, '/reviews/status', { ids: [waiting, published, gone] });
+  assert.equal(res.status, 200);
+  assert.equal(res.headers.get('Access-Control-Allow-Origin'), ORIGIN);
+  assert.deepEqual(await res.json(), { [waiting]: 'pending', [published]: 'published', [gone]: 'gone' });
+  assert.equal((await post(env, '/reviews/status', { ids: [] })).status, 400);
+  assert.equal((await post(env, '/reviews/status', { ids: Array(21).fill(gone) })).status, 400);
+  assert.equal((await post(env, '/reviews/status', { ids: ['../x'] })).status, 400);
+  assert.equal((await post(env, '/reviews/status', { ids: [gone] }, { origin: 'https://elsewhere.example' })).status, 403);
+});
+
+test('an IPv6 connection is counted by its /64, so one host is not millions of connections', () => {
+  assert.equal(connectionOf('2001:db8:1234:5678:aaaa:bbbb:cccc:dddd'), '2001:0db8:1234:5678::/64');
+  assert.equal(connectionOf('2001:db8:1234:5678::1'), '2001:0db8:1234:5678::/64');
+  assert.equal(connectionOf('2001:DB8:1234:5678:FFFF::'), '2001:0db8:1234:5678::/64');
+  assert.equal(connectionOf('2001:db8::1'), '2001:0db8:0000:0000::/64');
+  assert.equal(connectionOf('::ffff:203.0.113.9'), '203.0.113.9');
+  assert.equal(connectionOf('203.0.113.9'), '203.0.113.9');
+  assert.equal(connectionOf(null), 'unknown');
+});
+
+test(`a host with many IPv6 addresses meets the same limit of ${LIMITS.review} a day`, async () => {
+  const env = makeEnv();
+  for (let i = 0; i < LIMITS.review; i++) assert.equal((await send(env, REVIEW, [], { ip: `2001:db8:1:2::${i + 1}` })).status, 201);
+  assert.equal((await send(env, REVIEW, [], { ip: '2001:db8:1:2:ffff::99' })).status, 429);
+  assert.equal((await send(env, REVIEW, [], { ip: '2001:db8:1:3::1' })).status, 201, 'the next /64 is someone else');
+});
+
+test(`at most ${PHOTOS_PER_DAY} photos a day and ${MAX_PENDING} reviews waiting, for everyone together`, async () => {
+  const env = makeEnv();
+  const day = new Date().toISOString().slice(0, 10);
+  env.DB.db.prepare("INSERT INTO hits (key, day, n) VALUES ('photos', ?, ?)").run(day, PHOTOS_PER_DAY - 1);
+  assert.equal((await send(env, { ...REVIEW, consent: 'yes' }, [PHOTO], { ip: '192.0.2.50' })).status, 201, 'the last photo of the day');
+  const over = await send(env, { ...REVIEW, consent: 'yes' }, [PHOTO], { ip: '192.0.2.51' });
+  assert.equal(over.status, 503);
+  assert.match(await over.text(), /without them/);
+  assert.equal(env.PHOTOS.map.size, 2, 'nothing more stored');
+  assert.equal((await send(env, REVIEW, [], { ip: '192.0.2.52' })).status, 201, 'a review without photos still goes in');
+  // The queue: fill it to the cap, and the next review waits for the operator to catch up.
+  const insert = env.DB.db.prepare("INSERT INTO reviews (id, spot, again, swam_on, created_at, token_hash) VALUES (?, 'a', 1, '2026-10-01', '2026-10-01T00:00:00Z', 'x')");
+  for (let i = 0; i < MAX_PENDING; i++) insert.run((0xa000 + i).toString(16).padStart(20, '0'));
+  const full = await send(env, REVIEW, [], { ip: '192.0.2.53' });
+  assert.equal(full.status, 503);
+  assert.match(await full.text(), /queue of reviews to check is full/);
+});
+
+test('an unexpected failure still answers the page, with its CORS header and no details', async () => {
+  const env = makeEnv();
+  env.DB.db.exec('DROP TABLE reviews');   // as if the migration had not been applied
+  const errors = [];
+  const original = console.error;
+  console.error = (...a) => errors.push(a.join(' '));
+  try {
+    const res = await send(env);
+    assert.equal(res.status, 500);
+    assert.equal(res.headers.get('Access-Control-Allow-Origin'), ORIGIN);
+    assert.equal(await res.text(), 'The review service had a problem');
+  } finally { console.error = original; }
+  assert.match(errors.join('\n'), /no such table: reviews/, 'the cause is in the Worker\'s log');
+});
+
+
+test('concurrent reviews cannot overfill the queue, and rejected photos are removed', async () => {
+  const env = makeEnv();
+  const insert = env.DB.db.prepare("INSERT INTO reviews (id, spot, again, swam_on, created_at, token_hash) VALUES (?, 'a', 1, ?, ?, 'x')");
+  for (let i = 0; i < MAX_PENDING - 1; i++) insert.run(i.toString(16).padStart(20, '0'), today, today);
+  const responses = await Promise.all([1, 2].map(i => send(env, { ...REVIEW, consent: 'yes' }, [PHOTO], { ip: `192.0.2.${i}` })));
+  assert.deepEqual(responses.map(r => r.status).sort(), [201, 503]);
+  assert.equal(env.DB.rows("SELECT count(*) AS n FROM reviews WHERE status = 'pending'")[0].n, MAX_PENDING);
+  assert.equal(env.PHOTOS.map.size, 2, 'only the accepted review keeps its photo and thumbnail');
+});
+
+test('a refused batch of photos does not consume the remaining daily allowance', async () => {
+  const env = makeEnv();
+  env.DB.db.prepare("INSERT INTO hits (key, day, n) VALUES ('photos', ?, ?)").run(today, PHOTOS_PER_DAY - 1);
+  assert.equal((await send(env, { ...REVIEW, consent: 'yes' }, [PHOTO, PHOTO], { ip: '192.0.2.70' })).status, 503);
+  assert.equal((await send(env, { ...REVIEW, consent: 'yes' }, [PHOTO], { ip: '192.0.2.71' })).status, 201);
+  assert.equal(env.DB.rows("SELECT n FROM hits WHERE key = 'photos'")[0].n, PHOTOS_PER_DAY);
 });

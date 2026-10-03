@@ -40,6 +40,10 @@ REVIEW_ID = re.compile(r"[0-9a-f]{20}")
 SPOT_ID = re.compile(r"[A-Za-z0-9_-]{1,80}")   # the site's rule for a spot's id
 DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
 MAX_PHOTO_BYTES = 2_000_000   # more than the Worker accepts (1.5 MB), so only a broken file is refused
+# A slow or failing Worker costs the build at most this long in photos, and photos stop after this many
+# failures in a row; the reviews still publish, without the photos not fetched, and the next build
+# tries those again. The job's limit is 25 minutes, and the forecasts need most of it.
+PHOTO_BUDGET_S, PHOTO_FAILURES = 120, 3
 
 
 def reviews_url() -> str | None:
@@ -54,15 +58,15 @@ def reviews_url() -> str | None:
     return url
 
 
-def _get(url: str, timeout: float = 30) -> bytes:
-    """One file from the Worker: three tries for a network failure or a 5xx, none for a 4xx."""
-    for attempt in range(3):
+def _get(url: str, timeout: float = 20, tries: int = 2) -> bytes:
+    """One file from the Worker: a second try after a network failure or a 5xx, none after a 4xx."""
+    for attempt in range(tries):
         try:
             r = httpx.get(url, timeout=httpx.Timeout(timeout, connect=8))
             r.raise_for_status()
             return r.content
         except httpx.HTTPError as e:
-            if attempt == 2 or (isinstance(e, httpx.HTTPStatusError) and e.response.status_code < 500):
+            if attempt == tries - 1 or (isinstance(e, httpx.HTTPStatusError) and e.response.status_code < 500):
                 raise
             time.sleep(2 * 2**attempt)
     raise AssertionError("unreachable")
@@ -98,20 +102,22 @@ def _is_jpeg(data: bytes) -> bool:
 
 
 def write_reviews(site: Path, url: str | None = None, *, spot_ids=None, fetch: bool = True, get=_get,
-                  cache: Path | None = None) -> dict:
+                  cache: Path | None = None, now=time.monotonic) -> dict:
     """site/reviews/: index.json and the photos, and the reviews sections of the privacy notice and the
     terms (written by write_pages before this). Returns what the build log reports. With reviews off,
-    index.json says so and nothing else is written. fetch=False (a build without --refresh) asks the
-    Worker for nothing and publishes the cached list and photos."""
+    index.json says so, nothing else is written, and the cache is emptied: reviews switched off leave
+    no copy behind. fetch=False (a build without --refresh) asks the Worker for nothing and publishes
+    the cached list and photos."""
     url = reviews_url() if url is None else url
+    cache = CACHE if cache is None else cache
     out = site / "reviews"
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)
     generated = datetime.now(UTC).isoformat(timespec="seconds")
     if not url:
+        shutil.rmtree(cache, ignore_errors=True)
         (out / "index.json").write_text(json.dumps({"generated_at": generated, "on": False}))
         return {"on": False}
-    cache = CACHE if cache is None else cache
     photos_cache = cache / "photos"
     photos_cache.mkdir(parents=True, exist_ok=True)
     report: dict = {"on": True, "source": "service"}
@@ -137,7 +143,7 @@ def write_reviews(site: Path, url: str | None = None, *, spot_ids=None, fetch: b
                                   else "; no earlier list is kept, so the site shows none this time")
     spots = site_entries(published, None if spot_ids is None else set(map(str, spot_ids)))
 
-    wanted, missing = set(), 0
+    wanted, missing, failed, stop = set(), 0, 0, now() + PHOTO_BUDGET_S
     for items in spots.values():
         for r in items:
             kept = []
@@ -145,14 +151,16 @@ def write_reviews(site: Path, url: str | None = None, *, spot_ids=None, fetch: b
                 names = [f"{r['id']}-{p['n']}.jpg", f"{r['id']}-{p['n']}-t.jpg"]
                 for name in names:
                     f = photos_cache / name
-                    if f.exists() or not fetch:
+                    if f.exists() or not fetch or failed >= PHOTO_FAILURES or now() > stop:
                         continue
                     try:
                         data = get(url + "photos/" + name)
                         if not _is_jpeg(data):
                             raise ValueError("not a JPEG")
                         f.write_bytes(data)
+                        failed = 0
                     except Exception as e:  # noqa: BLE001 - the review is shown without that photo
+                        failed += 1
                         log.warning("review photo %s: %s", name, e)
                 if all((photos_cache / name).exists() for name in names):
                     kept.append(p)
@@ -175,7 +183,10 @@ def write_reviews(site: Path, url: str | None = None, *, spot_ids=None, fetch: b
             p.write_text(with_reviews(p.read_text(), page))
     report.update(published=sum(len(v) for v in spots.values()), photos=len(wanted) // 2)
     if missing:
-        report.setdefault("warning", f"reviews: {missing} photo{'' if missing == 1 else 's'} could not be fetched and are left out until the next build")
+        why = ("; the photo service kept failing, so the rest waited" if failed >= PHOTO_FAILURES
+               else "; the photos ran out of time" if now() > stop else "")
+        report.setdefault("warning", f"reviews: {missing} photo{'' if missing == 1 else 's'} could not be fetched and "
+                                     f"{'is' if missing == 1 else 'are'} left out until the next build{why}")
     return report
 
 
@@ -212,14 +223,16 @@ REVIEWS_PRIVACY = (
     "page and in the site's public files, for anyone to see. The basis is your consent: you choose to send a review, and "
     "you can withdraw it by deleting the review.</p>\n"
     "<p>Your browser keeps a copy of your review, and a key to it, in its local storage, so that it can show you the "
-    "review while it waits and let you delete it at any time. Deleting it removes it from the review service at once and "
-    "from the site at its next update, within a few hours; the copy the site's build keeps for its own use, which only "
-    "the operator can reach, is gone within about a week. From another device, or after clearing this site's data, "
-    "email the operator to have it deleted. If you report a review, the service keeps the reason you chose and the time, "
-    "and nothing about you, until the operator has dealt with it.</p>\n"
+    "review while it waits and let you delete it at any time. While it waits, the spot's page asks the review service "
+    "whether it is still waiting, sending only the review's identifier. Deleting it removes it from the review service "
+    "at once and from the site at its next update, within a few hours; the copy the site's build keeps for its own use, "
+    "which is not published, is gone within about a week. A browser can forget the key: Safari, for one, clears a "
+    "site's storage after seven days without a visit, unless the site is on your Home Screen. Then, or from another "
+    "device, email the operator to have the review deleted. If you report a review, the service keeps the reason you "
+    "chose and the time, and nothing about you, until the operator has dealt with it.</p>\n"
     "<p>The review service runs on Cloudflare Workers, with the reviews in a Cloudflare D1 database and the photos in "
     "Workers KV. Cloudflare may handle them outside the UK under its own safeguards, and it sees your IP address when you "
-    "send, delete or report a review, as any web server would; "
+    "send, delete or report a review, and when the page asks after one you sent, as any web server would; "
     '<a href="https://www.cloudflare.com/privacypolicy/">Cloudflare\'s privacy policy</a> applies to that. Published '
     "reviews and their photos are served by GitHub with the rest of the site, so reading them sends nothing to "
     "Cloudflare.</p>\n\n")
