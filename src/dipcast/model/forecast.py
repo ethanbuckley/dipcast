@@ -158,17 +158,20 @@ def _clean(v):
 
 
 def spill_probabilities(ov: pd.DataFrame, days: pd.DatetimeIndex,
-                        model: SpillModel | None, return_rain: bool = False) -> tuple[np.ndarray, ...]:
+                        model: SpillModel | None, return_rain: bool = False,
+                        rain: pd.DataFrame | None = None) -> tuple[np.ndarray, ...]:
     """(n_overflows, n_days) probability each overflow spills on each day, and a
     bool mask of the same shape: True where that overflow's cell has rainfall data
     for the day. Where it has none the probability is NaN, never 0. With
     `return_rain`, also the day's rainfall (mm) at each overflow's cell that the
-    probability was computed from, NaN where missing."""
+    probability was computed from, NaN where missing. `rain`, hourly rain as
+    fetch_forecast returns it, is used instead of fetching (the click-anywhere data,
+    scripts/build_any_point.py, rations its fetches); a cell missing from it has no data."""
     if ov.empty:
         empty = (np.zeros((0, len(days))), np.zeros((0, len(days)), dtype=bool))
         return (*empty, np.zeros((0, len(days)))) if return_rain else empty
     cells = cells_for_sites(ov["lat"], ov["lon"])
-    rain = fetch_forecast(cells)
+    rain = fetch_forecast(cells) if rain is None else rain.copy()
     rain["time"] = rain["time"].dt.tz_convert(LOCAL_TZ)   # local-midnight day boundaries
     daily = daily_rain_features(rain)
     sites = ov[["site_id", "lat", "lon", "company", "lta_spills", "spill_hours", "edm_operational_pct"]]

@@ -703,11 +703,13 @@ def attach_water_temperature(results: list[dict], fetch=None, relate=None, now=N
 # count whole.
 SHELL_SOURCES = [TEMPLATE, TEMPLATE.parent / "sw.js", TEMPLATE.parent / "levels.js", TEMPLATE.parent / "experience.js",
                  TEMPLATE.parent / "manifest.webmanifest", TEMPLATE.parent / "icons", TEMPLATE.parent / "vendor",
-                 STATIC / "page.css", STATIC / "feedback.html", STATIC / "fonts"]
+                 STATIC / "page.css", STATIC / "feedback.html", STATIC / "fonts",
+                 TEMPLATE.parent / "anypoint.js"]
 # The worker's build line, and the page's scripts, which get ?v=<stamp> so a page and its scripts
 # always come from one build (sw.js explains). The page must keep these exact tags.
 SW_BUILD = "const BUILD = 'dev';"
-VERSIONED_SCRIPTS = ('<script src="experience.js"></script>', '<script src="levels.js"></script>')
+VERSIONED_SCRIPTS = ('<script src="experience.js"></script>', '<script src="levels.js"></script>',
+                     '<script src="anypoint.js" defer></script>')
 
 
 def shell_stamp() -> str:
@@ -740,6 +742,7 @@ def copy_app_files(site: Path, stamp: str | None = None) -> None:
     (site / "sw.js").write_text(sw.replace(SW_BUILD, f"const BUILD = '{stamp}';"))   # the offline copy; see the file
     shutil.copy(TEMPLATE.parent / "experience.js", site / "experience.js")
     shutil.copy(TEMPLATE.parent / "levels.js", site / "levels.js")   # the level rules, which the page loads
+    shutil.copy(TEMPLATE.parent / "anypoint.js", site / "anypoint.js")   # a forecast for any point clicked on the map
     shutil.copytree(TEMPLATE.parent / "icons", site / "icons", dirs_exist_ok=True)
     # The map library, Leaflet, served from this site (vendor/leaflet/VERSION.txt) rather than a CDN.
     shutil.copytree(TEMPLATE.parent / "vendor", site / "vendor", dirs_exist_ok=True)
@@ -904,6 +907,26 @@ def write_pages(site: Path, results: list[dict], token: str | None = None, root:
     return len(ids)
 
 
+def write_any_point(site: Path, credits: dict) -> dict | None:
+    """site/data/anypoint/: what the page needs to forecast a click away from the listed spots
+    (scripts/build_any_point.py). Run after the spot forecasts, from the same overflow table, model
+    and rain. A failure leaves the files out and is announced; it never stops the spots publishing."""
+    import importlib.util
+
+    from dipcast.model.forecast import _model, spill_probabilities
+    try:
+        spec = importlib.util.spec_from_file_location("build_any_point", ROOT / "scripts" / "build_any_point.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        model = _model()
+        return mod.build(site, _net(), _overflows(), lambda ov, days, rain: spill_probabilities(ov, days, model, rain=rain),
+                         credits)
+    except Exception as e:  # noqa: BLE001 - an addition beside the spots must not sink the site
+        announce(f"click-anywhere data not written: {e}")
+        shutil.rmtree(site / "data" / "anypoint", ignore_errors=True)   # never half a set of files
+        return None
+
+
 def announce(warning: str) -> None:
     """Log a build warning and, on GitHub Actions, raise it as an annotation on the run page."""
     log.warning("%s", warning)
@@ -1029,6 +1052,7 @@ def build(refresh: bool = True) -> dict:
         announce(w)
     (SITE / "data").mkdir(parents=True, exist_ok=True)
     credits = data_credits(site_url())
+    health["anypoint"] = write_any_point(SITE, credits)
     push = push_config()
     (SITE / "data" / "spots.json").write_text(json.dumps({
         "generated_at": generated.isoformat(), "version": __version__, "n": len(results), "build": health,

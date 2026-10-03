@@ -103,8 +103,8 @@ class RiverNetwork:
 
     def _compute_upstream_m(self, quiet: bool = False) -> dict[str, float]:
         """Total network length upstream of every node, in one topological pass.
-        Cycles (braided channels with inconsistent directions) are broken by
-        treating their nodes as having no upstream contribution from the cycle."""
+        Cycles (braided channels with inconsistent directions) are linearised in
+        node-ID order. This is an approximation, but must not change between processes."""
         g = self.graph
         up: dict[str, float] = {}
         try:
@@ -113,7 +113,7 @@ class RiverNetwork:
             cyc = nx.condensation(g)
             order = []
             for comp in nx.topological_sort(cyc):
-                order.extend(cyc.nodes[comp]["members"])
+                order.extend(sorted(cyc.nodes[comp]["members"]))
         for n in order:
             up[n] = sum(up.get(p, 0.0) + g.edges[p, n]["length"] for p in g.predecessors(n) if p in up)
         if not quiet:

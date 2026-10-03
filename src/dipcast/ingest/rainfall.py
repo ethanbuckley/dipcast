@@ -37,8 +37,8 @@ def cell_key(cell_lat: float, cell_lon: float) -> str:
     return f"{cell_lat:.3f}_{cell_lon:.3f}"
 
 
-def _request(url: str, params: dict, timeout: float = 120) -> list[dict] | dict:
-    for attempt in range(5):
+def _request(url: str, params: dict, timeout: float = 120, attempts: int = 5) -> list[dict] | dict:
+    for attempt in range(attempts):
         try:
             r = httpx.get(url, params=params, timeout=httpx.Timeout(timeout, connect=8))
             if r.status_code == 429:
@@ -50,6 +50,9 @@ def _request(url: str, params: dict, timeout: float = 120) -> list[dict] | dict:
             # clear on retry; rate limits need the longer back-off.
             transient = isinstance(e, (httpx.TimeoutException, httpx.NetworkError))
             wait = 2 * 2**attempt if transient else 5 * 2**attempt
+            if attempt + 1 == attempts:   # no wait before giving up
+                log.warning("open-meteo %s; giving up after %d attempts", e, attempts)
+                break
             log.warning("open-meteo %s; retry in %ss", e, wait)
             time.sleep(wait)
     raise RuntimeError("open-meteo request failed")
@@ -103,8 +106,9 @@ def fetch_archive(cells: list[tuple[float, float]], year: int) -> pd.DataFrame:
 # ------------------------------------------------------------------ forecast
 def fetch_forecast(cells: list[tuple[float, float]],
                    past_days: int = config.FORECAST_PAST_DAYS,
-                   forecast_days: int = config.FORECAST_DAYS) -> pd.DataFrame:
-    """Recent observed-ish and forecast hourly precipitation per cell (cached 1 h)."""
+                   forecast_days: int = config.FORECAST_DAYS, attempts: int = 5) -> pd.DataFrame:
+    """Recent observed-ish and forecast hourly precipitation per cell (cached 1 h). `attempts` per
+    request of up to FORECAST_BATCH cells, with a growing wait between them."""
     CACHE.mkdir(parents=True, exist_ok=True)
     frames, todo = [], []
     now = time.time()
@@ -124,7 +128,7 @@ def fetch_forecast(cells: list[tuple[float, float]],
             "forecast_days": forecast_days,
             "timezone": "UTC",
         }
-        res = _request(config.OPEN_METEO_FORECAST, params, timeout=30)  # small payload; fail fast on a bad handshake
+        res = _request(config.OPEN_METEO_FORECAST, params, timeout=30, attempts=attempts)  # small payload; fail fast on a bad handshake
         results = res if isinstance(res, list) else [res]
         for (cl, cn), r in zip(chunk, results, strict=True):
             df = _to_frame(r, cl, cn)
