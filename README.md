@@ -3,7 +3,7 @@
 Probabilistic sewage-pollution risk for river and lake swim spots in England.
 The code and the Python package (`dipcast`) keep the working name dipcast.
 
-Live site: https://swimsignal.co.uk/ (forecasts for 89 named
+Live site: https://swimsignal.co.uk/ (forecasts for 105 named
 spots, rebuilt several times a day by a scheduled GitHub Actions job; free to
 run, never sleeps). Source: https://github.com/ethanbuckley/swimsignal (MIT).
 Every forecast issued is scored later and published on the site's
@@ -43,11 +43,14 @@ part is the transport step: an overflow 2 km upstream on the same river and one
 | EA WFD Lake Water Bodies Cycle 3 | 564 lake polygons (lakes over 50 ha, 5 ha in protected areas), names and areas | OGL v3 |
 | EA flood-monitoring API | Near-real-time river levels and typical ranges; the API version only | OGL v3 |
 | EA Water Quality Archive (Water Quality Explorer) | E. coli results and the sampler's visual algae check at the 38 inland bathing waters | OGL v3 |
+| OpenStreetMap (Overpass API) | 16 river and lake swim spots chosen by hand from 115 candidates (`spots-osm.csv`) | ODbL 1.0, © OpenStreetMap contributors |
 
 The notices each provider asks for are on the site's terms page ("Data sources
 and credits"), and `data/spots.json`, `data/overflows.geojson` and
 `data/verification.json` carry them in a `credits` field (`data_credits` in
 `scripts/build_site.py`). The MIT licence covers the code, not the data.
+`LICENSE-DATA.md` says which files are under the ODbL (`spots-osm.csv` and the
+candidate list it came from) and why `spots.csv` must never take OpenStreetMap rows.
 
 Dwr Cymru (Wales) publishes no live feed to ArcGIS; its 128 overflows appear with
 annual spill history only and no "right now" status. Every English company is live.
@@ -107,7 +110,7 @@ weight to about a third. Windermere is two WFD basins and is treated as such.
 Lakes not in the WFD set (small tarns) fall back to the centreline heuristic.
 
 **Spot placement.** A clicked point goes to the nearest link within 1.5 km. A
-spot in `spots.csv` also names its river (the `river` column, blank for lakes),
+spot in `spots.csv` or `spots-osm.csv` also names its river (the `river` column, blank for lakes),
 and goes to the nearest link carrying that name within 1 km, even when a link
 of another name is nearer. OS Open Rivers' alternative name counts, and Welsh
 names are read as English (`network/names.py`: Afon Gwy is the Wye, Afon Hafren
@@ -663,6 +666,19 @@ bathing waters and about 50 well-known river and lake spots. A river spot
 names its river in the `river` column (see Spot placement). Add one by pull
 request, or ask for one with the "Request a spot" issue template; it appears
 in the next run. Inclusion is not a statement that a spot is safe.
+
+`spots-osm.csv` adds 16 spots taken from OpenStreetMap, with the same columns
+plus `osm_id`, ids starting `osm-`, and `source` "openstreetmap". It is a
+separate file because the ODbL would cover any file that mixed OpenStreetMap
+rows with ours (`LICENSE-DATA.md`). `scripts/osm_spot_candidates.py` asks the
+Overpass API for England's bathing places, swimming areas, `sport=swimming`
+and swim-like names, drops pools, signs, the sea and duplicates within 150 m,
+places each on the network and writes `data/raw/osm_swim_candidates.csv`
+(115 candidates on 3 Oct 2026). A person then reads every row and copies the
+natural river and lake spots the public can reach into `spots-osm.csv`, with
+`river` typed for each river spot. The build reads both files, runs
+`placement_check` on both, and credits OpenStreetMap on the terms page, in
+`credits.spot_locations` and on each such spot's page.
 
 Each spot has its own page, `spot/<id>/`, written by `build_site.write_pages`:
 the same map page with the spot's name, a one-line description and absolute

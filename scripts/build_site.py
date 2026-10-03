@@ -1,4 +1,4 @@
-"""Build the static site: a forecast for every spot in spots.csv, the overflow
+"""Build the static site: a forecast for every spot in spots.csv and spots-osm.csv, the overflow
 layer, the verification data and the pages, written to ./site for GitHub Pages.
 
 Also refreshes live status, rebuilds the overflow table and scores logged
@@ -207,6 +207,22 @@ def with_counter(html: str, token: str | None) -> str:
     return html
 
 
+# The spots: SwimSignal's own list, and the swim places chosen from OpenStreetMap, in a file of their
+# own because the ODbL would cover any file that mixed the two (LICENSE-DATA.md). No column joins them.
+SPOT_FILES = [ROOT / "spots.csv", ROOT / "spots-osm.csv"]
+
+
+def load_spots(files: list[Path] | None = None) -> pd.DataFrame:
+    """Every spot from spots.csv and spots-osm.csv; a file that is not there adds none. A row whose
+    id an earlier row already has is left out with a warning, so two spots never share a page."""
+    frames = [pd.read_csv(p) for p in (files or SPOT_FILES) if p.exists()]
+    spots = pd.concat(frames, ignore_index=True).fillna("")
+    dup = spots["id"].duplicated()
+    for i in spots.loc[dup, "id"]:
+        log.warning("spot id %r is used twice; the later row is left out", i)
+    return spots[~dup].reset_index(drop=True)
+
+
 def _river_of(row) -> str | None:
     """spots.csv's `river` for a river spot (the river it is on), None for a lake or a blank."""
     river = str(getattr(row, "river", "") or "").strip()
@@ -278,7 +294,7 @@ def build_health(results: list[dict], ecoli_samples: dict | None = None, poll_lo
     if misplaced:
         health["placement_check"] = misplaced
         health["warnings"].append(
-            f"{len(misplaced)} river spot{'' if len(misplaced) == 1 else 's'} may be on the wrong water (check spots.csv): "
+            f"{len(misplaced)} river spot{'' if len(misplaced) == 1 else 's'} may be on the wrong water (check spots.csv and spots-osm.csv): "
             + "; ".join(f"{m['id']}: {m['reason']}" for m in misplaced))
     if n and len(ok) < MIN_OK_SHARE * n:
         raise BuildUnhealthy(f"only {len(ok)}/{n} spots got a forecast; not publishing")
@@ -323,7 +339,7 @@ def placement_check(results: list[dict], max_snap_m: float = MAX_SNAP_M) -> list
         river, wc, d = (r.get("river") or None), loc.get("watercourse"), loc.get("snap_distance_m")
         reasons = []
         if not river:
-            reasons.append("no river named in spots.csv")
+            reasons.append(f"no river named in {'spots-osm.csv' if r.get('source') == 'openstreetmap' else 'spots.csv'}")
         elif not same_river(wc, river):
             reasons.append(f"snapped to {wc or 'an unnamed watercourse'}, not the {river}")
         if d is not None and d > max_snap_m and not loc.get("adopted_main_channel"):
@@ -363,7 +379,12 @@ LICENCES = {
     "CC BY 4.0": "https://creativecommons.org/licenses/by/4.0/",
     "CC BY-SA 4.0": "https://creativecommons.org/licenses/by-sa/4.0/",
     "OGL v3.0": "https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    "ODbL 1.0": "https://opendatacommons.org/licenses/odbl/1-0/",
 }
+# For the spots in spots-osm.csv (source "openstreetmap"). ODbL 4.3 asks for a notice wherever the
+# data, or a work made from it, is shown; the terms page carries the same line.
+OSM_CREDIT = ("Swim spot locations from OpenStreetMap, © OpenStreetMap contributors, ODbL 1.0 "
+              '(https://www.openstreetmap.org/copyright): the spots whose source is "openstreetmap".')
 
 
 def data_credits(root: str) -> dict:
@@ -382,6 +403,7 @@ def data_credits(root: str) -> dict:
             "use that may be made of the Copernicus information or data it contains."),
         "modified": ("Combined, filtered and modelled by SwimSignal. The forecasts, levels and scores are SwimSignal's own "
                      "estimates, not the data providers'. None of the providers endorses SwimSignal."),
+        "spot_locations": OSM_CREDIT,
         "licences": LICENCES,
         "full": f"{root}terms.html#data",
     }
@@ -708,7 +730,7 @@ def build(refresh: bool = True) -> dict:
     if refresh:
         refresh_all(_net())
         reload_caches()
-    spots = pd.read_csv(ROOT / "spots.csv").fillna("")
+    spots = load_spots()
     prefetch_rain(spots)
     results = []
     for r in spots.itertuples(index=False):
@@ -720,7 +742,8 @@ def build(refresh: bool = True) -> dict:
             log.error("%s: %s", r.name, e)
             f = {"error": f"forecast failed: {e}"}
         results.append({"id": r.id, "name": r.name, "kind": r.kind, "river": _river_of(r), "source": r.source,
-                        "notes": r.notes, "lat": float(r.lat), "lon": float(r.lon), **f})
+                        "notes": r.notes, "lat": float(r.lat), "lon": float(r.lon),
+                        **({"osm_id": r.osm_id} if getattr(r, "osm_id", "") else {}), **f})
     n_algae = attach_algae(results, fetch=refresh)
     n_classified = attach_classifications(results)
     n_levels = attach_river_levels(results) if refresh else 0   # observations beside the forecast, network only

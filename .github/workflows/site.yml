@@ -8,7 +8,7 @@ on:
   workflow_dispatch: {}
   push:
     branches: [main]
-    paths: [spots.csv, "src/**", scripts/build_site.py, .github/workflows/site.yml]
+    paths: [spots.csv, spots-osm.csv, "src/**", scripts/build_site.py, .github/workflows/site.yml]
 
 concurrency:
   group: site

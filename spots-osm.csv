@@ -1,0 +1,17 @@
+id,name,lat,lon,kind,river,source,notes,osm_id
+osm-ullswater-sandwick,"Ullswater, near Sandwick",54.57432,-2.91114,lake,,openstreetmap,Location © OpenStreetMap contributors,node/14066536782
+osm-windermere-waterhead,"Windermere, Waterhead, Ambleside",54.41897,-2.96235,lake,,openstreetmap,Location © OpenStreetMap contributors,node/11146689325
+osm-wharfe-greenholme,"River Wharfe, Greenholme, Burley-in-Wharfedale",53.92277,-1.74892,river,River Wharfe,openstreetmap,Location © OpenStreetMap contributors,node/9141700491
+osm-rivelin-plunge-pool,"River Rivelin, plunge pool, Rivelin Valley",53.38169,-1.56000,river,River Rivelin,openstreetmap,Location © OpenStreetMap contributors,way/1317352569
+osm-burbage-padley-gorge,"Burbage Brook, Padley Gorge",53.31860,-1.61385,river,Burbage Brook,openstreetmap,Location © OpenStreetMap contributors,way/1296709877
+osm-wye-chee-dale,"River Wye, Chee Dale, Derbyshire",53.25426,-1.81488,river,River Wye,openstreetmap,Location © OpenStreetMap contributors,node/12015669309
+osm-dane-three-shires-head,"River Dane, Panniers Pool, Three Shires Head",53.21374,-1.98745,river,River Dane,openstreetmap,Location © OpenStreetMap contributors,way/784263352
+osm-lathkill-dale,"River Lathkill, Lathkill Dale, Over Haddon",53.19044,-1.68894,river,River Lathkill,openstreetmap,Location © OpenStreetMap contributors,way/833901448
+osm-bradford-youlgrave,"River Bradford, Bradford Dale, Youlgrave",53.17316,-1.68596,river,River Bradford,openstreetmap,Location © OpenStreetMap contributors,way/833670616
+osm-great-ouse-overcote,"River Great Ouse, Overcote",52.32303,-0.00390,river,River Great Ouse,openstreetmap,Location © OpenStreetMap contributors,way/1209706748
+osm-thames-long-bridges,"River Thames, Long Bridges, Oxford",51.73783,-1.24522,river,River Thames,openstreetmap,Location © OpenStreetMap contributors,node/7740065665
+osm-wey-waverley,"River Wey, Waverley, near Farnham",51.20760,-0.76378,river,River Wey,openstreetmap,Location © OpenStreetMap contributors,node/13866355847
+osm-test-chilbolton,"River Test, Chilbolton Cow Common",51.15903,-1.44483,river,River Test,openstreetmap,Location © OpenStreetMap contributors,node/12601753079
+osm-itchen-compton-lock,"River Itchen, Compton Lock",51.02718,-1.32219,river,River Itchen,openstreetmap,Location © OpenStreetMap contributors,way/186891192
+osm-teign-drogo-weir,"River Teign, Drogo Weir",50.69205,-3.81044,river,River Teign,openstreetmap,Location © OpenStreetMap contributors,way/1088847217
+osm-dart-dartington,"River Dart, Dartington Pontoon",50.43940,-3.69136,river,River Dart,openstreetmap,Location © OpenStreetMap contributors,way/1531988215
