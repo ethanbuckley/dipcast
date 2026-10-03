@@ -482,8 +482,8 @@ FAILED = ("The automatic check could not run this time, so a maintainer will pla
 INTRO = ("This is an automatic check of where the spot sits on SwimSignal's river map. A maintainer reads every "
          "request before a spot is added.")
 FOOT = ("<sub>River map: OS Open Rivers, contains OS data © Crown copyright and database right {year}. Overflows: "
-        "the water companies' live feeds and the Environment Agency's annual returns. This comment is updated when "
-        "the issue is edited.</sub>")
+        "the water companies' live feeds and the Environment Agency's annual returns. Licences and full credits: "
+        "https://swimsignal.co.uk/terms.html#data. This comment is updated when the issue is edited.</sub>")
 
 
 def compose(req: Request, point: Point | None, problem: str | None, res: dict | None, error: bool = False) -> str:

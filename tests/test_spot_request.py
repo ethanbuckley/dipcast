@@ -320,6 +320,7 @@ def test_a_spot_on_the_named_river_gets_the_full_answer(net, check):
     assert next(csv.reader([row]))[:2] == ["lune-crook-o-lune-2", "River Lune, Crook o' Lune"]
     assert next(csv.reader([row]))[4:7] == ["river", "River Lune", "curated"]
     assert "Already listed" not in text   # the listed spot is far away
+    assert "Crown copyright" in text and "https://swimsignal.co.uk/terms.html#data" in text   # the data's credits
 
 
 def test_a_spot_close_to_its_river_passes_the_check(net, check):
