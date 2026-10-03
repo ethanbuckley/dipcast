@@ -34,6 +34,7 @@ data/processed/*
 data/raw/*
 !data/raw/bathing_waters_inland.json
 !data/raw/bathing_water_classifications.json
+!data/raw/osm_swim_candidates.csv
 /site/
 .claude/
 /state/
