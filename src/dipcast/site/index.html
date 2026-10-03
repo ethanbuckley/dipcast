@@ -666,6 +666,7 @@
           <dt id="about-exposure">Exposure index (0–100)</dt><dd>A 0–100 score of how likely sewage from upstream is to reach the spot. It is built from the chance that at least one overflow upstream spills and its discharge arrives, after travel time, die-off and dilution. The spill part is verified against what the overflows did; the die-off and dilution weights are physical estimates, not calibrated against water samples, so the score is not a probability. The colour levels (low to very high) come from it.</dd>
           <dt id="about-ecoli">E. coli estimate</dt><dd>The estimated chance that a midday water sample would show over 900 E. coli per 100 ml, from rainfall at the spot, the exposure index, water-body type and season, fitted to Environment Agency samples at river and lake bathing waters and tested on years and sites it never saw. It counts bacteria from any source, so rain alone can raise it when the exposure index is low. 900 is the threshold used in the inland "sufficient" classification, which is a 90th-percentile calculation over four seasons, not a pass/fail test of one sample. It is validated on rivers in the May–September sampling season only; on lakes it has no demonstrated skill and is not shown. The EA takes no samples from October to April, so then nothing tests it: the figure is still shown, marked †, but it does not set the level, and the date's own effect is held at its value at the nearer end of the season (30 September or 1 May) rather than carried on with nothing to check it.</dd>
           <dt>Algae</dt><dd>Designated bathing waters only: the Environment Agency sampler's latest look at the water, an observation, not a forecast. It does not tell blue-green algae from harmless kinds.</dd>
+          <dt>Water temperature</dt><dd>Rivers only, where an Environment Agency sensor on the same river, within 15 km in a straight line and on the same side of the tidal limit, has reported in the last day: its latest reading, with how far up or down the river it is and how old the reading is. Where there is no such sensor nothing is shown; the temperature is never estimated. It is not part of the level.</dd>
           <dt>What it does not know</dt><dd>Anything about a specific farm, road, outfall or algal bloom: only monitored storm overflows are modelled.</dd>
         </dl>
       </details>
@@ -1093,6 +1094,18 @@ const rainSaid = s => { const x = (s.days || [])[0], v = x ? x.rain_48h_mm : nul
 const weatherOn = (d, iso) => ((d.weather || {}).days || []).find(w => w.date === iso) || null;
 const weatherRow = (d, iso) => { const w = weatherOn(d, iso); if (!w) return '';
   return factorRow('Weather', null, nil(w.tmax) ? '–' : `${w.tmax}°`, `${nil(w.tmax) ? '' : `Daytime high about ${w.tmax}°C. `}Sunrise ${esc(w.sunrise)}, sunset ${esc(w.sunset)}. <a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a>.`); };
+// The Water temperature tile, or null: the latest reading of the nearest Environment Agency sensor on the
+// spot's own river (build_site.attach_water_temperature), a measurement and never an estimate. It is
+// shown only with how far along the river the sensor is and how old the reading is, counted from now,
+// not from the build, so an old page says so.
+function waterTile(w) {
+  const t = w ? Date.parse(w.observed_at) : NaN;
+  if (!w || nil(w.temp_c) || isNaN(t) || nil(w.river_km) || !['upstream', 'downstream'].includes(w.direction)) return null;
+  return { icon: glyph('<path d="M10 14.6V5a2 2 0 0 1 4 0v9.6a3.6 3.6 0 1 1-4 0Z"/><path d="M12 9.5v8"/>'), label: 'Water temperature',
+    fig: `${Math.round(w.temp_c)}°`, unit: 'C',
+    say: `Measured ${esc(w.where)}${w.river ? ` on the ${esc(w.river)}` : ''}, ${fmt(w.river_km, 1)}&nbsp;km ${w.direction}, ${ago(Math.max(0, (Date.now() - t) / 60000))} ago.`,
+    more: `The Environment Agency's water-quality sensor nearest the spot on this river, within 15&nbsp;km in a straight line, that has reported in the last day.${w.quality === 'Unchecked' ? ' The EA has not yet checked the reading.' : ''} The water where you swim can be warmer or colder. Not part of the pollution level.${/^https:\/\/environment\.data\.gov\.uk\//.test(w.url || '') ? ` <a href="${esc(w.url)}">The Environment Agency's page for this sensor</a> has its record.` : ''}` };
+}
 // ------------------------------------------------------------------------------ the answer and the tiles
 // The page as Apple Weather's (seventh round, docs/DESIGN.md): the answer as one big word, what set it
 // and when, and where the week goes; a sentence over the five days, drawn as rows; then a tile for
@@ -1263,6 +1276,7 @@ function facts(d) {
   if (!d.error && total && x0 && !nil(x0.rain_48h_mm)) { const wet = d.days.slice(0, 5).reduce((p, q) => (q.rain_48h_mm || 0) > (p.rain_48h_mm || 0) ? q : p);
     out.push({ icon: ICON.rain, label: 'Rain here', fig: Math.round(x0.rain_48h_mm), unit: 'mm', vis: rainCols(d),
       say: `In the 48&nbsp;h to midday today.${wet !== x0 && wet.rain_48h_mm >= 1 ? ` Wettest ${dayName(wet.date)}, ${Math.round(wet.rain_48h_mm)}&nbsp;mm.` : ''}` }); }
+  const wt = waterTile(d.water_temp); if (wt) out.push(wt);
   const wx = weatherOn(d, today());
   if (wx) out.push({ icon: ICON.sun, label: 'Weather', fig: nil(wx.tmax) ? '–' : `${wx.tmax}°`, unit: nil(wx.tmax) ? '' : 'high', vis: sunPath(wx),
     say: `Sunrise ${esc(wx.sunrise)}, sunset ${esc(wx.sunset)}.`, credit: true });
