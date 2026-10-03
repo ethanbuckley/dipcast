@@ -132,3 +132,78 @@ def test_ecoli_live_scoring_round_trip(tmp_path, monkeypatch):
     assert by_lead[0]["base_rate"] == 1.0 and abs(by_lead[0]["brier"] - 0.16) < 1e-9     # 0.6 vs exceedance
     assert by_lead[1]["base_rate"] == 0.0 and abs(by_lead[1]["brier"] - 0.16) < 1e-9     # 0.4 vs clean
     assert out["recent"][0]["ecoli"] == 200 and out["recent"][1]["forecast"] == 0.6
+
+
+def _repeated_overflow() -> pd.DataFrame:
+    """Three upstream rows for two overflows: ST1 is listed twice, as overflows from Severn Trent's and
+    Yorkshire Water's live feeds were in the 3 Oct 2026 12:06 UTC build."""
+    return pd.DataFrame({
+        "site_id": ["ST1", "ST2", "ST1"], "company": "Severn Trent Water", "site_name": ["Weir CSO", "Bridge SO", "Weir CSO"],
+        "receiving_watercourse": "RIVER SEVERN", "lat": [52.71, 52.74, 52.71], "lon": [-2.75, -2.80, -2.75],
+        "status": 0, "has_live": True, "latest_event_start": pd.NaT, "latest_event_end": pd.NaT,
+        "lta_spills": [30.0, 10.0, 30.0], "spill_hours": 100.0, "edm_operational_pct": 95.0, "snap_confidence": "high",
+        "distance_m": [2000.0, 5000.0, 2000.0], "lake_distance_m": 0.0, "travel_h": [1.0, 3.0, 1.0],
+        "weight": [0.5, 0.3, 0.5]})
+
+
+def test_a_repeated_overflow_id_does_not_fail_the_forecast(monkeypatch):
+    """On 3 Oct 2026 12:06 UTC four spots failed with "Index contains duplicate entries, cannot reshape":
+    an overflow upstream of each was listed twice and spill_probabilities pivots on site_id. A repeated id
+    must still give a forecast, and each of its rows the same spill probabilities."""
+    from dipcast.model import forecast
+    from dipcast.model.transport import PinLocation
+
+    ov = _repeated_overflow()
+
+    def rain(cells):
+        t = pd.date_range(pd.Timestamp.now(tz="UTC").floor("D") - pd.Timedelta(days=4), periods=24 * 12, freq="h")
+        return pd.concat([pd.DataFrame({"cell_lat": a, "cell_lon": b, "time": t, "precip_mm": 0.4}) for a, b in cells],
+                         ignore_index=True)
+
+    monkeypatch.setattr(forecast, "_net", lambda: None)
+    monkeypatch.setattr(forecast, "_overflows", lambda: ov)
+    monkeypatch.setattr(forecast, "_model", lambda: None)   # climatology: no spill model file needed
+    monkeypatch.setattr(forecast, "locate_pin", lambda *a, **k: PinLocation(mode="river", x=0.0, y=0.0, snap=None,
+                                                                             watercourse="River Severn"))
+    monkeypatch.setattr(forecast, "upstream_overflows", lambda *a, **k: ov.copy())
+    monkeypatch.setattr(forecast, "fetch_forecast", rain)
+    monkeypatch.setattr(forecast.ecoli, "load", lambda: None)
+    out = forecast.forecast_point(52.70, -2.75, days_ahead=4, gauge=False, log_to_store=False)
+
+    assert "error" not in out and len(out["days"]) == 5
+    assert all(d["risk"] is not None and d["data_status"] == "ok" for d in out["days"])
+    assert out["upstream_summary"]["overflows"] == 3
+    st1 = [c["p_spill_days"] for c in out["contributors"] if c["site_id"] == "ST1"]
+    assert len(st1) == 2 and st1[0] == st1[1]
+
+
+def test_overflow_table_keeps_the_most_recent_row_of_a_repeated_id(caplog):
+    """The 3 Oct 2026 02:59 snapshot listed Anglian Water's AWS00528 twice; a row carried forward for a
+    feed that was down could share an id with a fresh one. One row each, the latest fetched_at."""
+    from dipcast.overflows import duplicate_site_ids, one_row_per_overflow
+
+    t = pd.Timestamp("2026-10-03 02:59", tz="UTC")
+    live = pd.DataFrame({"site_id": ["AWS00528", "X1", "AWS00528", "ST9", "ST9"],
+                         "status": [0, 0, 0, -3, 1],
+                         "fetched_at": [t, t, t, t - pd.Timedelta(hours=3), t],
+                         "last_updated": [t, t, t, pd.NaT, t]})
+    assert duplicate_site_ids(live) == ["AWS00528", "ST9"]
+    with caplog.at_level("WARNING"):
+        one = one_row_per_overflow(live)
+    assert one["site_id"].tolist() == ["X1", "AWS00528", "ST9"]   # snapshot order kept
+    assert one.set_index("site_id").loc["ST9", "status"] == 1        # the fresh row, not the carried one
+    assert "AWS00528, ST9" in caplog.text
+    assert one_row_per_overflow(one) is one                          # nothing repeated: unchanged
+
+
+def test_build_health_counts_repeated_overflow_ids():
+    import sys
+    from pathlib import Path
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import build_site
+
+    good = {"name": "ok", "days": [{"data_status": "ok"}]}
+    h = build_site.build_health([good] * 5)
+    assert h["duplicate_overflow_ids"] == 0 and h["warnings"] == []
+    h = build_site.build_health([good] * 5, duplicate_overflow_ids=["AWS00528"])
+    assert h["duplicate_overflow_ids"] == 1 and len(h["warnings"]) == 1 and "AWS00528" in h["warnings"][0]

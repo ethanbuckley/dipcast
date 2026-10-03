@@ -35,6 +35,7 @@ from dipcast.model.forecast import (
     reload_caches,
 )
 from dipcast.model.transport import locate_pin, river_velocity, upstream_overflows
+from dipcast.overflows import duplicate_site_ids
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
@@ -252,7 +253,14 @@ def live_feed_health(poll_log: pd.DataFrame | None) -> dict | None:
             "down": sorted(c for c, n in last.items() if n == 0)}
 
 
-def build_health(results: list[dict], ecoli_samples: dict | None = None, poll_log: pd.DataFrame | None = None) -> dict:
+def snapshot_duplicates() -> list[str]:
+    """Overflow ids the live snapshot lists more than once; build_overflows keeps one row of each."""
+    p = config.state_read("live_latest.parquet")
+    return duplicate_site_ids(pd.read_parquet(p, columns=["site_id"])) if p.exists() else []
+
+
+def build_health(results: list[dict], ecoli_samples: dict | None = None, poll_log: pd.DataFrame | None = None,
+                 duplicate_overflow_ids: list[str] | None = None) -> dict:
     """Counts the workflow and the page use to judge a build; raises BuildUnhealthy
     when the site should not be published. `ecoli_samples` is the last EA sample fetch
     (forecast_log.samples_status); if no source answered it goes in `warnings`. That
@@ -261,7 +269,8 @@ def build_health(results: list[dict], ecoli_samples: dict | None = None, poll_lo
     no rows in the last poll goes in `warnings` (its overflows keep their last snapshot,
     marked feed down). If every company returned none the build still publishes, with every
     overflow marked feed down and one more warning: refusing would also freeze the rain
-    forecasts and leave the previous statuses on the page with no note that they are old."""
+    forecasts and leave the previous statuses on the page with no note that they are old.
+    `duplicate_overflow_ids` (snapshot_duplicates) is counted, and any goes in `warnings`."""
     n = len(results)
     # A spot the model cannot say anything about (an isolated lake, no river within
     # reach) returns an explanation with an empty day list; that is an answer, not a
@@ -284,6 +293,13 @@ def build_health(results: list[dict], ecoli_samples: dict | None = None, poll_lo
         raise BuildUnhealthy(f"only {len(ok)}/{n} spots got a forecast; not publishing")
     if with_days and today_no_data > MAX_NO_DATA_SHARE * len(with_days):
         raise BuildUnhealthy(f"{today_no_data}/{len(ok)} forecasts have no rainfall data for today; not publishing")
+    # An overflow listed twice failed four forecasts on 3 Oct 2026; now it is dropped, and counted here.
+    dups = list(duplicate_overflow_ids or [])
+    health["duplicate_overflow_ids"] = len(dups)
+    if dups:
+        more = f" and {len(dups) - 10} more" if len(dups) > 10 else ""
+        health["warnings"].append(f"the live snapshot lists {len(dups)} overflow id{'' if len(dups) == 1 else 's'} more than once "
+                                  f"({', '.join(dups[:10])}{more}); build_overflows keeps the most recent row of each")
     feeds = live_feed_health(poll_log)
     if feeds:
         health["live_feeds"] = feeds
@@ -727,7 +743,8 @@ def build(refresh: bool = True) -> dict:
     n_weather = attach_weather(results) if refresh else 0
     generated = pd.Timestamp.now(tz="Europe/London")
     # Raises before anything is written if the build is bad. The live check needs this run's poll.
-    health = build_health(results, samples_status(), load_poll_log() if refresh else None)
+    health = build_health(results, samples_status(), load_poll_log() if refresh else None,
+                          duplicate_overflow_ids=snapshot_duplicates())
     health["algae_checks"], health["classifications"] = n_algae, n_classified
     health["river_levels"], health["weather"] = n_levels, n_weather
     for w in health["warnings"]:
