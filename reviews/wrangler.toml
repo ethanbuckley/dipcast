@@ -1,0 +1,26 @@
+name = "swimsignal-reviews"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# The reviews, their reports and the rate-limit counts. Create it with
+#   npx wrangler d1 create swimsignal-reviews --jurisdiction=eu
+# and paste the database_id it prints. The tables come from migrations/ (README, step 3).
+[[d1_databases]]
+binding = "DB"
+database_name = "swimsignal-reviews"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# The photos. Create it with: npx wrangler kv namespace create PHOTOS
+[[kv_namespaces]]
+binding = "PHOTOS"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[triggers]
+crons = ["17 3 * * *"]   # once a day: forget the rate-limit counts from before yesterday
+
+[vars]
+SITE_URL = "https://swimsignal.co.uk/"
+ALLOWED_ORIGIN = "https://swimsignal.co.uk"
+# ADMIN_TOKEN is a secret, not a var: it opens the moderation queue. Set it with
+#   npx wrangler secret put ADMIN_TOKEN
+# Never write it in this file. This file is committed, so anything here is public.
