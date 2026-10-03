@@ -810,6 +810,31 @@ sheet) and log "I swam here today", kept in the browser with the day's level
 and listed on the Saved page, where each entry links to the feedback form with
 the spot and the day filled in.
 
+**Too high to swim (3 Oct 2026).** A high river and a flood are a different
+hazard from pollution, so they never change the level; a spot's page says them
+in one line under the headline, kept in view on every day's view, ending "A
+separate hazard, not part of the pollution level." "River high: the gauge at
+Addingham is above its usual range" when the latest reading at a gauge on the
+spot's own river is above the top of its usual range (index over 1.0). "River
+rising fast: the gauge at Addingham rose 0.40 m between 08:45 and 14:30" when
+the gauge's readings in the six hours before the build (the measure's last 24,
+`_limit=24`, 15 minutes apart) rose by more than a fifth of the usual range.
+"Flood alert in force nearby (Environment Agency): River Wharfe at Ilkley" for
+the most severe flood alert or warning in force for a flood area within 10 km
+(`/id/floods?lat&long&dist=10`, which measures to the area, not its centre),
+linked to the area's page on check-for-flooding.service.gov.uk. Severity 4,
+"Warning no longer in force", is left out: on 3 Oct 2026 it was the only item
+the service held for England. The build asks spot by spot only when the
+national list holds an alert in force, so on most days the floods cost one
+request. A gauge on another watercourse, or a lake's,
+gives no river word. The words are `flows.flow_state` and `flows.flood_alerts`,
+fetched by `build_site.attach_flow_state` after the levels, in the refresh step
+only; the comparison's "Local warnings" row names the flood alert too. The page
+(`flowFacts` in `experience.js`) says nothing from a reading over 24 h old, a
+rise whose last reading is over 6 h old, or a build over 24 h old, so a stale
+reading never says "River high". The flood API is the same OGL service the
+river levels come from, already credited.
+
 **Alerts** (`push/`, set up by hand: `push/README.md`). A Cloudflare Worker
 keeps, for each browser that turns alerts on from the Saved page, its push
 address and the ids of its saved spots, and nothing else. Each build writes
