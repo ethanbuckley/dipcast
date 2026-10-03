@@ -10,7 +10,7 @@ function evidenceRows(s, iso, issued) {
   // that day, or one built before the mark) goes by the calendar month, May to September.
   const offSeason = day && typeof day.in_validated_season === 'boolean' ? !day.in_validated_season
     : ![5, 6, 7, 8, 9].includes(Number(iso.slice(5, 7)));
-  const model = s.error ? `${rules().coverage(s)}.` : !total ? `${rules().COVER[rules().NO_OVERFLOWS]}: none is upstream, so there is no daily spill forecast.`
+  const model = s.error ? `${rules().coverage(s)}.` : !total ? `${rules().COVER[rules().NO_OVERFLOWS]}: none is within reach upstream, so there is no daily spill forecast.`
     : !day || day.risk == null ? 'No spill forecast for this day.' : 'Model prediction, not a water sample.';
   return [
     ['Forecast', model + (issued ? ` Issued ${issued}.` : '')],

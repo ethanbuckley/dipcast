@@ -81,7 +81,7 @@ test('a spot without a forecast is described in the headline’s words', () => {
 });
 test('missing coverage is not reported as a low risk or current test', () => {
   const facts = Object.fromEntries(evidenceRows({days:[]},'2026-09-30',''));
-  assert.match(facts.Forecast,/^No sewage risk from monitored overflows: .*no daily spill forecast/);
+  assert.match(facts.Forecast,/^No sewage risk from monitored overflows: none is within reach upstream, so there is no daily spill forecast/);
   assert.match(facts['Live spill feeds'], /other pollution sources/);
   assert.match(facts['Algae observation'], /does not mean algae are absent/);
 });
