@@ -106,6 +106,24 @@ straight-line to the click. Lake dilution divides the weight by
 weight to about a third. Windermere is two WFD basins and is treated as such.
 Lakes not in the WFD set (small tarns) fall back to the centreline heuristic.
 
+**Spot placement.** A clicked point goes to the nearest link within 1.5 km. A
+spot in `spots.csv` also names its river (the `river` column, blank for lakes),
+and goes to the nearest link carrying that name within 1 km, even when a link
+of another name is nearer. OS Open Rivers' alternative name counts, and Welsh
+names are read as English (`network/names.py`: Afon Gwy is the Wye, Afon Hafren
+the Severn, Afon Tefeidiad the Teme). Before this, on 2 Oct 2026, six river
+spots were traced up a side beck or a lake and showed no overflows upstream;
+Crook o' Lune, for one, sat 262 m from Escow Beck and 672 m from the Lune. With
+no such link the nearest is kept and the build logs a warning. Each build then
+checks every river spot and adds one line to `build.warnings` in `spots.json`
+listing any whose snapped watercourse shares no word with its river, that sits
+more than 250 m from it, that has no `river`, that was placed as a lake or an
+isolated lake, or that snapped to a canal (`build_site.placement_check`).
+Qualifiers such as "Great", "West" and "and" do not count as shared words, so
+the Great Ouse does not match Great Agill Beck. A spot moved
+from a mapped side channel to the main one (`adopted_main_channel`) is judged
+by name only, since its distance is the side channel's offset.
+
 **Right now.** Same weights applied to live status: discharging = 1, finished
 within 48 h decays with time since the event ended.
 
@@ -641,7 +659,8 @@ result is public at `/verification`, alongside the offline tests. `/terms` and
 ## How the free site works
 
 `spots.csv` lists the spots: the 38 Environment Agency designated inland
-bathing waters and about 50 well-known river and lake spots. Add one by pull
+bathing waters and about 50 well-known river and lake spots. A river spot
+names its river in the `river` column (see Spot placement). Add one by pull
 request, or ask for one with the "Request a spot" issue template; it appears
 in the next run. Inclusion is not a statement that a spot is safe.
 
@@ -715,7 +734,15 @@ Agency's nearest level gauge, preferring one on the spot's own river
 Burnsall on the Wharfe got Hebden Beck, a tributary 3 km away, over Netherside
 Hall on the Wharfe 6 km up), with the latest level, the gauge's usual range, a
 word for where the level sits and a link to the EA's page for it; on 1 Oct 62
-of 89 spots had one, 31 on the same river. The EA's API is OGL and asks for the
+of 89 spots had one, 31 on the same river. The spot's river is the `river`
+column, so Symonds Yat now asks for a gauge on the River Wye, not on
+"Afon Gwy". The EA's "latest" reading can be weeks old: on 2 Oct Salisbury's
+was 708 h old and Temple Sowerby's 77 h. A reading more than 24 h old is not
+shown as the level now. It keeps the station and the time, moves the value to
+`last_level_m`, sets `stale: true` with `age_hours`, sets `level_m` and
+`index` to null and `label` to "unknown" (`flows.reading_fields`). The API's
+own forecast publishes the reading the same way and does not use it to scale
+travel speed. The EA's API is OGL and asks for the
 line "this uses Environment Agency flood and river level data from the
 real-time data API (Beta)", which the footer, the terms and the data credits
 carry. Open-Meteo's daily high, sunrise and sunset (three daily variables over

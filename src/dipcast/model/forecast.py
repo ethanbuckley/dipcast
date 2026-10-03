@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 from dipcast import config
-from dipcast.ingest.flows import nearest_level_station
+from dipcast.ingest.flows import nearest_level_station, reading_fields
 from dipcast.ingest.rainfall import cells_for_sites, fetch_forecast
 from dipcast.model import ecoli
 from dipcast.model.features import ALL_FEATURES, build_site_days, daily_rain_features
@@ -194,13 +194,13 @@ def spill_probabilities(ov: pd.DataFrame, days: pd.DatetimeIndex,
 
 def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = config.MAX_UPSTREAM_KM,
                    include_contributors: int = 25, log_to_store: bool = True, gauge: bool = True,
-                   kind_hint: str | None = None) -> dict:
+                   kind_hint: str | None = None, river_hint: str | None = None) -> dict:
     net, ov_all, model = _net(), _overflows(), _model()
     now = pd.Timestamp.now(tz=LOCAL_TZ)
     # The EA gauge lookup is slow and optional: run it alongside everything else.
     pool = ThreadPoolExecutor(max_workers=1)
-    state_future = pool.submit(nearest_level_station, lat, lon) if gauge else None
-    pin = locate_pin(net, lon, lat, kind_hint=kind_hint)
+    state_future = pool.submit(nearest_level_station, lat, lon, 15, river_hint) if gauge else None
+    pin = locate_pin(net, lon, lat, kind_hint=kind_hint, river_hint=river_hint)
 
     out: dict = {
         "query": {"lat": lat, "lon": lon, "issued_at": now.isoformat()},
@@ -211,6 +211,7 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
             "lake_area_km2": None if pin.lake_area_km2 is None else round(pin.lake_area_km2, 1),
             "lake_source": pin.lake_source,
             "adopted_main_channel": pin.adopted_main_channel,
+            "placement": pin.placement,
         },
         "river_state": None,
         "assumptions": {
@@ -239,13 +240,10 @@ def forecast_point(lat: float, lon: float, days_ahead: int = 4, max_km: float = 
         except Exception as e:  # noqa: BLE001
             log.warning("river state unavailable: %s", e)
     pool.shutdown(wait=False)
-    v = river_velocity(state.index if state else None)
-    out["river_state"] = None if state is None else {
-        "station": state.station, "river": state.river, "level_m": state.level_m,
-        "typical_low_m": state.typical_low, "typical_high_m": state.typical_high,
-        "index": None if state.index is None else round(state.index, 2),
-        "label": state.label, "observed_at": state.observed_at,
-    }
+    old_reading = state is not None and state.is_stale()
+    # A days-old level says nothing about today's speed: the default velocity instead.
+    v = river_velocity(state.index if state is not None and not old_reading else None)
+    out["river_state"] = None if state is None else reading_fields(state)   # a stale one has no level_m
     out["assumptions"]["river_velocity_ms"] = round(v, 2)
     ov = upstream_overflows(net, pin, ov_all, velocity_ms=v, max_km=max_km)
     now_risk, now_contrib = live_now_risk(ov, now)

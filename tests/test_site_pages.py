@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+from datetime import UTC, datetime
 from itertools import pairwise
 from pathlib import Path
 
@@ -320,10 +321,12 @@ def test_river_levels_are_an_observation_beside_the_forecast():
              {"id": "b", "name": "Hebden", "lat": 54.0, "lon": -2.0, "location": {"watercourse": "Hebden Beck"}},
              {"id": "c", "name": "Tarn", "lat": 54.4, "lon": -3.0, "location": {"watercourse": None}},
              {"id": "d", "name": "Broken", "lat": 54.5, "lon": -3.1, "error": "forecast failed: boom"}]
-    assert bs.attach_river_levels(spots, lookup=lookup, workers=2) == 1
+    now = datetime(2026, 10, 1, 13, 0, tzinfo=UTC)   # an hour after the reading: current, not stale
+    assert bs.attach_river_levels(spots, lookup=lookup, workers=2, now=now) == 1
     rs = spots[0]["river_state"]
     assert rs["station"] == "Netherside Hall" and rs["level_m"] == 0.433 and rs["label"] == "low" and rs["rloi"] == "8276"
     assert rs["same_river"] is True and 5 < rs["distance_km"] < 6 and rs["index"] == 0.07
+    assert rs["stale"] is False and rs["age_hours"] == 0.8
     assert spots[1]["river_state"] is None and spots[2]["river_state"] is None and spots[3]["river_state"] is None
     assert len(calls) == 3 and all(c[2] == 15 for c in calls)   # the failed forecast is skipped
     # The EA's own attribution line travels with the data and sits on the terms page.

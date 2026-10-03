@@ -207,6 +207,12 @@ def with_counter(html: str, token: str | None) -> str:
     return html
 
 
+def _river_of(row) -> str | None:
+    """spots.csv's `river` for a river spot (the river it is on), None for a lake or a blank."""
+    river = str(getattr(row, "river", "") or "").strip()
+    return river if river and getattr(row, "kind", "") != "lake" else None
+
+
 def prefetch_rain(spots: pd.DataFrame) -> None:
     """One pass over every spot's upstream overflows to collect the rainfall cells,
     then a handful of 50-cell requests. Per-spot fetching meant up to one request
@@ -215,7 +221,8 @@ def prefetch_rain(spots: pd.DataFrame) -> None:
     lat, lon = list(spots["lat"]), list(spots["lon"])
     for r in spots.itertuples(index=False):
         try:
-            pin = locate_pin(net, float(r.lon), float(r.lat), kind_hint=(r.kind if r.kind in ("lake", "river") else None))
+            pin = locate_pin(net, float(r.lon), float(r.lat), kind_hint=(r.kind if r.kind in ("lake", "river") else None),
+                             river_hint=_river_of(r))
             up = upstream_overflows(net, pin, ov, velocity_ms=river_velocity(None))
             lat += list(up["lat"]); lon += list(up["lon"])
         except Exception as e:  # noqa: BLE001
@@ -265,6 +272,14 @@ def build_health(results: list[dict], ecoli_samples: dict | None = None, poll_lo
     health = {"spots": n, "forecast_ok": len(ok), "forecast_failed": n - len(ok),
               "no_forecast_possible": len(ok) - len(with_days), "today_rain_unavailable": today_no_data,
               "failed_spots": [r["name"] for r in results if "days" not in r][:20], "warnings": []}
+    # Spots on the wrong water, and gauges whose latest reading is old: reported, never a reason not to publish.
+    health["river_levels_stale"] = sum(bool((r.get("river_state") or {}).get("stale")) for r in results)
+    misplaced = placement_check(results)
+    if misplaced:
+        health["placement_check"] = misplaced
+        health["warnings"].append(
+            f"{len(misplaced)} river spot{'' if len(misplaced) == 1 else 's'} may be on the wrong water (check spots.csv): "
+            + "; ".join(f"{m['id']}: {m['reason']}" for m in misplaced))
     if n and len(ok) < MIN_OK_SHARE * n:
         raise BuildUnhealthy(f"only {len(ok)}/{n} spots got a forecast; not publishing")
     if with_days and today_no_data > MAX_NO_DATA_SHARE * len(with_days):
@@ -288,6 +303,39 @@ def build_health(results: list[dict], ecoli_samples: dict | None = None, poll_lo
                                       f"bathing waters at {s.get('checked_at')} ({describe_fetch(s)}); "
                                       f"last good fetch {s.get('last_ok_at') or 'never'}")
     return health
+
+
+MAX_SNAP_M = 250.0   # a river spot further than this from its snapped link is probably misplaced
+
+
+def placement_check(results: list[dict], max_snap_m: float = MAX_SNAP_M) -> list[dict]:
+    """River spots whose snapped watercourse does not share a word with spots.csv's `river` (after
+    the Welsh aliases), or that sit more than `max_snap_m` from it. Such a spot is traced up the
+    wrong water: on 2 Oct 2026 six were on a side beck and showed no overflows upstream. A spot
+    moved to a mapped main channel from a side channel it sits on (adopted_main_channel) is
+    judged by name only, since its distance is the side channel's offset by design."""
+    from dipcast.network.names import same_river
+    out = []
+    for r in results:
+        if r.get("kind") != "river" or str(r.get("error") or "").startswith("forecast failed"):
+            continue
+        loc = r.get("location") or {}
+        river, wc, d = (r.get("river") or None), loc.get("watercourse"), loc.get("snap_distance_m")
+        reasons = []
+        if not river:
+            reasons.append("no river named in spots.csv")
+        elif not same_river(wc, river):
+            reasons.append(f"snapped to {wc or 'an unnamed watercourse'}, not the {river}")
+        if d is not None and d > max_snap_m and not loc.get("adopted_main_channel"):
+            reasons.append(f"{d:.0f} m from the river network")
+        if loc.get("mode") not in (None, "river"):
+            reasons.append(f"placed as a {loc.get('mode')}")
+        elif loc.get("form") not in (None, "inlandRiver", "tidalRiver"):
+            reasons.append(f"snapped to a {loc.get('form')} link")
+        if reasons:
+            out.append({"id": r.get("id"), "river": river, "watercourse": wc, "snap_distance_m": d,
+                        "reason": ", ".join(reasons)})
+    return out
 
 
 def attach_algae(results: list[dict], fetch: bool = True) -> int:
@@ -368,21 +416,28 @@ def _km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     return 12742 * math.asin(math.sqrt(h))
 
 
-def attach_river_levels(results: list[dict], lookup=None, workers: int = 8) -> int:
+def attach_river_levels(results: list[dict], lookup=None, workers: int = 8, now=None) -> int:
     """The Environment Agency's nearest level gauge, on the spot's own river where it has one, as
     an observation beside the forecast: the latest level, the gauge's usual range and a word for
     where the level sits. The forecast itself is unchanged (forecast_point runs with gauge=False):
-    the API version scales travel speed by the level; the site only shows it. Returns how many
-    spots got one; a failure leaves a spot without, and nothing here can stop a build."""
+    the API version scales travel speed by the level; the site only shows it. The spot's own river
+    is spots.csv's `river`, else the snapped watercourse. A "latest" reading over
+    flows.MAX_READING_AGE_H old is not the level now (Salisbury's was 708 h old on 2 Oct 2026): it
+    is kept as `last_level_m` with `stale: true` and its age, and `level_m`, `index` and `label`
+    become None and `label` "unknown" (flows.reading_fields), so it is never shown as the current level. Returns how many spots got a
+    current reading; a failure leaves a spot without, and nothing here can stop a build."""
     from concurrent.futures import ThreadPoolExecutor
+    from datetime import UTC, datetime
 
-    from dipcast.ingest.flows import _river_words, nearest_level_station
+    from dipcast.ingest.flows import MAX_READING_AGE_H, nearest_level_station, reading_fields
+    from dipcast.network.names import same_river
     lookup = lookup or nearest_level_station
+    now = now or datetime.now(UTC)
 
     def one(r: dict) -> dict | None:
         if r.get("error") and str(r["error"]).startswith("forecast failed"):
             return None
-        river = (r.get("location") or {}).get("watercourse")
+        river = r.get("river") or (r.get("location") or {}).get("watercourse")
         try:
             st = lookup(r["lat"], r["lon"], 15, river)
         except Exception as e:  # noqa: BLE001 - an observation beside the forecast must not sink the build
@@ -390,18 +445,16 @@ def attach_river_levels(results: list[dict], lookup=None, workers: int = 8) -> i
             return None
         if st is None or st.level_m is None:
             return None
-        return {"station": st.station, "river": st.river, "level_m": st.level_m, "typical_low_m": st.typical_low,
-                "typical_high_m": st.typical_high, "index": None if st.index is None else round(st.index, 2),
-                "label": st.label, "observed_at": st.observed_at, "rloi": st.rloi,
+        return {**reading_fields(st, now, MAX_READING_AGE_H), "rloi": st.rloi,
                 "distance_km": round(_km(r["lat"], r["lon"], st.lat, st.lon), 1),
-                "same_river": bool(_river_words(river) & _river_words(st.river)) if river else None}
+                "same_river": same_river(river, st.river) if river else None}
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
         states = list(pool.map(one, results))
     n = 0
     for r, s in zip(results, states, strict=True):
         r["river_state"] = s
-        n += s is not None
+        n += s is not None and not s["stale"]
     return n
 
 
@@ -661,13 +714,13 @@ def build(refresh: bool = True) -> dict:
     for r in spots.itertuples(index=False):
         try:
             f = forecast_point(float(r.lat), float(r.lon), gauge=False,
-                               kind_hint=(r.kind if r.kind in ("lake", "river") else None))
+                               kind_hint=(r.kind if r.kind in ("lake", "river") else None), river_hint=_river_of(r))
             f["contributors"] = f.get("contributors", [])[:KEEP_CONTRIBUTORS]
         except Exception as e:  # noqa: BLE001 - one bad spot must not sink the site
             log.error("%s: %s", r.name, e)
             f = {"error": f"forecast failed: {e}"}
-        results.append({"id": r.id, "name": r.name, "kind": r.kind, "source": r.source, "notes": r.notes,
-                        "lat": float(r.lat), "lon": float(r.lon), **f})
+        results.append({"id": r.id, "name": r.name, "kind": r.kind, "river": _river_of(r), "source": r.source,
+                        "notes": r.notes, "lat": float(r.lat), "lon": float(r.lon), **f})
     n_algae = attach_algae(results, fetch=refresh)
     n_classified = attach_classifications(results)
     n_levels = attach_river_levels(results) if refresh else 0   # observations beside the forecast, network only
