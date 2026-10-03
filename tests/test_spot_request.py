@@ -411,7 +411,7 @@ def test_the_workflow_asks_for_little_and_never_puts_issue_text_in_a_shell_line(
     on = wf[True]   # YAML 1.1 reads the key `on` as true
     assert on["issues"]["types"] == ["opened", "edited"]
     assert set(on["workflow_dispatch"]["inputs"]) == {"name", "location", "kind", "notes", "issue"}
-    assert wf["permissions"] == {"contents": "read", "issues": "write"}
+    assert wf["permissions"] == {"issues": "write"}
     assert all("permissions" not in job for job in wf["jobs"].values())
     assert "spot-request" in wf["jobs"]["answer"]["if"]
     # Free text from the issue or the run form only ever reaches the script through the event file.

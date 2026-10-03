@@ -41,9 +41,11 @@ concurrency:
   group: spot-request-${{ github.event.issue.number || inputs.issue || github.run_id }}
   cancel-in-progress: true
 
+# Only the comment needs a permission. The repository is public, so the checkout and the release
+# downloads work without contents: read (tested on a runner with no permissions, 3 Oct 2026, run
+# 37129338016). If the repository is ever made private, add contents: read.
 permissions:
-  contents: read   # checkout, and the river network and overflow snapshot from the releases
-  issues: write    # the comment
+  issues: write
 
 jobs:
   answer:
