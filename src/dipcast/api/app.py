@@ -105,6 +105,11 @@ def about_page():
     return FileResponse(STATIC / "about.html", headers=NO_CACHE)
 
 
+@app.get("/data")
+def data_page():   # the static site's data files; the build fills in their sizes (build_site.write_data_page)
+    return FileResponse(STATIC / "data.html", headers=NO_CACHE)
+
+
 @app.get("/verification")
 def verification_page():
     return FileResponse(STATIC / "verification.html", headers=NO_CACHE)

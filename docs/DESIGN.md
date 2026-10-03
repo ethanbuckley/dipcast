@@ -469,3 +469,25 @@ level; then briefly ink, which beside the teal read as two near-black strips). T
 in lightness (1.26:1; ink was 2.02:1), so the order, forecast above observed, and the key carry the difference too;
 the grey is 4.45:1 on the empty track. On phones the prose header
 gives all four navigation links a single full-width row.
+
+## The embed and the data page (3 October 2026)
+
+- **The embed**, `embed.html?spot=<id>` (`src/dipcast/site/embed.html` and `embed.js`), is one spot's
+  card for a club's or a council's page, in an iframe. It is a white tile with a hairline and the one
+  radius on a transparent page, so whatever is behind the frame shows round it. In order: the place
+  name in the serif; the headline as a saved spot's card sets its level (20 px bold, in the level's
+  text shade, "risk" in it as everywhere); where the week goes; the five days as the spot's page's
+  rows under "Pollution risk, next five days"; the caveat; the issue time with the link back; the
+  data credits at the meta size. It uses page.css's tokens and typefaces, and
+  `tests/test_design_tokens.py` checks its styles as it checks the app's.
+- Its rows are 32 px, not 46, since nothing in them is a button. A day's bar fills the day's band (a
+  quarter for low, all four for very high) rather than being placed within it: that rule is
+  `levelPlace` in `index.html`, and the card does not keep a second copy of it.
+- Every link opens a new tab: inside a frame, a link that opened in place would leave the site
+  squeezed into someone else's page. It has no map, no page-view counter, and stores nothing.
+- It fits a column from 320 px. Measured in headless Chrome on 3 October 2026 over all 89 spots, the
+  tallest card was 638 px at 320 px wide, 554 at 375 and 488 at 480, and none overflowed sideways.
+  The snippet on About asks for 640.
+- **The data page**, `data.html`, is a prose page. A file's fields are a ruled list (`dl.fields`), the
+  name over what it holds: in a two-column table the long field names squeezed the words into a
+  column a few words wide on a phone.
