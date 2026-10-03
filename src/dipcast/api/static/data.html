@@ -14,8 +14,8 @@
 <p class="lead">The files the site is built from are public: every spot's forecast, the storm overflows on the map and the accuracy scores. This page lists each one, what it holds and the licence it is under.</p>
 
 <div class="summary"><h2>In short</h2><ul>
-<li>The files are in the site's <code>data/</code> folder, in JSON and GeoJSON, and the table below links each one. Each build of the site writes them again, several times a day at irregular times.</li>
-<li>Each file has a <code>credits</code> field. Keep it, or the <a href="/terms#data">credits on the terms page</a>, with anything you publish from the files.</li>
+<li>The files are in the site's <code>data/</code> folder, in JSON, GeoJSON and CSV, with packed river data for forecasts at a clicked point. The table below links them. Each build writes the current forecasts again.</li>
+<li>Keep the files' credits, or the <a href="/terms#data">credits on the terms page</a>, with anything you publish from them. The CSV carries its credits in comment lines; the packed river data uses the credits in <code>anypoint/tiles.json</code>.</li>
 <li>The data from the water companies, the Environment Agency and the other providers keeps its own licence. SwimSignal's own forecasts, levels and scores may be reused for non-commercial purposes with credit; ask first about any other use.</li>
 <li>The levels are forecasts, not water tests.</li>
 </ul></div>
@@ -28,6 +28,8 @@
 <tr data-file="alerts.json"><td><a href="data/alerts.json">alerts.json</a></td><td>Each spot's level and headline, as the alerts send them</td><td class="num">–</td></tr>
 <tr data-file="overflows.geojson"><td><a href="data/overflows.geojson">overflows.geojson</a></td><td>Every storm overflow on the map, and what it is doing now</td><td class="num">–</td></tr>
 <tr data-file="verification.json"><td><a href="data/verification.json">verification.json</a></td><td>The scores on the Accuracy page</td><td class="num">–</td></tr>
+<tr data-file="verification_live.csv"><td><a href="data/verification_live.csv">verification_live.csv</a></td><td>The individual forecast and observation pairs behind the live spill scores</td><td class="num">–</td></tr>
+<tr data-file="anypoint/"><td><a href="data/anypoint/tiles.json">anypoint/</a></td><td>The river network, upstream overflows and spill probabilities for forecasts at a clicked point</td><td class="num">–</td></tr>
 <!-- more files --></tbody></table></div>
 <p class="small muted">Sizes are this build's, before compression. The site's host, GitHub Pages, sends the files compressed.</p>
 
@@ -40,7 +42,7 @@
 <dt><code>credits</code></dt><dd>The data credits (below)</dd>
 <dt><code>n</code>, <code>version</code></dt><dd>How many spots the file holds, and the version number of SwimSignal's code</dd>
 <dt><code>spots</code></dt><dd>One entry for each spot, with the fields that follow</dd>
-<dt><code>id</code>, <code>name</code>, <code>kind</code>, <code>river</code>, <code>source</code>, <code>lat</code>, <code>lon</code></dt><dd>From the spot list: its id (its page is <code>spot/&lt;id&gt;/</code>), its name, <code>river</code> or <code>lake</code>, the river's name, <code>designated</code> for an Environment Agency bathing water, and where it is, in degrees (WGS84)</dd>
+<dt><code>id</code>, <code>name</code>, <code>kind</code>, <code>river</code>, <code>source</code>, <code>lat</code>, <code>lon</code></dt><dd>From the spot list: its id (its page is <code>spot/&lt;id&gt;/</code>), its name, <code>river</code> or <code>lake</code>, the river's name, its source (<code>designated</code> for an Environment Agency bathing water, <code>openstreetmap</code> for a mapped swim spot), and where it is, in degrees (WGS84). Inclusion does not confirm permission or safe access</dd>
 <dt><code>notes</code>, <code>query</code></dt><dd>The spot list's note on the spot, and the point and time the forecast was made for (<code>lat</code>, <code>lon</code>, <code>issued_at</code>)</dd>
 <dt><code>assumptions</code>, <code>ecoli_scope</code></dt><dd>The model's settings for this forecast (flow speeds, die-off, how far upstream it looks, the models' versions), and where the E. coli estimate has been tested: which kind of water and which months</dd>
 <dt><code>days</code></dt><dd>One entry for each day: <code>date</code>; <code>risk</code>, the exposure index as a fraction (0.4 is 40 on the site's 0–100 scale), and <code>label</code>, its level; <code>expected_spilling_overflows</code>, how many of the overflows upstream are expected to spill; <code>p_ecoli_gt900</code>, the E. coli estimate, the chance a sample would show over 900 E. coli per 100 ml; <code>in_validated_season</code>, false from October to April, when that estimate is untested; <code>rain_48h_mm</code>, the rain at the spot in the 48 hours to midday, and <code>rain_48h_coverage</code>, the share of those hours with rain data; <code>data_status</code>, whether the rain forecast was complete, and <code>rain_missing_share</code>, the share of the day's spill forecast that rests on days without rain data</dd>
@@ -50,10 +52,12 @@
 <dt><code>location</code></dt><dd>Where the spot sits on the river network: the watercourse, whether it is treated as a river or a lake, and how far it was moved to reach the network</dd>
 <dt><code>classification</code>, <code>algae</code></dt><dd>At bathing waters: the Environment Agency's rating, with earlier years and a link to its page, and its sampler's latest algae check</dd>
 <dt><code>river_state</code></dt><dd>The nearest Environment Agency level gauge: its latest reading, its usual range and how old the reading is. Not part of the level</dd>
+<dt><code>flow_state</code>, <code>flood_alerts</code></dt><dd>Separate from pollution risk: <code>high</code> or <code>rising fast</code> when a recent gauge on the spot's river meets those thresholds, otherwise null; and nearby Environment Agency flood alerts and warnings. An empty alert list means none were found; null means the check failed. These do not change the pollution level</dd>
+<dt><code>water_temp</code></dt><dd>Where there is a recent Environment Agency sensor on the same river: the temperature in Celsius (<code>temp_c</code>), its time, age and quality, the station and its link, and its distance and direction from the spot. This is a reading at that sensor, not an estimate of the temperature at the swim spot. Absent where no suitable sensor was found</dd>
 <dt><code>weather</code></dt><dd>Each day's high, sunrise and sunset, from Open-Meteo</dd>
 <dt><code>error</code></dt><dd>Instead of a forecast, where there is none: the reason</dd>
 </dl>
-<p><b>Licence.</b> SwimSignal's forecasts, made from all the sources the credits list. The ratings, algae checks and river levels are the Environment Agency's (OGL v3.0); the rainfall figures stay under CC BY-SA 4.0.</p>
+<p><b>Licence.</b> SwimSignal's forecasts, made from all the sources the credits list. The ratings, algae checks, river levels, flood alerts and water temperatures are the Environment Agency's (OGL v3.0); the rainfall figures stay under CC BY-SA 4.0. OpenStreetMap spot records are kept in a separate source file under ODbL 1.0.</p>
 
 <h2 id="alerts-json">alerts.json</h2>
 <p>Each spot's level and headline, worked out by the same rules as the page, for the alert service. The smallest file, for anyone who wants only the answer.</p>
@@ -79,8 +83,30 @@
 <p>Everything on the <a href="/verification">Accuracy page</a>, which explains each table: <code>live</code>, the scores of the forecasts this site has issued, against what the overflows then did and, for the E. coli estimate, against the Environment Agency's samples (<code>live.ecoli_live</code>); <code>holdout</code>, <code>leads</code> and <code>reliability</code>, the test on a held-out year, 2025; <code>lead_calibration</code>; <code>ecoli</code>, <code>ecoli_combined</code> and <code>ecoli_model</code>, the E. coli estimate's tests; <code>sampling_plan</code>; and <code>credits</code>.</p>
 <p><b>Licence.</b> SwimSignal's scores, made against the water companies' discharge records (CC BY 4.0) and the Environment Agency's samples (OGL v3.0).</p>
 
+<h2 id="verification-live-csv">verification_live.csv</h2>
+<p>One row for each scored overflow, day and forecast lead, so the live spill scores can be checked independently. It is published only when its row count matches <code>live.n_scored</code> in verification.json. Read it as CSV after skipping lines beginning with <code>#</code>, which hold its credits.</p>
+<dl class="fields">
+<dt><code>overflow_id</code>, <code>company</code>, <code>day</code></dt><dd>The overflow, its water company and the day being forecast</dd>
+<dt><code>lead</code>, <code>issued_at</code></dt><dd>Days ahead (0 is the same day), and when the scored forecast was issued</dd>
+<dt><code>forecast_raw</code>, <code>forecast_calibrated</code>, <code>climatology</code></dt><dd>Spill probabilities, from 0 to 1: before and after lead calibration, and the historical baseline used for comparison</dd>
+<dt><code>observed</code></dt><dd>1 if a spill was observed that day, 0 if none was observed; days without sufficient observations are excluded</dd>
+</dl>
+<p><b>Licence.</b> SwimSignal's forecast and scoring rows, with the water companies' discharge records (CC BY 4.0).</p>
+
+<h2 id="anypoint">anypoint/</h2>
+<p>The files the map uses to calculate a forecast at a point you click, on your device. The table links <code>tiles.json</code>, the index of available 0.25-degree squares, versions, distance units and probability scales; its size is the whole folder's. These files are intended to be read together by the site's <a href="https://github.com/ethanbuckley/swimsignal/blob/main/src/dipcast/site/anypoint.js">point-forecast script</a>.</p>
+<dl class="fields">
+<dt><code>overflow_ids.json</code></dt><dd>The ordered list of overflow ids, names and positions. Other files refer to an overflow by its position in this list; their <code>ids</code> version must match</dd>
+<dt><code>overflow_days.json</code></dt><dd>Spill probabilities by day and overflow, and current spill weights, in thousandths. Null probabilities mean missing rain data. Also the live statuses, companies, rain forecast ages and modelling assumptions</dd>
+<dt><code>link_index/&lt;tile&gt;.bin</code></dt><dd>Packed river lines used to find the nearest watercourse. The binary format is defined by <code>pack_link_index</code> in the <a href="https://github.com/ethanbuckley/swimsignal/blob/main/scripts/build_any_point.py">build script</a></dd>
+<dt><code>links/&lt;tile&gt;.json</code></dt><dd>River-link lengths and upstream overflows, with the distances and dilution factors needed to trace a click along each link</dd>
+<dt><code>lakes.json</code></dt><dd>Mapped lake outlines, inlets and the upstream overflows that can reach them</dd>
+</dl>
+<p>Rain forecasts are refreshed in batches. <code>rain_h</code> gives the age of the forecast used for each overflow; cached forecasts are used for up to 24 hours. A clicked-point forecast has no local river gauge or bathing-water sample attached to it: it is a sewage-spill forecast, and cannot confirm that swimming is safe.</p>
+<p><b>Licence.</b> SwimSignal's forecasts and upstream calculations, with the source river network, lake outlines, overflow records and rainfall under the licences in the credits.</p>
+
 <h2 id="credits">The credits field</h2>
-<p>Every file carries the same <code>credits</code>: <code>attribution</code>, the notices each provider asks for; <code>modified</code>, which says that SwimSignal combined and modelled the data and that no provider endorses it; <code>licences</code>, each licence's name and address; and <code>full</code>, the address of the full credits on the <a href="/terms#data">terms page</a>. The MIT licence of the <a href="https://github.com/ethanbuckley/swimsignal">source code</a> covers the code, not the data.</p>
+<p>The JSON files carry <code>credits</code>: <code>attribution</code>, the notices each provider asks for; <code>modified</code>, which says that SwimSignal combined and modelled the data and that no provider endorses it; <code>licences</code>, each licence's name and address; and <code>full</code>, the address of the full credits on the <a href="/terms#data">terms page</a>. Individual river-link tiles carry the full credits' address; their binary index uses tiles.json's credits. The CSV's comment header gives the same notices. The MIT licence of the <a href="https://github.com/ethanbuckley/swimsignal">source code</a> covers the code, not the data.</p>
 
 <h2>Using the files</h2>
 <ul>

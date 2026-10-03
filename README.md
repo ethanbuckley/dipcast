@@ -909,7 +909,7 @@ hours, and sends them 15 a run (about 450 an hour on Cloudflare's free plan). Th
 notice gains its alerts section only then. On an iPhone, alerts work only in
 the Home Screen app.
 
-**Reviews** (`reviews/`, set up by hand: `reviews/README.md`). A swimmer can
+**Reviews** (`reviews/`, deployed 3 October 2026; moderation and setup: `reviews/README.md`). A swimmer can
 say whether they would swim at a spot again, when they swam, what it was like,
 and add up to three photos, which the page shrinks and strips of their camera
 data on the phone. A second Cloudflare Worker holds each review until the

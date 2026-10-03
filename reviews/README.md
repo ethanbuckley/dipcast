@@ -2,7 +2,9 @@
 
 Swimmers can review a spot: say whether they would swim there again, when they swam, what it was like, and add up to three photos. A spot's page shows the share who would swim there again (from three reviews), the reviews themselves and a form to write one. This folder is the Cloudflare Worker that takes reviews in and holds them until you publish them. It has no npm dependencies.
 
-It is off until you set it up and set one repository variable. Until then the site shows nothing new.
+Deployed on 3 October 2026 at https://swimsignal-reviews.swimsignal-push.workers.dev/. The database is restricted to the EU, the photo store is configured in `wrangler.toml`, and the site uses the repository variable `DIPCAST_REVIEWS_URL` to enable reviews. Nothing is published until you approve it.
+
+The moderation password is in your Mac's Keychain, under **swimsignal-reviews-admin**, for your Mac user account. Open Keychain Access, search for that name and choose Show password when you need to sign in at [/moderate](https://swimsignal-reviews.swimsignal-push.workers.dev/moderate). The password is not in the repository or this document.
 
 ## How a review travels
 
@@ -33,7 +35,9 @@ Read from Cloudflare's pages on 3 Oct 2026:
 
 R2 would be the natural home for photos at scale (10 GB free, no egress fees), but enabling it asks for a payment method, so KV is used to keep the setup card-free. Moving the photos to R2 later changes only `src/index.js`.
 
-## Setup
+## Recreating the setup
+
+The live service is already set up. These steps are for a new installation; do not recreate its database, photo store or admin password when deploying an update. For an update, apply any new migrations, run the tests below and deploy from this folder.
 
 You need a terminal in this folder: `cd reviews`. Wrangler is already logged in on your Mac (you set up alerts with it). Each command takes a few seconds.
 
@@ -133,7 +137,9 @@ Locally the moderation page shows spot ids rather than names and falls back to o
 
 Before deploying a change, run it once in Cloudflare's own runtime as well: `npx wrangler d1 migrations apply swimsignal-reviews --local`, then `npx wrangler dev --local --var ALLOWED_ORIGIN:http://localhost:8771 --var SITE_URL:http://localhost:8771/ --var ADMIN_TOKEN:local-admin-token`. Node does not catch everything: on 3 Oct 2026 workerd refused to start a version whose `src/index.js` exported a number, which every Node test had passed (`src/rules.js` explains; a test now guards it).
 
-Not tested: the Worker against Cloudflare's hosted D1 and KV (only their local stand-ins in workerd), and a photo from a real iPhone (HEIC turned into JPEG by Safari).
+Hosted D1 and KV were checked on 3 October 2026: a temporary camera JPEG was submitted, kept private while waiting, fetched by the admin with Exif removed, published, fetched through the site's build, and deleted with the sender's key. The resulting JPEG decoded successfully. The test review and its photos were removed; the queue was empty afterwards. A missing admin token was refused.
+
+Still untested: a photo from a physical iPhone (HEIC turned into JPEG by Safari). The desktop tests do not establish that this device-specific flow works.
 
 Photos from the page are converted to sRGB. The Worker drops ICC profiles from other clients because they can contain arbitrary identifying text; such uploads may have different colours. It retains only a plain JFIF header and a rebuilt Adobe colour transform, scans the whole JPEG, drops metadata between scans, and discards data after the image ends.
 

@@ -1,19 +1,21 @@
 name = "swimsignal-reviews"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
+workers_dev = true
+preview_urls = false
 
 # The reviews, their reports and the rate-limit counts. Create it with
 #   npx wrangler d1 create swimsignal-reviews --jurisdiction=eu
-# and paste the database_id it prints. The tables come from migrations/ (README, step 3).
+# and paste the database_id it prints. The tables come from migrations/ (README, step 2).
 [[d1_databases]]
 binding = "DB"
 database_name = "swimsignal-reviews"
-database_id = "REPLACE_WITH_D1_DATABASE_ID"
+database_id = "5991821e-7f8b-4052-9d05-aa9afc2d3f2c"
 
 # The photos. Create it with: npx wrangler kv namespace create PHOTOS
 [[kv_namespaces]]
 binding = "PHOTOS"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "b0a1a4e7e62f41dab2f57c3d1e09b8e3"
 
 [triggers]
 crons = ["17 3 * * *"]   # once a day: forget the rate-limit counts from before yesterday
