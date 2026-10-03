@@ -477,7 +477,7 @@ def verify_live(as_of: date | None = None) -> dict:
                           for b, g in r.groupby(band, observed=True)]
     if len(fc) >= 200:
         out["reliability"] = reliability_table(y, fc["p_cal"].to_numpy()).round(4).to_dict("records")
-    return _finish(out, as_of)
+    return _finish(out, as_of, fc)
 
 
 def unstamped_label(first_stamped) -> str:
@@ -504,14 +504,47 @@ def _scoring_window(obs_from: str | None, cutoff: date, missed: pd.DataFrame, un
             "last_scored_day": str(scored["target_day"].max()) if len(scored) else None}
 
 
-def _finish(out: dict, as_of: date) -> dict:
-    """Attach the E. coli scores (independent of the spill scores) and write the file."""
+def _finish(out: dict, as_of: date, scored: pd.DataFrame | None = None) -> dict:
+    """Attach the E. coli scores (independent of the spill scores) and write the file, after the
+    scored rows (SCORED_CSV), so the two always come from the same run: a failed CSV write leaves
+    the previous pair in place."""
     try:
         out["ecoli_live"] = verify_ecoli(as_of)
     except Exception as e:  # noqa: BLE001 - an optional layer must not block the spill scores
         log.warning("E. coli live scoring failed: %s", e)
+    rows = scored_rows(scored)
+    rows.to_csv(config.state_write(SCORED_CSV), index=False, float_format="%.4f")
+    out["scored_csv"] = {"file": SCORED_CSV, "rows": len(rows), "columns": SCORED_COLUMNS}
     _write(out)
     return out
+
+
+# One row per scored overflow-day, so anyone can recompute the live scores. The build publishes it
+# as data/verification_live.csv with the credits in a header comment (build_site.publish_scored_csv).
+SCORED_CSV = "verification_live.csv"
+SCORED_COLUMNS = ["overflow_id", "company", "day", "lead", "issued_at", "forecast_raw", "forecast_calibrated",
+                  "climatology", "observed"]
+
+
+def scored_rows(fc: pd.DataFrame | None) -> pd.DataFrame:
+    """The scored overflow-days as published: overflow id, its company, the target day, the lead,
+    when the scored forecast was issued, the spill probability before and after lead calibration,
+    the climatology baseline and what happened (1 a spill, 0 none). Sorted, so a rerun on the same
+    log writes the same file. Empty (header only) when nothing was scored."""
+    if fc is None or fc.empty:
+        return pd.DataFrame(columns=SCORED_COLUMNS)
+    comp = _site_companies()
+    out = pd.DataFrame({
+        "overflow_id": fc["site_id"].astype(str).to_numpy(),
+        "company": fc["site_id"].map(comp).to_numpy() if comp is not None else None,
+        "day": pd.to_datetime(fc["target_day"]).dt.strftime("%Y-%m-%d").to_numpy(),
+        "lead": fc["lead"].astype(int).to_numpy(),
+        "issued_at": pd.to_datetime(fc["issued_at"]).dt.strftime("%Y-%m-%dT%H:%M%:z").to_numpy(),
+        "forecast_raw": fc["p_raw"].astype(float).to_numpy(),
+        "forecast_calibrated": fc["p_cal"].astype(float).to_numpy(),
+        "climatology": fc["p_clim"].astype(float).to_numpy(),
+        "observed": fc["y"].astype(int).to_numpy()})
+    return out.sort_values(["day", "overflow_id", "lead"], kind="stable").reset_index(drop=True)
 
 
 # --- E. coli: score the map's exceedance forecast against new EA lab samples ----------------
@@ -794,7 +827,8 @@ def load_verification() -> dict:
     if q.exists():
         res["lead_calibration"] = json.loads(q.read_text())
     for key, name in [("ecoli", "ecoli_validation.json"), ("ecoli_combined", "ecoli_validation_combined.json"),
-                      ("ecoli_model", "ecoli_model_eval.json"), ("sampling_plan", "sampling_plan_test.json")]:
+                      ("ecoli_model", "ecoli_model_eval.json"), ("sampling_plan", "sampling_plan_test.json"),
+                      ("prf", "prf_comparison.json")]:
         q = config.PROCESSED / name
         res[key] = json.loads(q.read_text()) if q.exists() else None
     return res
