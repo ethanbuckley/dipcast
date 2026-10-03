@@ -445,7 +445,7 @@ def attach_river_levels(results: list[dict], lookup=None, workers: int = 8, now=
             return None
         if st is None or st.level_m is None:
             return None
-        return {**reading_fields(st, now, MAX_READING_AGE_H), "rloi": st.rloi,
+        return {**reading_fields(st, now, MAX_READING_AGE_H), "rloi": st.rloi, "measure": st.measure,
                 "distance_km": round(_km(r["lat"], r["lon"], st.lat, st.lon), 1),
                 "same_river": same_river(river, st.river) if river else None}
 
@@ -456,6 +456,71 @@ def attach_river_levels(results: list[dict], lookup=None, workers: int = 8, now=
         r["river_state"] = s
         n += s is not None and not s["stale"]
     return n
+
+
+def attach_flow_state(results: list[dict], trend=None, alerts=None, any_alerts=None, workers: int = 8, now=None) -> dict:
+    """"Too high to swim", beside the pollution level and never part of it: a high river and a flood
+    are a different hazard. After attach_river_levels, each spot gets `flow_state`, a word from the
+    gauge on its own river (flows.flow_state: "high" above the usual range, "rising fast" up more
+    than a fifth of that range in the last six hours, else None), and `flood_alerts`, the
+    Environment Agency's flood alerts and warnings in force within 10 km, the most severe first ([]
+    for none, None if the EA did not answer). The alerts are asked for spot by spot only when the
+    national list has one in force (flows.floods_in_force_anywhere): on most days one request, not
+    one a spot. The rise is fetched only where it could set the word, a current reading on the
+    spot's own river not already above its range, from the last 24 readings, and kept in
+    `river_state` as `rise_6h_m` with the times it runs between. A stale reading has no index
+    (reading_fields), so it is never "high". Returns counts for the build log; nothing here can
+    stop a build or change a level."""
+    from concurrent.futures import ThreadPoolExecutor
+    from datetime import UTC, datetime
+
+    from dipcast.ingest import flows
+    trend = trend or flows.recent_levels
+    alerts = alerts or flows.flood_alerts
+    any_alerts = any_alerts or flows.floods_in_force_anywhere
+    now = now or datetime.now(UTC)
+    try:
+        ask = any_alerts()
+    except Exception as e:  # noqa: BLE001 - an observation beside the forecast must not sink the build
+        log.warning("flood alerts: %s", e)
+        ask = None   # unchecked: asking 89 times more would not help a service that refused once
+    if not ask:
+        alerts = (lambda lat, lon: []) if ask is False else None
+
+    def one(r: dict) -> tuple[str | None, dict | None, list | None]:
+        rs, rise = r.get("river_state"), None
+        index, rng = None, None
+        if rs and not rs.get("stale") and rs.get("level_m") is not None:
+            lo, hi = rs.get("typical_low_m"), rs.get("typical_high_m")
+            if lo is not None and hi is not None and hi > lo:
+                rng = hi - lo
+                index = (rs["level_m"] - lo) / rng   # unrounded: the published index is rounded to 0.01
+            if rs.get("same_river") is True and rs.get("measure") and rng and index <= flows.HIGH_INDEX:
+                try:
+                    rise = flows.rise_over_window(trend(rs["measure"]), now)
+                except Exception as e:  # noqa: BLE001 - an observation beside the forecast must not sink the build
+                    log.warning("river trend for %s: %s", r["name"], e)
+        word = flows.flow_state(index, (rs or {}).get("same_river"), rise["rise_m"] / rng if rise and rng else None)
+        found = None
+        if alerts is not None:
+            try:
+                found = alerts(r["lat"], r["lon"])
+            except Exception as e:  # noqa: BLE001
+                log.warning("flood alerts for %s: %s", r["name"], e)
+        return word, rise, found
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        out = list(pool.map(one, results))
+    counts = {"river_high": 0, "river_rising_fast": 0, "flood_alerts": 0, "flood_alerts_unchecked": 0}
+    for r, (word, rise, found) in zip(results, out, strict=True):
+        r["flow_state"], r["flood_alerts"] = word, found
+        if rise and r.get("river_state"):
+            r["river_state"].update(rise_6h_m=rise["rise_m"], rise_from=rise["from"], rise_to=rise["to"])
+        counts["river_high"] += word == "high"
+        counts["river_rising_fast"] += word == "rising fast"
+        counts["flood_alerts"] += bool(found)
+        counts["flood_alerts_unchecked"] += found is None
+    return counts
 
 
 WEATHER_CREDIT = "Weather data by Open-Meteo.com"
@@ -724,12 +789,14 @@ def build(refresh: bool = True) -> dict:
     n_algae = attach_algae(results, fetch=refresh)
     n_classified = attach_classifications(results)
     n_levels = attach_river_levels(results) if refresh else 0   # observations beside the forecast, network only
+    n_flows = attach_flow_state(results) if refresh else {}     # river high or rising, flood alerts: not part of the level
     n_weather = attach_weather(results) if refresh else 0
     generated = pd.Timestamp.now(tz="Europe/London")
     # Raises before anything is written if the build is bad. The live check needs this run's poll.
     health = build_health(results, samples_status(), load_poll_log() if refresh else None)
     health["algae_checks"], health["classifications"] = n_algae, n_classified
     health["river_levels"], health["weather"] = n_levels, n_weather
+    health.update(n_flows)
     for w in health["warnings"]:
         announce(w)
     (SITE / "data").mkdir(parents=True, exist_ok=True)
