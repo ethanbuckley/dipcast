@@ -490,17 +490,20 @@ def attach_flow_state(results: list[dict], trend=None, alerts=None, any_alerts=N
     def one(r: dict) -> tuple[str | None, dict | None, list | None]:
         rs, rise = r.get("river_state"), None
         index, rng = None, None
+        # A lake's gauge matches on the lake's name (Windermere at Far Sawrey) or on a beck or river
+        # that shares a word with it (Derwent Water and the River Derwent): never a "River" word.
+        own = bool(rs) and rs.get("same_river") is True and r.get("kind") != "lake"
         if rs and not rs.get("stale") and rs.get("level_m") is not None:
             lo, hi = rs.get("typical_low_m"), rs.get("typical_high_m")
             if lo is not None and hi is not None and hi > lo:
                 rng = hi - lo
                 index = (rs["level_m"] - lo) / rng   # unrounded: the published index is rounded to 0.01
-            if rs.get("same_river") is True and rs.get("measure") and rng and index <= flows.HIGH_INDEX:
+            if own and rs.get("measure") and rng and index <= flows.HIGH_INDEX:
                 try:
                     rise = flows.rise_over_window(trend(rs["measure"]), now)
                 except Exception as e:  # noqa: BLE001 - an observation beside the forecast must not sink the build
                     log.warning("river trend for %s: %s", r["name"], e)
-        word = flows.flow_state(index, (rs or {}).get("same_river"), rise["rise_m"] / rng if rise and rng else None)
+        word = flows.flow_state(index, own, rise["rise_m"] / rng if rise and rng else None)
         found = None
         if alerts is not None:
             try:

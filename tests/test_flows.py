@@ -265,3 +265,20 @@ def test_floods_in_force_anywhere_ignores_warnings_no_longer_in_force(monkeypatc
     assert flows.floods_in_force_anywhere() is False   # 3 Oct 2026: one item, severity 4
     _fake_ea_paths(monkeypatch, {"/flood-monitoring/id/floods": FLOODS})
     assert flows.floods_in_force_anywhere() is True
+
+
+def test_a_lake_never_gets_a_river_word():
+    """A lake's gauge can match it on the lake's name (Windermere at Far Sawrey, built 3 Oct 2026) or
+    on a river sharing a word (Derwent Water and the River Derwent at Portinscale): same_river is
+    then True, but the page would say "River high" of a lake. Its flood alerts still count."""
+    bs = _build_site()
+    asked = []
+    spots = [{"id": k, "name": k, "kind": "lake", "lat": 54.3 + i / 100, "lon": -2.9,
+              "river_state": {**flows.reading_fields(_state(level, NOW - timedelta(minutes=15), river="Windermere"), NOW),
+                              "same_river": True, "measure": "735225-level-stage-i-15_min-m"}}
+             for i, (k, level) in enumerate((("high", 2.1), ("usual", 0.6)))]
+    flood = [{"severity_level": 3, "severity": "Flood alert", "area": "Windermere", "area_id": "011WAF1", "url": None, "raised": None}]
+    bs.attach_flow_state(spots, trend=lambda m: asked.append(m) or [], alerts=lambda lat, lon: flood,
+                         any_alerts=lambda: True, workers=1, now=NOW)
+    assert [s["flow_state"] for s in spots] == [None, None] and asked == []
+    assert spots[0]["flood_alerts"] == flood
