@@ -1,6 +1,6 @@
 # iPhone notification test
 
-Status: **not yet run on a physical iPhone**. The owner has an iPhone; the alert service is not deployed. Local regression tests do not prove APNs delivery, permissions or Home Screen behaviour.
+Status: **not yet run on a physical iPhone**. The alert service and HTTPS site are deployed, and the checked-in public key matches the site's configured key (checked 3 October 2026). Local regression tests do not prove APNs delivery, permissions or Home Screen behaviour. Follow the isolated test steps below before claiming device verification.
 
 ## Before the phone test
 
