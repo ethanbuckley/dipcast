@@ -589,7 +589,7 @@ def spot_blurb(spot: dict) -> str:
     if spot.get("error") and not str(spot["error"]).startswith("forecast failed"):
         return f"{name}: no monitored storm overflow can reach this {kind} along the river network, so {BRAND} has no spill forecast for it."
     if n == 0:
-        return f"{name}: no monitored storm overflows upstream. {BRAND} gives pollution risk forecasts for river and lake swim spots in England."
+        return f"{name}: no sewage risk from monitored overflows, as none is within {config.MAX_UPSTREAM_KM:g} km upstream. Other risks apply: algae, wildlife, runoff and bathers."
     upstream = f" from the {n} monitored storm overflow{'' if n == 1 else 's'} upstream," if n else ""
     return (f"Five-day pollution risk forecast for {name},{upstream} using live overflow status, rainfall forecasts "
             f"and the river network. Updated several times a day.")

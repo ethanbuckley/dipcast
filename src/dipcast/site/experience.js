@@ -1,7 +1,7 @@
 // Plain, testable evidence summaries. No invented measurements or confidence scores.
 // The level rules (levels.js): the page loads them after this file, so they are looked up when a
 // summary is made; Node requires them.
-const rules = () => typeof headParts === 'function' ? { coverage } : require('./levels.js');
+const rules = () => typeof headParts === 'function' ? { coverage, COVER, NO_OVERFLOWS } : require('./levels.js');
 const dayMonthYear = iso => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {day: 'numeric', month: 'short', year: 'numeric'});
 function evidenceRows(s, iso, issued) {
   const total = s.upstream_summary?.overflows || 0, monitored = s.now?.monitored_upstream;
@@ -10,11 +10,11 @@ function evidenceRows(s, iso, issued) {
   // that day, or one built before the mark) goes by the calendar month, May to September.
   const offSeason = day && typeof day.in_validated_season === 'boolean' ? !day.in_validated_season
     : ![5, 6, 7, 8, 9].includes(Number(iso.slice(5, 7)));
-  const model = s.error ? `${rules().coverage(s)}.` : !total ? 'No daily spill forecast: no monitored overflows upstream.'
+  const model = s.error ? `${rules().coverage(s)}.` : !total ? `${rules().COVER[rules().NO_OVERFLOWS]}: none is upstream, so there is no daily spill forecast.`
     : !day || day.risk == null ? 'No spill forecast for this day.' : 'Model prediction, not a water sample.';
   return [
     ['Forecast', model + (issued ? ` Issued ${issued}.` : '')],
-    ['Live spill feeds', !total ? 'No monitored overflows upstream; other pollution sources may still affect this water.'
+    ['Live spill feeds', !total ? 'Nothing to report: no monitored overflow is within reach upstream; other pollution sources may still affect this water.'
       : monitored == null ? `Live reporting coverage unavailable for ${total} upstream overflows.`
       : `${monitored} of ${total} upstream overflows report live in this update.${monitored < total ? ' Missing reports do not mean no spills.' : ''}`],
     ['Environment Agency rating', cl?.class ? `${cl.class.charAt(0).toUpperCase() + cl.class.slice(1)}${cl.year ? ' · ' + cl.year : ''}. Based on up to four seasons of samples; not today’s water quality.`

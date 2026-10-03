@@ -711,6 +711,23 @@ because the service sends no CORS header, so a browser page elsewhere cannot
 read it either: on 29 Sep 2026 it covered Ham and Kingston and Frensham Great
 Pond (algae). Each bathing water's page links to the EA's page instead.
 
+**Where there is nothing to forecast (3 Oct 2026).** A spot with no monitored
+overflow within 60 km upstream gets a plain level of its own, "No sewage risk
+from monitored overflows" (teal), and an isolated lake, which no river reaches
+in the network, "No river connection: overflows cannot reach this lake" (grey).
+Under either, the page says "Other risks apply: algae, wildlife, runoff and
+bathers. Check the signs at the water." and gives the rain in the 48 hours to
+midday today as "12 mm of rain in the last two days". Neither shows an E. coli
+estimate, since the model was fitted on sites with overflows upstream (before
+this, the day-by-day table showed the build's figure on a river with nothing
+upstream: 35% today for the Duddon at Birks Bridge on 3 Oct). A rating of
+sufficient or poor, or a recent algae check, still sets the level where it
+raises it, but an excellent or good rating no longer makes such a spot "low".
+In the 3 Oct 14:48 local build that was 17 and 2 of the 89 spots; 7 of them
+(Colwick, the three Hampstead ponds, the Serpentine, Henleaze and Cotswold
+Country Park) had read "low" by their rating, so they now leave the "Low risk
+only" count and are not offered as "Lower risk nearby".
+
 **One day.** A spot's five days are buttons. Picking one shows, in place of the
 summary of today and tomorrow, that day's level and what set it: the spills
 (how many overflows are expected to spill, the exposure index, and the three
