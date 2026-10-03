@@ -4,7 +4,7 @@ compatibility_date = "2026-09-01"
 
 [[kv_namespaces]]
 binding = "PUSH"
-id = "REPLACE_WITH_KV_NAMESPACE_ID"
+id = "fefed2f744ec4cf7a9aea6eddfc3f74b"
 
 [triggers]
 crons = ["*/2 * * * *"]   # queued alerts go out in batches; see README
@@ -13,7 +13,7 @@ crons = ["*/2 * * * *"]   # queued alerts go out in batches; see README
 SITE_URL = "https://swimsignal.co.uk/"
 ALLOWED_ORIGIN = "https://swimsignal.co.uk"
 VAPID_SUBJECT = "mailto:hello@swimsignal.co.uk"
-VAPID_PUBLIC_KEY = "REPLACE_WITH_PUBLIC_KEY"
+VAPID_PUBLIC_KEY = "BGaPAD3oYd4cJ3jJPMF9b8gyImfQ1H7Xtw5nOfSuYx7vLeIjmqlQ9wmcPqXlwMRRx-yzPeNmKs4H3RhDSjgb3OY"
 # SENDS_PER_RUN = "15"   # alerts per run; raise it on the Workers Paid plan (README)
 # VAPID_PRIVATE_KEY is a secret, not a var. Set it with:
 #   npx wrangler secret put VAPID_PRIVATE_KEY
