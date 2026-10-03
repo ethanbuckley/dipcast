@@ -29,6 +29,7 @@ data/processed/*
 !data/processed/ecoli_validation_combined.json
 !data/processed/ecoli_validation_per_site.csv
 !data/processed/validation_sites.csv
+!data/processed/prf_comparison.json
 !data/raw/
 data/raw/*
 !data/raw/bathing_waters_inland.json

@@ -130,4 +130,9 @@ def privacy_page():
     return FileResponse(STATIC / "privacy.html", headers=NO_CACHE)
 
 
+@app.get("/methods")
+def methods_page():
+    return FileResponse(STATIC / "methods.html", headers=NO_CACHE)
+
+
 app.mount("/static", StaticFiles(directory=STATIC), name="static")

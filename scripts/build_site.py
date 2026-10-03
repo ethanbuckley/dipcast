@@ -58,7 +58,9 @@ REWRITES = [('href="/feedback"', 'href="feedback.html"'), ('href="/feedback?type
             ('href="/static/icons/icon.svg"', 'href="icons/icon.svg"'), ('href="/static/icons/apple-touch-icon.png"', 'href="icons/apple-touch-icon.png"'),
             ('href="/static/fonts/SourceSans3-latin.woff2"', 'href="fonts/SourceSans3-latin.woff2"'),
             ('href="/static/fonts/SourceSerif4-latin.woff2"', 'href="fonts/SourceSerif4-latin.woff2"'),
-            ("fetch('/api/verification')", "fetch('data/verification.json')")]
+            ("fetch('/api/verification')", "fetch('data/verification.json')"),
+            ('href="/methods"', 'href="methods.html"'), ('href="/methods#', 'href="methods.html#'),
+            ('href="/verification#', 'href="verification.html#')]
 BRAND = "SwimSignal"
 # The home page leads with the name, for search; every other page is "Page · SwimSignal" (docs/DESIGN.md, Words).
 HOME_TITLE = f"{BRAND} · pollution risk forecasts for swim spots"
@@ -403,6 +405,63 @@ def data_credits(root: str) -> dict:
     }
 
 
+def scored_csv_header(credits: dict, root: str) -> str:
+    """The comment lines above data/verification_live.csv: what a row is, the columns, where the
+    rules are, and the credits, since the observed column is the water companies' data (CC BY 4.0)."""
+    lic = "; ".join(f"{k} {v}" for k, v in credits["licences"].items())
+    lines = [
+        "SwimSignal live verification: one row per scored overflow-day, the rows behind the live scores on the",
+        f"Accuracy page ({root}verification.html#live-scoring). The row count is n_scored in data/verification.json.",
+        "Columns: overflow_id, the water company's id for the overflow, as in its live feed; company; day, the target",
+        "day (Europe/London); lead, days from the issue day to the target day (0 is the same day); issued_at, when",
+        "the scored forecast was issued (the latest one by 08:00 local time on the issue day); forecast_raw, the",
+        "spill probability before lead calibration; forecast_calibrated, after it (as the map uses it); climatology,",
+        "the overflow's long-run daily spill rate from the Environment Agency annual returns (the baseline);",
+        "observed, 1 if the live feed showed the overflow discharging that day, else 0.",
+        f"Scoring rules and method: {root}methods.html",
+        "Lines that start with # are notes: skip them when reading (pandas: comment='#'; R: comment.char='#').",
+        f"Credits: {credits['attribution']}",
+        credits["modified"],
+        f"Licences: {lic}. Full credits: {credits['full']}",
+    ]
+    return "".join(f"# {x}\n" for x in lines)
+
+
+def publish_scored_csv(site: Path, credits: dict, root: str) -> int | None:
+    """data/verification_live.csv: the live scorer's rows (forecast_log.SCORED_CSV in the state
+    directory) under a header comment with the credits. Published only when its row count equals
+    n_scored in the verification.json this build has just written; otherwise any old copy is removed,
+    live.scored_csv is dropped from that verification.json and the build warns, so the page never
+    links to rows that disagree with its scores, or to no file. Returns the
+    number of rows published, or None."""
+    from dipcast.forecast_log import SCORED_CSV
+    dst = site / "data" / "verification_live.csv"
+    ver = site / "data" / "verification.json"
+    live = json.loads(ver.read_text()).get("live") or {}
+    src = config.state_read(SCORED_CSV)
+
+    def withdraw():
+        # The Accuracy page links the file whenever live.scored_csv is set, so drop it with the file.
+        dst.unlink(missing_ok=True)
+        if live.get("scored_csv"):
+            d = json.loads(ver.read_text())
+            d["live"].pop("scored_csv", None)
+            ver.write_text(json.dumps(d, default=str))
+
+    if not live.get("scored_csv") or not src.exists():
+        withdraw()
+        log.info("no scored rows to publish: the live scorer has not written %s yet", SCORED_CSV)
+        return None
+    body = src.read_text()
+    n = max(body.count("\n") - 1, 0)   # rows after the column names; no field holds a line break
+    if n != live.get("n_scored", 0):
+        withdraw()
+        announce(f"{SCORED_CSV} has {n} rows but the live scores count {live.get('n_scored', 0)}: not published")
+        return None
+    dst.write_text(scored_csv_header(credits, root) + body)
+    return n
+
+
 CLASSIFICATIONS = config.RAW / "bathing_water_classifications.json"
 
 
@@ -668,7 +727,7 @@ def robots(root: str) -> str:
 
 
 def sitemap(root: str, spot_ids: list[str], day: str) -> str:
-    urls = [root, f"{root}about.html", f"{root}verification.html", f"{root}testing.html"] + [f"{root}spot/{i}/" for i in spot_ids]
+    urls = [root, f"{root}about.html", f"{root}verification.html", f"{root}methods.html", f"{root}testing.html"] + [f"{root}spot/{i}/" for i in spot_ids]
     body = "".join(f"<url><loc>{escape(u)}</loc><lastmod>{day}</lastmod></url>" for u in urls)
     return f'<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{body}</urlset>\n'
 
@@ -682,7 +741,7 @@ def write_pages(site: Path, results: list[dict], token: str | None = None, root:
     template = with_build(TEMPLATE.read_text(), stamp)
     if not (PAGE_META.search(template) and LOADING in template):
         raise ValueError("index.html has lost its page-meta block or its loading placeholder")
-    for name in ["about.html", "verification.html", "terms.html", "privacy.html", "feedback.html", "testing.html"]:
+    for name in ["about.html", "verification.html", "terms.html", "privacy.html", "feedback.html", "testing.html", "methods.html"]:
         s = (STATIC / name).read_text()
         for a, b in REWRITES:
             s = s.replace(a, b)
@@ -759,6 +818,7 @@ def build(refresh: bool = True) -> dict:
     # GeoJSON allows extra top-level members, so the credits sit beside the features.
     (SITE / "data" / "overflows.geojson").write_text(json.dumps({**overflows_geojson(limit=20000), "credits": credits}, default=str))
     (SITE / "data" / "verification.json").write_text(json.dumps({**load_verification(), "credits": credits}, default=str))
+    health["scored_rows_published"] = publish_scored_csv(SITE, credits, site_url())
     token = os.environ.get(COUNTER_TOKEN_ENV, "").strip()
     health["spot_pages"] = write_pages(SITE, results, token, day=generated.date().isoformat(), push=push is not None)
     summary = {**health, "seconds": round(time.time() - t0, 1), "generated_at": generated.isoformat()}
