@@ -909,6 +909,18 @@ hours, and sends them 15 a run (about 450 an hour on Cloudflare's free plan). Th
 notice gains its alerts section only then. On an iPhone, alerts work only in
 the Home Screen app.
 
+**Reviews** (`reviews/`, set up by hand: `reviews/README.md`). A swimmer can
+say whether they would swim at a spot again, when they swam, what it was like,
+and add up to three photos, which the page shrinks and strips of their camera
+data on the phone. A second Cloudflare Worker holds each review until the
+operator publishes it on its `/moderate` page; each build then copies the
+published reviews and photos into `site/reviews/` (`src/dipcast/reviews.py`),
+so reading them never contacts the Worker. A spot's page shows the share who
+would swim there again once three have reviewed, the reviews, and the form
+(`src/dipcast/site/reviews.js`). It is off until the repository variable
+`DIPCAST_REVIEWS_URL` is set; the privacy notice and the terms gain their
+reviews sections only then.
+
 **How it looks** is set out in `docs/DESIGN.md`: two typefaces served from the
 site itself (Source Serif 4 for headings, Source Sans 3 for the rest, in
 `src/dipcast/api/static/fonts/` under the SIL Open Font License, so no third

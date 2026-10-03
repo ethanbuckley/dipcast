@@ -425,6 +425,22 @@ that arrive in capitals ("LITTLE SALKELD WwTW") are set in normal case (`nameCas
 coli figures left the five days for the water tile (today and tomorrow) and the day-by-day table.
 The prose pages keep the paper.
 
+### Swimmers' reviews (3 October 2026)
+
+Reviews (`reviews.js`; the service is `reviews/`) are one more tile with the same anatomy, after the
+others and before the Upstream map and the overflows, so the forecast still comes first. Its figure
+is the share who would swim there again, "75% would swim here again", shown from three reviews
+(fewer would make a percentage of one or two people), drawn as a bar in ink: a score is not a level,
+so it never takes a level's colour, and no tomato, star or thumb stands in for the words. Under the
+figure, one sentence ("3 of 4 swimmers would swim here again"), then the reviews between hairlines,
+newest swim first: the yes or no in bold as the row's headline, then who and when ("Priya · swam 21
+Sept 2026"), the text, photos as 72 px squares that open full size over the page, and Report (Delete
+on your own review) in the meta size. The first three show; "Show all" opens the rest. The score is
+also a link at the end of the line over the spot's name, the place's own facts, in the meta size,
+never in the answer. Writing one opens a form in place of the button: a question to each field, in
+the order a swimmer answers them, the yes or no as two buttons that fill when chosen, as a chosen
+chip does.
+
 ### What was kept on purpose
 
 The information architecture (list → spot → day), every word of the terms and privacy notice, the

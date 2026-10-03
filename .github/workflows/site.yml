@@ -85,6 +85,8 @@ jobs:
           # Alerts (push/README.md): the Worker's address and its public key; unset = no alerts button.
           DIPCAST_PUSH_URL: ${{ vars.DIPCAST_PUSH_URL }}
           DIPCAST_VAPID_PUBLIC_KEY: ${{ vars.DIPCAST_VAPID_PUBLIC_KEY }}
+          # Reviews (reviews/README.md): the review Worker's address; unset = no reviews on the site.
+          DIPCAST_REVIEWS_URL: ${{ vars.DIPCAST_REVIEWS_URL }}
         run: uv run python scripts/build_site.py
 
       - name: Save mutable state

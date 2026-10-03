@@ -731,6 +731,12 @@ def with_build(template: str, stamp: str) -> str:
     return template
 
 
+# Swimmers' reviews (src/dipcast/reviews.py): the page's reviews.js is stored and versioned as the
+# scripts above are.
+SHELL_SOURCES.append(TEMPLATE.parent / "reviews.js")
+VERSIONED_SCRIPTS += ('<script src="reviews.js"></script>',)
+
+
 def copy_app_files(site: Path, stamp: str | None = None) -> None:
     """The web-app manifest and icons beside index.html: Add to Home Screen then gives an
     icon, a name and a full-screen window. The offline copy, sw.js, gets the build's stamp."""
@@ -741,6 +747,7 @@ def copy_app_files(site: Path, stamp: str | None = None) -> None:
         raise ValueError(f"sw.js has lost its line {SW_BUILD!r}, which the build stamps")
     (site / "sw.js").write_text(sw.replace(SW_BUILD, f"const BUILD = '{stamp}';"))   # the offline copy; see the file
     shutil.copy(TEMPLATE.parent / "experience.js", site / "experience.js")
+    shutil.copy(TEMPLATE.parent / "reviews.js", site / "reviews.js")   # swimmers' reviews (src/dipcast/reviews.py)
     shutil.copy(TEMPLATE.parent / "levels.js", site / "levels.js")   # the level rules, which the page loads
     shutil.copy(TEMPLATE.parent / "anypoint.js", site / "anypoint.js")   # a forecast for any point clicked on the map
     shutil.copytree(TEMPLATE.parent / "icons", site / "icons", dirs_exist_ok=True)
@@ -1064,6 +1071,14 @@ def build(refresh: bool = True) -> dict:
     health["scored_rows_published"] = publish_scored_csv(SITE, credits, site_url())
     token = os.environ.get(COUNTER_TOKEN_ENV, "").strip()
     health["spot_pages"] = write_pages(SITE, results, token, day=generated.date().isoformat(), push=push is not None)
+    # Swimmers' reviews: the published ones into site/reviews/, and their sections into the pages just written.
+    from dipcast.reviews import write_reviews
+    try:
+        health["reviews"] = write_reviews(SITE, spot_ids=[r["id"] for r in results], fetch=refresh)
+    except Exception as e:  # noqa: BLE001 - reviews beside the forecast must never stop the site publishing
+        health["reviews"] = {"warning": f"reviews not written, so the site shows none this time: {e}"}
+    if health["reviews"].get("warning"):
+        announce(health["reviews"]["warning"])
     summary = {**health, "seconds": round(time.time() - t0, 1), "generated_at": generated.isoformat()}
     summary.pop("failed_spots", None)
     log.info("site built: %s", summary)
