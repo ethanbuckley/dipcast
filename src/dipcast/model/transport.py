@@ -81,8 +81,12 @@ RIVER_FORMS = ("inlandRiver", "tidalRiver")
 def _names_match(cand: pd.DataFrame, want: frozenset[str]) -> pd.Series:
     """Which candidate links carry the wanted river's name, as their name or OS's alternative
     (Welsh links often have the English name there)."""
-    return (cand["watercourse_name"].map(lambda n: bool(river_words(n) & want) if isinstance(n, str) else False)
-            | cand.get("watercourse_name_alternative", pd.Series(None, index=cand.index, dtype=object)).map(lambda n: bool(river_words(n) & want) if isinstance(n, str) else False))
+    def matches(col: pd.Series) -> pd.Series:
+        # .astype(bool): on an empty frame pandas 3 keeps the str dtype through .map, and
+        # OR-ing two empty str Series raises (Shilley Pool, no link within HINT_SNAP_M, 3 Oct 2026).
+        return col.map(lambda n: bool(river_words(n) & want) if isinstance(n, str) else False).astype(bool)
+    alt = cand.get("watercourse_name_alternative", pd.Series(None, index=cand.index, dtype=object))
+    return matches(cand["watercourse_name"]) | matches(alt)
 
 
 def _adopt_main_channel(net: RiverNetwork, x: float, y: float, river: Snap,

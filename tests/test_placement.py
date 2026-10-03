@@ -90,6 +90,17 @@ def test_no_named_river_nearby_keeps_the_nearest_with_a_warning(caplog):
     assert far.watercourse == "Escow Beck" and far.placement == "river not found"
 
 
+def test_no_link_at_all_within_hint_range_keeps_the_nearest(caplog):
+    # Shilley Pool (3 Oct 2026): the nearest link of any name was 1,082 m away, so the
+    # hint's candidate frame was empty and pandas 3 raised on OR-ing two empty str Series
+    # instead of warning. The pin here is 1,200 m from the top of Escow Beck: inside
+    # PIN_SNAP_M, so it snaps, but outside HINT_SNAP_M, so there is nothing to compare.
+    net = _net(LUNE)
+    pin = transport.locate_pin(net, *bng_to_lonlat(351000, 462700), kind_hint="river", river_hint="Blackaton Brook")
+    assert pin.watercourse == "Escow Beck" and pin.placement == "river not found"
+    assert "Blackaton Brook" in caplog.text
+
+
 def test_a_lake_ignores_the_river_hint():
     net = _net(LUNE)
     pin = transport.locate_pin(net, *PIN, kind_hint="lake", river_hint="River Lune")
