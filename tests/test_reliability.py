@@ -368,8 +368,10 @@ def test_refused_bathing_water_service_falls_back_to_the_archive(tmp_path, monke
     out = fl.verify_ecoli(as_of=date(2026, 9, 12))
     st = out["samples"]
     assert out["n_scored"] == 1 and abs(out["by_lead"][0]["brier"] - 0.16) < 1e-9     # (0.6 - 1)^2
-    assert not st["all_failed"] and st["n_failed"] == 0 and st["sources"]["bathing_water"]["refused"]
-    assert st["sources"]["archive"] == {"answered": len(sites), "error": None, "n_samples": 1}   # the stray point is dropped
+    assert not st["all_failed"] and st["sources"]["bathing_water"]["refused"]
+    # The archive returned rows for one site: the other sites count as not answered, not as answered with nothing.
+    assert st["n_failed"] == len(sites) - 1
+    assert st["sources"]["archive"] == {"answered": 1, "error": None, "n_samples": 1}   # the stray point is dropped
     saved = pd.read_parquet(tmp_path / fl.ECOLI_SAMPLES)
     assert saved["source"].tolist() == ["archive"] and saved["bw_id"].tolist() == [s["bw_id"]]
     assert _build_site().build_health([{"name": "ok", "days": [{"data_status": "ok"}]}], st)["warnings"] == []

@@ -23,7 +23,7 @@ import pandas as pd
 
 from dipcast import __version__, config
 from dipcast.algae import by_site, refresh_algae
-from dipcast.forecast_log import describe_fetch, load_verification, samples_status
+from dipcast.forecast_log import describe_fetch, load_poll_log, load_verification, samples_status
 from dipcast.ingest.rainfall import cells_for_sites, fetch_forecast
 from dipcast.jobs import refresh_all
 from dipcast.model.forecast import (
@@ -228,11 +228,29 @@ class BuildUnhealthy(RuntimeError):
     site up rather than replacing it with a page of blanks."""
 
 
-def build_health(results: list[dict], ecoli_samples: dict | None = None) -> dict:
+def live_feed_health(poll_log: pd.DataFrame | None) -> dict | None:
+    """Rows per company in the last poll and the one before, from poll_log.parquet, and
+    the companies whose feed returned none in the last poll. None without a poll log."""
+    if poll_log is None or poll_log.empty:
+        return None
+    times = sorted(poll_log["fetched_at"].unique())
+    rows = lambda t: {str(k): int(v) for k, v in poll_log.loc[poll_log["fetched_at"] == t].groupby("company")["n_rows"].sum().items()}
+    last = rows(times[-1])
+    prev = rows(times[-2]) if len(times) > 1 else {}
+    return {"polled_at": str(pd.Timestamp(times[-1])), "rows": last, "previous_rows": prev,
+            "down": sorted(c for c, n in last.items() if n == 0)}
+
+
+def build_health(results: list[dict], ecoli_samples: dict | None = None, poll_log: pd.DataFrame | None = None) -> dict:
     """Counts the workflow and the page use to judge a build; raises BuildUnhealthy
     when the site should not be published. `ecoli_samples` is the last EA sample fetch
     (forecast_log.samples_status); if no source answered it goes in `warnings`. That
-    stalls the E. coli scores, not the forecasts, so it does not stop the publish."""
+    stalls the E. coli scores, not the forecasts, so it does not stop the publish.
+    `poll_log` is the live poller's log (poll_log.parquet): a company whose feed returned
+    no rows in the last poll goes in `warnings` (its overflows keep their last snapshot,
+    marked feed down). If every company returned none the build still publishes, with every
+    overflow marked feed down and one more warning: refusing would also freeze the rain
+    forecasts and leave the previous statuses on the page with no note that they are old."""
     n = len(results)
     # A spot the model cannot say anything about (an isolated lake, no river within
     # reach) returns an explanation with an empty day list; that is an answer, not a
@@ -247,6 +265,17 @@ def build_health(results: list[dict], ecoli_samples: dict | None = None) -> dict
         raise BuildUnhealthy(f"only {len(ok)}/{n} spots got a forecast; not publishing")
     if with_days and today_no_data > MAX_NO_DATA_SHARE * len(with_days):
         raise BuildUnhealthy(f"{today_no_data}/{len(ok)} forecasts have no rainfall data for today; not publishing")
+    feeds = live_feed_health(poll_log)
+    if feeds:
+        health["live_feeds"] = feeds
+        if feeds["rows"] and len(feeds["down"]) == len(feeds["rows"]):
+            health["warnings"].append(f"no live overflow feed returned any rows at {feeds['polled_at']}; "
+                                      "published with every overflow's last snapshot marked feed down")
+        for c in feeds["down"]:
+            before = feeds["previous_rows"].get(c)
+            health["warnings"].append(f"{c}'s live overflow feed returned no rows at {feeds['polled_at']} "
+                                      f"(previous poll: {'no record' if before is None else before} rows); "
+                                      "its overflows show their last snapshot, marked feed down")
     if ecoli_samples:
         s = ecoli_samples
         health["ecoli_samples"] = {k: s.get(k) for k in ("checked_at", "n_sites", "n_failed", "last_ok_at", "sources")}
@@ -595,7 +624,8 @@ def build(refresh: bool = True) -> dict:
     n_levels = attach_river_levels(results) if refresh else 0   # observations beside the forecast, network only
     n_weather = attach_weather(results) if refresh else 0
     generated = pd.Timestamp.now(tz="Europe/London")
-    health = build_health(results, samples_status())   # raises before anything is written if the build is bad
+    # Raises before anything is written if the build is bad. The live check needs this run's poll.
+    health = build_health(results, samples_status(), load_poll_log() if refresh else None)
     health["algae_checks"], health["classifications"] = n_algae, n_classified
     health["river_levels"], health["weather"] = n_levels, n_weather
     for w in health["warnings"]:

@@ -806,7 +806,7 @@ const SCROLL = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'a
 const dateLabel = iso => { const t = serverToday ?? localISO(new Date());
   if (iso === t) return 'Today'; if (iso === addDays(t, 1)) return 'Tomorrow';
   return new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'}); };
-const statusText = s => ({1:'discharging', 0:'not discharging', '-1':'monitor offline', '-2':'no live feed'})[s] ?? '?';
+const statusText = s => ({1:'discharging', 0:'not discharging', '-1':'monitor offline', '-2':'no live feed', '-3':'company feed down'})[s] ?? '?';
 const colourFor = s => s === 1 ? '#a32d2d' : s === 0 ? '#5b6470' : '#b3bac2';
 const dayWord = iso => iso === today() ? 'today' : iso === addDays(today(), 1) ? 'tomorrow'
   : 'on ' + new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'long'});
@@ -1176,6 +1176,13 @@ const rangeBar = rs => { const lo = rs.typical_low_m, hi = rs.typical_high_m; if
   const p = Math.max(0, Math.min(1, (rs.level_m - lo) / (hi - lo)));
   return `<div class="range" role="img" aria-label="${fmt(rs.level_m, 2)} m, in a usual range of ${fmt(lo, 2)} to ${fmt(hi, 2)} m"><div><b style="left:${(p * 100).toFixed(1)}%"></b></div>`
     + `<p><span>${fmt(lo, 2)}</span><span>${fmt(hi, 2)} m</span></p></div>`; };
+// A company feed that did not answer the last poll: its overflows keep their last snapshot, marked down.
+const feedDown = now => (now.feed_down || []).map(f => ` ${esc(f.company)}'s live feed is down${f.since ? ` (last answered ${new Date(f.since).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' })})` : ''}: its ${f.overflows} overflow${f.overflows === 1 ? '' : 's'} here could be spilling unseen.`).join('');
+// Which upstream overflows report live. Those on a feed that is down are named with the feed, not
+// counted again in the general clause.
+const liveSay = (now, total, mon) => { const fd = now.feed_down_upstream || 0, other = total - mon - fd;
+  if (!fd) return `${mon} of ${total} report live${mon < total ? `; ${total - mon === 1 ? 'the one that does not' : `the ${total - mon} that do not`} could be spilling unseen` : ''}.`;
+  return `${mon} of ${total} report live.${other > 0 ? ` ${other === 1 ? 'One more has' : `${other} more have`} no live feed and could be spilling unseen.` : ''}${feedDown(now)}`; };
 // Every overflow upstream as a dot: discharging, finished lately (a ring), quiet, or not reporting.
 const overflowDots = d => { const n = d.now || {}, total = overflows(d), dis = Math.min(n.discharging_upstream || 0, total), rec = Math.min(n.recent_upstream || 0, total - dis);
   const quiet = Math.max(0, Math.min(total, n.monitored_upstream ?? total) - dis - rec), off = Math.max(0, total - dis - rec - quiet);
@@ -1232,8 +1239,7 @@ function facts(d) {
       ? 'The E.&nbsp;coli model showed no skill on lakes, so there is no daily estimate here.' : 'Estimated only on rivers with monitored overflows upstream, the case the model was tested on.' });
   if (!d.error && total) { const n = now.discharging_upstream || 0, mon = now.monitored_upstream ?? total;
     out.push({ icon: ICON.now, label: 'Right now', fig: n, unit: `of ${total} discharging`, figTone: n ? 'hot' : '', vis: overflowDots(d),
-      say: `${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours}&nbsp;h. ${mon} of ${total} report live${mon < total
-        ? `; ${total - mon === 1 ? 'the one that does not' : `the ${total - mon} that do not`} could be spilling unseen` : ''}.` }); }
+      say: `${now.recent_upstream} finished in the last ${d.assumptions.recent_spill_hours}&nbsp;h. ${liveSay(now, total, mon)}` }); }
   const a = d.algae;
   if (a) { const thisYear = +today().slice(0, 4), age = (Date.parse(today()) - Date.parse(a.date)) / 864e5, season = a.season === thisYear ? 'this season' : `in the ${a.season} season`;
     const when = new Date(a.date + 'T12:00:00').toLocaleDateString('en-GB', a.season === thisYear ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });

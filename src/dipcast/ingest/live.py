@@ -3,7 +3,16 @@
 Each company feed is a snapshot: one row per overflow with its current status
 and the start/end of its latest event. We keep the latest snapshot and append
 every distinct (site, status, status_start) to a history file so that polling
-over time accumulates an event log for companies that publish no history.
+over time accumulates an event log for companies that publish no history. A
+feed that publishes no status start (South West Water's) keeps one row per
+(site, status, local day polled) instead, so a discharge seen on one day is not
+overwritten by the next day's.
+
+A company whose feed fails, or returns no rows, keeps its last snapshot in
+live_latest.parquet with status FEED_DOWN and the time of that snapshot in
+`feed_down_since`, so the map says the feed is down rather than that its
+overflows have no live feed. Only fresh rows reach the history, the coverage
+file and the poll log.
 """
 
 from __future__ import annotations
@@ -65,7 +74,8 @@ LOCAL_TZ = "Europe/London"
 COVERAGE_FILE = "live_coverage.parquet"
 POLL_LOG_FILE = "poll_log.parquet"
 SLOTS_PER_DAY = 48          # half-hour slots; the site polls every 30 min
-FEED_CURRENT_H = 6.0        # a feed whose freshest LastUpdated is older than this is stale
+FEED_CURRENT_H = 6.0        # a feed whose freshest LastUpdated is older than this, or that has none, is stale
+FEED_DOWN = -3              # status of a carried-forward row: the company's feed failed this poll
 COVERAGE_COLS = ["site_id", "day", "n_known", "n_unknown", "n_stale", "slots"]
 
 
@@ -73,7 +83,8 @@ def feed_age_hours(df: pd.DataFrame) -> pd.Series:
     """Per company, the age of the freshest `last_updated` in this poll. Six companies
     stamp every record on every refresh (age under an hour); Northumbrian and Southern
     stamp a record only when it changes; South West Water publishes no stamp (NaN).
-    A successful HTTP response is not evidence the feed is current; this is."""
+    A successful HTTP response is not evidence the feed is current; this is, so a
+    NaN age is treated as not current (see coverage_rows)."""
     if df.empty or "last_updated" not in df:
         return pd.Series(dtype=float)
     age = (pd.to_datetime(df["fetched_at"], utc=True) - pd.to_datetime(df["last_updated"], utc=True)).dt.total_seconds() / 3600
@@ -86,13 +97,16 @@ def coverage_rows(df: pd.DataFrame) -> pd.DataFrame:
     and the half-hour slot as a bit in `slots`. OR-ing the slot bits over a day gives
     the distinct times the overflow was observed, from which the scorer derives the
     first and last observation and the longest gap; a repeated poll in the same slot
-    adds nothing."""
+    adds nothing. A company with no `last_updated` at all (age NaN) gives no evidence
+    that its feed is current, so its polls count as stale: South West Water's feed
+    carries neither a record stamp nor event times, so a poll sees only what is
+    discharging at that moment, and a day of such polls cannot support "no spill"."""
     if df.empty:
         return pd.DataFrame(columns=COVERAGE_COLS)
     local = pd.to_datetime(df["fetched_at"], utc=True).dt.tz_convert(LOCAL_TZ)
     known = df["status"].isin([0, 1])
     age = df["company"].map(feed_age_hours(df))
-    stale = known & (age > FEED_CURRENT_H)
+    stale = known & ~(age <= FEED_CURRENT_H)     # NaN (no stamp) is not current
     slot = (local.dt.hour * 2 + local.dt.minute // 30).astype(int)
     slots = np.where(known & ~stale, np.left_shift(np.int64(1), slot.to_numpy()), np.int64(0))
     return pd.DataFrame({"site_id": df["site_id"].astype(str).to_numpy(), "day": local.dt.date.to_numpy(),
@@ -142,8 +156,46 @@ def log_poll(df: pd.DataFrame, feeds: dict[str, str] | None = None) -> None:
     write_parquet(new, config.state_write(POLL_LOG_FILE))
 
 
+def carry_forward(df: pd.DataFrame, previous: pd.DataFrame | None,
+                  feeds: dict[str, str] | None = None) -> pd.DataFrame:
+    """This poll's rows plus, for each company that returned none, its rows from the
+    previous snapshot with status FEED_DOWN and `feed_down_since` the time of the last
+    poll that answered. Event times are kept: they were true at that poll."""
+    out = df.copy()
+    out["feed_down_since"] = pd.Series(pd.NaT, index=out.index, dtype="datetime64[ns, UTC]")
+    if previous is None or previous.empty:
+        return out
+    companies = list((feeds or config.LIVE_FEEDS).keys())
+    present = set(df["company"].unique()) if len(df) else set()
+    down = [c for c in companies if c not in present]
+    old = previous[previous["company"].isin(down)].copy()
+    if old.empty:
+        return out
+    since = pd.to_datetime(old["fetched_at"], utc=True)
+    if "feed_down_since" in old:
+        since = pd.to_datetime(old["feed_down_since"], utc=True).fillna(since)
+    old["feed_down_since"] = since
+    old["status"] = FEED_DOWN
+    for c in sorted(set(old["company"])):
+        log.warning("%s: no rows this poll; keeping its last snapshot (%s) as feed down", c,
+                    old.loc[old["company"] == c, "feed_down_since"].min())
+    cols = list(out.columns)
+    return pd.concat([out, old.reindex(columns=cols)], ignore_index=True)
+
+
+def history_key(h: pd.DataFrame) -> pd.Series:
+    """The local day polled where a row has no status start, else missing. Part of the
+    history's de-duplication key: with a blank status start every poll of a site with
+    the same status looks alike, so without the day each site would keep one row per
+    status and a discharge seen on one day would be overwritten by the next."""
+    day = pd.to_datetime(h["fetched_at"], utc=True).dt.tz_convert(LOCAL_TZ).dt.strftime("%Y-%m-%d")
+    return day.where(pd.to_datetime(h["status_start"], utc=True).isna())
+
+
 def save_live(df: pd.DataFrame) -> None:
-    write_parquet(df, config.state_write("live_latest.parquet"))
+    prev_path = config.state_read("live_latest.parquet")
+    previous = pd.read_parquet(prev_path) if prev_path.exists() else None
+    write_parquet(carry_forward(df, previous), config.state_write("live_latest.parquet"))
     hist_read = config.state_read("live_history.parquet")
     keep = df[["site_id", "company", "status", "status_start", "latest_event_start",
                "latest_event_end", "fetched_at"]]
@@ -151,8 +203,10 @@ def save_live(df: pd.DataFrame) -> None:
         old = pd.read_parquet(hist_read)
         keep = pd.concat([old, keep], ignore_index=True)
     # The history keeps one row per distinct (site, status, status_start): an event
-    # log, not an observation log. Observation counts live in the coverage file.
-    keep = keep.drop_duplicates(subset=["site_id", "status", "status_start"], keep="last")
+    # log, not an observation log. Observation counts live in the coverage file. Rows
+    # with no status start are kept once per local day polled (history_key).
+    keep = keep.assign(_day=history_key(keep)).drop_duplicates(
+        subset=["site_id", "status", "status_start", "_day"], keep="last").drop(columns="_day")
     write_parquet(keep, config.state_write("live_history.parquet"))
     update_coverage(df)
     log_poll(df)
