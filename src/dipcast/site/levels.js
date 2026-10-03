@@ -18,11 +18,16 @@ const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
 const hasData = x => x.risk !== null && x.risk !== undefined;
 const today = () => serverToday ?? localISO(new Date());
 const shortDay = iso => iso === today() ? 'Today' : new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short'});
+// A day in a sentence: "today", "tomorrow", "on Monday"; dayName drops the "on". Headlines name a
+// later day in full, as the five days' sentence does: "High risk on Monday", not "on Mon".
+const dayWord = iso => iso === today() ? 'today' : iso === addDays(today(), 1) ? 'tomorrow'
+  : 'on ' + new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'long'});
+const dayName = iso => dayWord(iso).replace(/^on /, '');
 // ------------------------------------------------------------------------------ risk
 // A day's level is the worse of two forecasts and one record, because sewage from overflows is
 // only part of what makes river water dirty: before this, every Thames spot read "low".
 //  - Sewage spills: the exposure index's level, where monitored overflows are upstream.
-//  - Water quality: the calibrated E. coli column, the chance a sample would be over 900 per 100 ml,
+//  - Water quality: the E. coli estimate, the calibrated chance a sample would be over 900 per 100 ml,
 //    where it was tested (rivers with overflows upstream). Low under 10%: the minimum inland
 //    standard ("sufficient", Bathing Water Regulations 2013, schedule 5) is a 90th percentile at
 //    or under 900, so a water can be over 900 about one sample in ten and still pass. Moderate to
@@ -51,7 +56,10 @@ const shortDay = iso => iso === today() ? 'Today' : new Date(iso + 'T12:00:00').
 // there would read as clean water. Not included: the EA's short-term advice against bathing after
 // an incident (Frensham Great Pond's algae warning since 19 Jun 2026, say). Its service refuses
 // the build's machines and does not answer other sites' pages, so a spot's page links to it.
-const ECOLI_BANDS = [[0.10, 'low'], [0.25, 'moderate'], [0.50, 'high'], [Infinity, 'very high']];
+// The cut-offs between the four levels, as fractions: the spill exposure's (transport.risk_label,
+// whose labels arrive in spots.json) and the E. coli estimate's. The page draws its scales from these.
+const SPILL_CUTS = [0.15, 0.40, 0.70], ECOLI_CUTS = [0.10, 0.25, 0.50];
+const ECOLI_BANDS = [...ECOLI_CUTS, Infinity].map((t, i) => [t, ['low', 'moderate', 'high', 'very high'][i]]);
 const CLASS_LEVEL = { excellent: 'low', good: 'low', sufficient: 'moderate', poor: 'high' };
 const rank = l => ORDER[l] ?? -1;
 const higher = (a, b) => rank(b) > rank(a) ? b : a;
@@ -92,25 +100,42 @@ const level = s => {
 const laterDay = s => { const w = rank(worst(s));
   const x = s.days.slice(2, 5).map(d => [risk(s, d), d]).filter(([r]) => r.level).reduce((a, b) => !a || rank(b[0].level) > rank(a[0].level) ? b : a, null);
   return x && rank(x[0].level) > w ? x : null; };
+// What set a level, in a forecast's words: "high E. coli likely". "Very poor water quality" read as
+// the result of a test, which nothing here is.
 const because = r => r.by === 'spill' ? 'sewage spills'
-  : r.by === 'water' ? (r.level === 'moderate' ? 'water quality only fair' : r.level === 'very high' ? 'very poor water quality' : 'poor water quality')
+  : r.by === 'water' ? (r.level === 'moderate' ? 'E.\u00a0coli may be raised' : r.level === 'very high' ? 'high E.\u00a0coli likely' : 'raised E.\u00a0coli likely')
   : r.by === 'algae' ? 'algae at the last check' : 'rated poor';
+// A water rated poor, on a day (iso). Advice against bathing applies in the bathing season, 15 May to
+// 30 September (Bathing Water Regulations 2013); the rating keeps the level at least high on every day
+// of the year all the same. So the advice is named only in season, and out of season the words say
+// why the level is high and when the advice applies: "advice against bathing" beside a sentence
+// saying it applies only in summer read as a contradiction in October. One wording for the
+// headline's reason, the rating's sentence, the days' sentence and the alerts.
+const inBathingSeason = iso => { const md = String(iso).slice(5, 10); return md >= '05-15' && md <= '09-30'; };
+const poorReason = iso => inBathingSeason(iso) ? 'advice against bathing' : 'advice against bathing from 15 May';
+const poorAdvice = iso => inBathingSeason(iso)
+  ? 'Advice against bathing applies here while the rating is poor, and should be shown on signs at the water.'
+  : 'The rating is poor, so the level stays at least high; advice against bathing applies 15 May to 30 September.';   // the council's, not the EA's (above)
+// The words for a spot without a level, the same wherever it is described (the headline, the
+// page's spills row, the comparison).
+const COVER = { [NO_FORECAST]: 'No forecast in this update', [NOT_COVERED]: 'Not covered by the forecast',
+  [NO_OVERFLOWS]: 'No monitored overflows upstream' };
+// A spot whose forecast could not be made (s.error): failed in this update, or out of the model's reach.
+const coverage = s => COVER[String(s.error).startsWith('forecast failed') ? NO_FORECAST : NOT_COVERED];
 // The gist in a few words, for the list and the top of a spot's page: the worst of now, today and
 // tomorrow, when, and what set it; or, if those are all low, the first worse day after them.
 // [the level and when, what set it]; the list joins them, a spot's page puts them on two lines.
 // A level always says "risk": a bare "Very high today" read as very high what.
 function headParts(s) {
   const l = level(s);
-  if (l === NO_FORECAST) return ['No forecast in this update', ''];
-  if (l === NOT_COVERED) return ['Not covered by the forecast', ''];
-  if (l === NO_OVERFLOWS) return ['No monitored overflows upstream', ''];
+  if (COVER[l]) return [COVER[l], ''];
   if (!daily(s) && rank(algaeLevel(s)) > rank(CLASS_LEVEL[classOf(s)] ?? null)) return [`${cap(l)} risk`, 'algae at the last check'];
   if (!daily(s) || worstNear(s)[0].by === 'record')
-    return advisedAgainst(s) ? ['Rated poor', 'advice against bathing'] : [`Rated ${classOf(s)} by the EA`, ''];
+    return advisedAgainst(s) ? ['Rated poor', poorReason(today())] : [`Rated ${classOf(s)} by the Environment Agency`, ''];
   const [r, when] = worstNear(s);
   if (rank(r.level) > 0) return [`${cap(r.level)} risk ${when}`, because(r)];
   const x = laterDay(s);
-  if (x) return [`Low risk now · ${cap(x[0].level)} risk on ${shortDay(x[1].date)}`, ''];
+  if (x) return [`Low risk now · ${cap(x[0].level)} risk ${dayWord(x[1].date)}`, ''];
   return [s.days.slice(0, 5).every(hasData) ? 'Low risk for the next five days' : 'Low risk on every day with a forecast', ''];
 }
 const headline = s => headParts(s).filter(Boolean).join(': ');
@@ -122,13 +147,34 @@ const dayLevel = (s, iso) => {
   return x ? risk(s, x).level ?? NO_FORECAST : NO_FORECAST;
 };
 
-// Keep standing ratings distinct from daily predictions when planning a particular day.
+// A picked day's headline, the one form for the list, the map's tooltips, Nearby, the comparison and
+// the shared picture: "Moderate risk: sewage spills", "Low risk". Standing ratings stay distinct from
+// daily predictions.
 function dayHeadline(s, iso) {
   if (!daily(s)) return headline(s);
   const x = s.days.slice(0, 5).find(d => d.date === iso), r = x ? risk(s, x) : {level:null};
   if (!r.level) return 'No forecast for this day';
-  if (r.by === 'record') return 'Rated poor: advice against bathing';
-  return `${cap(r.level)}${rank(r.level) > 0 ? ' risk: ' + because(r) : ' forecast risk'}`;
+  if (r.by === 'record') return `Rated poor: ${poorReason(iso)}`;
+  return `${cap(r.level)} risk${rank(r.level) > 0 ? ': ' + because(r) : ''}`;
+}
+// Where the five days go from the answer, as Apple's high and low: the day a raised level falls to low
+// (or to its lowest), or the later day a low one rises. A level set by right now (an overflow
+// discharging) is on none of the days, so the search then starts at today: "Low risk today".
+function weekNext(s) {
+  if (advisedAgainst(s)) return 'At least high risk every day';
+  if (!daily(s)) return '';
+  const ds = s.days.slice(0, 5).filter(hasData).map(x => ({ x, l: risk(s, x).level })).filter(o => o.l), l0 = level(s);
+  if (!ds.length) return '';
+  if (rank(l0) >= 1) {
+    const at = ds.findIndex(o => o.l === l0), after = ds.slice(at + 1);   // -1, from right now: every day
+    const to = after.find(o => o.l === 'low') || after.reduce((a, b) => rank(b.l) < rank(a ? a.l : l0) ? b : a, null);
+    if (!to) return ds.every(o => o.l === l0) ? `${cap(l0)} risk on all five days` : '';
+    const d = to.x.date;
+    // Right now is part of today, so today's lower forecast is "later today".
+    return `${cap(to.l)} risk ${d === today() ? (at < 0 ? 'later today' : 'today') : d === addDays(today(), 1) ? 'tomorrow' : 'by ' + dayName(d)}`;
+  }
+  const later = laterDay(s);
+  return later ? `${cap(later[0].level)} risk ${dayWord(later[1].date)}` : '';
 }
 
 // The day with the most spots at low, among those with a forecast that changes from day to day:
@@ -147,6 +193,6 @@ function bestDay(spots, dates) {
 }
 
 if (typeof module === 'object' && module.exports) {
-  module.exports = { ORDER, NOT_COVERED, NO_FORECAST, NO_OVERFLOWS, setToday, today, rank, risk, level, dayLevel,
-    headParts, headline, dayHeadline, daily, ecoliBand, ecoliLevel, ecoliUntested, bestDay };
+  module.exports = { ORDER, NOT_COVERED, NO_FORECAST, NO_OVERFLOWS, SPILL_CUTS, ECOLI_CUTS, setToday, today, dayWord, rank, risk,
+    level, dayLevel, headParts, headline, dayHeadline, weekNext, coverage, inBathingSeason, poorReason, poorAdvice, daily, ecoliBand, ecoliLevel, ecoliUntested, bestDay };
 }

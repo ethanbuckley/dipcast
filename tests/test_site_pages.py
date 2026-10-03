@@ -40,7 +40,7 @@ def test_every_spot_gets_its_own_page_and_preview(tmp_path):
     assert '<base href="../../">' in head   # relative: the site works at any address
     assert '<link rel="canonical" href="https://example.org/swim/spot/wharfe-ilkley/">' in head
     assert '<meta property="og:image" content="https://example.org/swim/icons/og.png">' in head
-    assert "<title>Wharfe at &quot;Cromwheel&quot; &amp; Ilkley: sewage-spill forecast · SwimSignal</title>" in head
+    assert "<title>Wharfe at &quot;Cromwheel&quot; &amp; Ilkley: pollution risk forecast · SwimSignal</title>" in head
     assert "from the 15 monitored storm overflows upstream" in head
     assert "very high" not in head.lower().replace("veryhigh", "")
     assert head.count("<title>") == 1 and "page-meta" not in page
@@ -122,6 +122,17 @@ def test_site_url_follows_the_repository_unless_set(monkeypatch):
     assert bs.site_url() == "https://swim.example/"
     monkeypatch.setenv("DIPCAST_SITE_URL", "swim.example")   # no scheme: previews would get relative links
     assert bs.site_url() == "https://ethanbuckley.github.io/swimcast/"
+
+
+def test_the_page_draws_the_spill_levels_at_the_cut_offs_the_build_labels_them_by():
+    # The page's scales and bars place a day by SPILL_CUTS (levels.js); the labels in spots.json come
+    # from transport.risk_label. A change to one without the other would put "High" on a moderate bar.
+    from dipcast.model.transport import risk_label
+    rules = (ROOT / "src" / "dipcast" / "site" / "levels.js").read_text()
+    cuts = [float(x) for x in re.search(r"const SPILL_CUTS = \[([^\]]+)\]", rules).group(1).split(",")]
+    levels = ["low", "moderate", "high", "very high"]
+    for i, c in enumerate(cuts):
+        assert risk_label(c - 1e-9) == levels[i] and risk_label(c) == levels[i + 1], c
 
 
 def test_the_page_and_the_build_use_one_id_rule():

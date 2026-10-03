@@ -8,8 +8,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <!-- page-meta: scripts/build_site.py replaces this block on every page it writes (absolute
      links for share previews; a spot's own page gets its name, a description and a <base>). -->
-<title>SwimSignal · sewage-spill forecasts for swim spots</title>
-<meta name="description" content="Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow data, rainfall forecasts and the river network.">
+<title>SwimSignal · pollution risk forecasts for swim spots</title>
+<meta name="description" content="Five-day pollution risk forecasts for river and lake swim spots in England, from live sewage-overflow data, rainfall forecasts and the river network.">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="SwimSignal">
 <meta property="og:title" content="SwimSignal">
@@ -610,7 +610,7 @@
   <!-- A phone shows none of these: Saved and Map are in the bar at the bottom, and About is linked from the list's intro. -->
   <nav aria-label="Site">
     <a href="saved/" class="hbtn" id="savedbtn" aria-label="Saved spots">Saved<span class="n" id="saved-n" hidden></span></a>
-    <button type="button" class="hbtn phone-only" id="mapbtn" aria-pressed="false">Map</button>
+    <button type="button" class="hbtn phone-only" id="mapbtn">Map</button>
     <a href="verification.html" class="desk-only">Accuracy</a>
     <a href="about.html" class="desk-only">About</a>
     <a href="feedback.html" class="desk-only">Feedback</a>
@@ -627,9 +627,9 @@
       <details class="more" id="levels"><summary>What the levels mean</summary>
         <p class="small muted">A day's level is the highest of these. A spot's page shows each one.</p>
         <dl>
-          <dt>Sewage spills</dt><dd>The exposure index (0–100): the modelled chance that a spill from an overflow upstream reaches the spot. Low under 15, moderate 15 to 40, high 40 to 70, very high 70 or more.</dd>
+          <dt>Sewage spills</dt><dd>The exposure index, a 0–100 score of how likely sewage from upstream is to reach the spot. Low under 15, moderate 15 to 40, high 40 to 70, very high 70 or more.</dd>
           <dt>Water quality</dt><dd>On rivers with overflows upstream: the chance a water sample would show E. coli over 900 per 100 ml, from any source, runoff after rain included. Low risk under 10%, moderate 10 to 25%, high 25 to 50%, very high over 50%. The minimum bathing-water standard lets about one sample in ten be over 900. In the May to September season only: from October to April, when the EA takes no samples, the estimate is shown marked † but does not set the level.</dd>
-          <dt>Environment Agency rating</dt><dd>At a designated bathing water, the EA's yearly rating from up to four seasons of lab samples. When it is poor, advice against bathing applies all season, so the level is at least high on every day. Where there is no daily forecast, the rating sets the level: excellent or good low, sufficient moderate, poor high.</dd>
+          <dt>Environment Agency rating</dt><dd>At a designated bathing water, the EA's yearly rating from up to four seasons of lab samples. When it is poor, advice against bathing applies through the bathing season, 15 May to 30 September, and the level is at least high on every day. Where there is no daily forecast, the rating sets the level: excellent or good low, sufficient moderate, poor high.</dd>
           <dt>Algae</dt><dd>At a designated bathing water, the EA sampler's last look, if under two weeks old: enough algae to be objectionable makes the level at least high, some at intervals at least moderate.</dd>
           <dt>Not included</dt><dd>The EA's short-term advice against bathing after a pollution incident or an algal bloom. A bathing water's page links to the EA's page, which has it.</dd>
         </dl>
@@ -644,8 +644,8 @@
       <details class="more"><summary>What each part of a spot's page means</summary>
         <dl>
           <dt>Right now</dt><dd>Which upstream storm overflows are discharging now or finished within 48 hours, from the water companies' live feeds.</dd>
-          <dt id="about-exposure">Exposure index (0–100)</dt><dd>The modelled chance that at least one upstream overflow spills and its discharge reaches the spot after travel time, die-off and dilution. The spill part is verified against what the overflows did; the die-off and dilution weights are physical estimates, not calibrated against water samples, so it is an index, not a probability. The colour levels (low to very high) come from it.</dd>
-          <dt id="about-ecoli">E. coli &gt; 900</dt><dd>The estimated probability that a midday water sample would exceed 900 E. coli cfu/100 ml, from rainfall at the spot, the exposure index, water-body type and season, fitted to Environment Agency samples at river and lake bathing waters and tested on years and sites it never saw. It counts bacteria from any source, so rain alone can raise it when the exposure index is low. 900 is the threshold used in the inland "sufficient" classification, which is a 90th-percentile calculation over four seasons, not a pass/fail test of one sample. It is validated on rivers in the May–September sampling season only; on lakes it has no demonstrated skill and is not shown. The EA takes no samples from October to April, so then nothing tests it: the figure is still shown, marked †, but it does not set the level, and the date's own effect is held at its value at the nearer end of the season (30 September or 1 May) rather than carried on with nothing to check it.</dd>
+          <dt id="about-exposure">Exposure index (0–100)</dt><dd>A 0–100 score of how likely sewage from upstream is to reach the spot. It is built from the chance that at least one overflow upstream spills and its discharge arrives, after travel time, die-off and dilution. The spill part is verified against what the overflows did; the die-off and dilution weights are physical estimates, not calibrated against water samples, so the score is not a probability. The colour levels (low to very high) come from it.</dd>
+          <dt id="about-ecoli">E. coli estimate</dt><dd>The estimated chance that a midday water sample would show over 900 E. coli per 100 ml, from rainfall at the spot, the exposure index, water-body type and season, fitted to Environment Agency samples at river and lake bathing waters and tested on years and sites it never saw. It counts bacteria from any source, so rain alone can raise it when the exposure index is low. 900 is the threshold used in the inland "sufficient" classification, which is a 90th-percentile calculation over four seasons, not a pass/fail test of one sample. It is validated on rivers in the May–September sampling season only; on lakes it has no demonstrated skill and is not shown. The EA takes no samples from October to April, so then nothing tests it: the figure is still shown, marked †, but it does not set the level, and the date's own effect is held at its value at the nearer end of the season (30 September or 1 May) rather than carried on with nothing to check it.</dd>
           <dt>Algae</dt><dd>Designated bathing waters only: the Environment Agency sampler's latest look at the water, an observation, not a forecast. It does not tell blue-green algae from harmless kinds.</dd>
           <dt>What it does not know</dt><dd>Anything about a specific farm, road, outfall or algal bloom: only monitored storm overflows are modelled.</dd>
         </dl>
@@ -709,7 +709,11 @@ const mapEl = document.getElementById('map'), mapWrap = document.getElementById(
 // zooms). With one-finger dragging on, a phone's map took the scroll. Full screen, there is no page
 // to scroll, so one finger moves the map there.
 const TOUCH = matchMedia('(pointer: coarse)').matches;
-const map = L.map('map', { zoomControl: true, dragging: !TOUCH }).setView([53.6, -2.0], 6);
+// Less motion, if asked for: no animated zoom, fade or glide, and setView and fitBounds jump (MOTION).
+const STILL = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MOTION = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? { animate: false } : {};
+const map = L.map('map', { zoomControl: true, dragging: !TOUCH, zoomAnimation: !STILL, fadeAnimation: !STILL, markerZoomAnimation: !STILL,
+  inertia: !STILL }).setView([53.6, -2.0], 6);
 map.attributionControl.setPrefix(false);   // the map's credit is OpenStreetMap's, as on the small map; the terms credit Leaflet
 const tiles = () => L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19,
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' });
@@ -739,7 +743,8 @@ function setMapMode(on, view = null) {
   const was = mapMode();
   if (on && !was) keepPlace();
   document.body.classList.toggle('map-mode', on);
-  const b = document.getElementById('mapbtn'); b.setAttribute('aria-pressed', String(on)); b.textContent = on ? (current ? 'Back' : 'List') : 'Map';
+  // Its label says what it does (Map, Back, List), so it is not a toggle: "Back, pressed" said both.
+  document.getElementById('mapbtn').textContent = on ? (current ? 'Back' : 'List') : 'Map';
   syncNav(); setHeaderHeight(); placeMap();
   if (on && view) map.setView([view[0], view[1]], view[2], { animate: false });
   else if (on && DATA) fitAll(); else if (!on) loadOverflows().catch(() => ovLayer.clearLayers());
@@ -778,15 +783,15 @@ function miniMap(s) {
   if (MINI) { MINI.remove(); MINI = null; }
   const el = document.getElementById('loc-map'); if (!el || !PHONE.matches) return;
   MINI = L.map(el, { zoomControl: false, dragging: false, touchZoom: false, scrollWheelZoom: false, doubleClickZoom: false,
-    boxZoom: false, keyboard: false }).setView([s.lat, s.lon], 12);
+    boxZoom: false, keyboard: false, fadeAnimation: !STILL }).setView([s.lat, s.lon], 12);
   MINI.attributionControl.setPrefix(false);
   tiles().addTo(MINI);
   L.circleMarker([s.lat, s.lon], { radius: 15, color: RING(), weight: 3, fill: false, interactive: false }).addTo(MINI);
   L.circleMarker([s.lat, s.lon], { radius: 9, color: PAPER, weight: 2, fillColor: colour(level(s)), fillOpacity: 1, interactive: false }).addTo(MINI);
-  const open = () => { setMapMode(true); map.setView([s.lat, s.lon], 13); };
+  const open = () => { setMapMode(true); map.setView([s.lat, s.lon], 13, MOTION()); };
   MINI.on('click', open); document.getElementById('loc-open').addEventListener('click', open);
 }
-const fitAll = () => map.fitBounds(L.latLngBounds(DATA.spots.map(s => [s.lat, s.lon])), { padding: [18, 18] });
+const fitAll = () => map.fitBounds(L.latLngBounds(DATA.spots.map(s => [s.lat, s.lon])), { padding: [18, 18], ...MOTION() });
 window.addEventListener('resize', setHeaderHeight);
 
 // shown: the view on screen ('list' or 'saved') when a spot is opened, for the spot's back link.
@@ -808,8 +813,6 @@ const dateLabel = iso => { const t = serverToday ?? localISO(new Date());
   return new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'short', day:'numeric', month:'short'}); };
 const statusText = s => ({1:'discharging', 0:'not discharging', '-1':'monitor offline', '-2':'no live feed', '-3':'company feed down'})[s] ?? '?';
 const colourFor = s => s === 1 ? '#a32d2d' : s === 0 ? '#5b6470' : '#b3bac2';
-const dayWord = iso => iso === today() ? 'today' : iso === addDays(today(), 1) ? 'tomorrow'
-  : 'on ' + new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'long'});
 const initial = iso => new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', {weekday:'narrow'});
 // The colour that goes with the headline: grey where there is no level.
 const headTone = s => tone(level(s));
@@ -818,12 +821,14 @@ const km = (a, b) => { const r = Math.PI / 180, dLat = (b[0]-a[0])*r, dLon = (b[
 
 // ------------------------------------------------------------------------------ saved spots
 // Kept in this browser only. Storage can be blocked (private windows, strict settings): the
-// star then still works for this visit, and says so.
+// bookmark then still works for this visit, and says so. What is read back is checked (storedList):
+// anything but a list of ids reads as none saved, rather than stopping the page.
 const SAVED_KEY = 'dipcast.saved';
 // iOS gives a Home Screen app storage of its own and copies nothing from Safari's: in the iOS 27
 // simulator (29 Sep 2026) spots saved in Safari were missing from an app added just after, and so
 // was a list passed in the start address of a manifest the page rewrote. The Saved page says so.
-const SAVED = (() => { try { return new Set(JSON.parse(localStorage.getItem(SAVED_KEY) || '[]')); } catch (e) { return new Set(); } })();
+const savedIds = text => storedList(text, id => typeof id === 'string');
+const SAVED = (() => { try { return new Set(savedIds(localStorage.getItem(SAVED_KEY))); } catch (e) { return new Set(); } })();
 const storeSaved = () => { try { localStorage.setItem(SAVED_KEY, JSON.stringify([...SAVED])); return true; } catch (e) { return false; } };
 // Replace the list, in order. Returns false when the browser would not keep it.
 function setSaved(ids) {
@@ -833,8 +838,9 @@ function setSaved(ids) {
 // Another tab saved or removed a spot: follow it, or this tab's next change would undo that one.
 window.addEventListener('storage', e => {
   if (e.key !== SAVED_KEY) return;
-  let ids = []; try { ids = JSON.parse(e.newValue || '[]'); } catch (err) { return; }
-  SAVED.clear(); ids.forEach(id => SAVED.add(id)); savedBadge();
+  let v; try { v = JSON.parse(e.newValue || '[]'); } catch (err) { return; }
+  if (!Array.isArray(v)) return;   // not a list: keep this tab's, rather than empty it
+  SAVED.clear(); savedIds(e.newValue).forEach(id => SAVED.add(id)); savedBadge();
   const b = document.getElementById('save');
   if (b && current) { const on = SAVED.has(current.id); b.setAttribute('aria-pressed', String(on)); b.innerHTML = saveLabel(on); }
   if (DATA && document.body.classList.contains('view-saved')) renderSaved();
@@ -904,7 +910,7 @@ async function syncAlerts() {
   const sub = await pushSub(); if (!sub) return;
   let last = null; try { last = JSON.parse(localStorage.getItem(PUSH_KEY) || 'null'); } catch (e) { /* re-send */ }
   const spots = [...SAVED].filter(id => DATA.spots.some(s => s.id === id));
-  if (last && last.endpoint === sub.endpoint && last.spots.join() === spots.join() && Date.now() - last.at < 7 * 864e5) return;
+  if (last && last.endpoint === sub.endpoint && Array.isArray(last.spots) && last.spots.join() === spots.join() && Date.now() - last.at < 7 * 864e5) return;
   await sendSub(sub);
 }
 let syncTimer = null;
@@ -936,8 +942,8 @@ async function bindAlerts() {
 }
 
 // One plain sentence or four, as a list: what is happening now, the worst day ahead and why, when it
-// eases, and whether it rises again after that. The first stays in view; the rest fold (firstThen),
-// since the strip above already shows each day's level.
+// eases, and whether it rises again after that. The sentence over the five days takes the first ones
+// (daysSentence) where the forecast cannot say how many overflows will spill.
 function summary(d) {
   const days = d.days.slice(0, 5), known = days.filter(hasData), n = d.now.discharging_upstream, out = [];
   const total = d.upstream_summary.overflows;
@@ -946,7 +952,7 @@ function summary(d) {
   if (!total) {
     const wet = days.filter(x => x.rain_48h_mm >= 10).reduce((a, b) => !a || b.rain_48h_mm > a.rain_48h_mm ? b : a, null);
     return ['No monitored storm overflows upstream, so this forecast has nothing to flag.', 'It does not cover runoff from farms, roads or wildlife, which rain also washes in.',
-      ...(wet ? [`The wettest day ahead is ${dayWord(wet.date).replace(/^on /, '')}, with about ${Math.round(wet.rain_48h_mm)}&nbsp;mm of rain in the 48 hours before.`] : [])];
+      ...(wet ? [`The wettest day ahead is ${dayWord(wet.date).replace(/^on /, '')}, with about ${Math.round(wet.rain_48h_mm)}&nbsp;mm of rain in the 48 hours to midday.`] : [])];
   }
   if (n) out.push(`${n} upstream overflow${n === 1 ? ' is' : 's are'} discharging now; exposure right now is ${d.now.label}.`);
   if (!known.length) return out.concat('No rainfall forecast has arrived, so there is no forecast for the days ahead.');
@@ -971,49 +977,39 @@ function summary(d) {
   if (rises) out.push(`${cap(rises.label)} risk${rises.label === peak.label ? ' again' : ''} ${dayWord(rises.date)}.`);
   return out;
 }
-// What the headline rests on, a row each: the spills, the water and the EA's rating, each with its
-// own level for today and tomorrow. Without the split, "low" for spills read as clean water.
+// A row in a picked day's details (dayDetail) or a spot without a forecast (factors): a label, the
+// row's own value, and its sentence. Without the split, "low" for spills read as clean water.
 const factorRow = (label, lv, value, detail) => `<div class="factor"><div class="f-l">${label}</div>`
   + `<div class="f-v ${lv ? tone(lv) : 'na'}">${value}</div>${detail ? `<div class="f-d">${detail}</div>` : ''}</div>`;
-// The rest of a row's explanation, after the sentence with its figures: one tap away, word for word.
-const explain = body => `<details class="more"><summary>What this means</summary><p>${body}</p></details>`;
-// A row's first sentence in view and the rest folded, with anything more (more) at the fold's end.
-const firstThen = ([first, ...rest], more = '') => { const body = [...rest, more].filter(Boolean).join(' ');
-  return first + (body ? explain(body) : ''); };
-// What the strip's cells show, in the fold of the row they go with: the water row where E. coli is
-// estimated, else the spills row. Under the strip itself only the † sentence stays (strip).
-const stripNote = d => !daily(d) ? 'The days above show the rain here in the previous 48 h; there is no daily forecast.'
-  : ecoliTested(d) ? 'The figure under each day above is this chance. Pick a day for its details.'
-  : 'The days above show each day\'s level and the rain here in the previous 48 h. Pick a day for its details.';
-function factors(d) {
-  const rows = [], note = ecoliTested(d) ? '' : stripNote(d);
-  if (d.error) rows.push(factorRow('Sewage spills', null, 'Not covered', esc(d.error)));
-  else if (!overflows(d)) rows.push(factorRow('Sewage spills', null, 'None monitored', firstThen(summary(d), note)));
-  else { const sp = [ORDER[d.now.label] !== undefined ? d.now.label : null, ...d.days.slice(0, 2).map(x => hasData(x) ? x.label : null)].reduce(higher, null);
-    rows.push(factorRow('Sewage spills upstream', sp, sp ? `${cap(sp)} risk` : 'No data', firstThen(summary(d), note))); }
-  return `<div class="factors">${rows.join('')}${water(d, d.days.slice(0, 2), ecoliTested(d) ? stripNote(d) : '')}${standing(d)}</div>`;
-}
+// The rest of a row's explanation, after the sentence with its figures: one tap away, word for word,
+// under a name of its own (what), since a page can hold several.
+const explain = (what, body) => `<details class="more"><summary>${what}</summary><p>${body}</p></details>`;
+// A spot without a forecast (an isolated lake, a failed run): why, in the headline's words. Its rating
+// and algae are tiles, as on any spot's page (facts).
+const factors = d => `<div class="factors">${factorRow('Sewage spills', null, coverage(d), esc(d.error))}</div>`;
 // The calibrated number, over the days given: it counts bacteria from any source, so rain can
 // raise it when the spills are low. Rivers with overflows upstream only, the case it was tested on.
-// note: what the strip's figure is, for the summary's water row (factors), not a picked day's.
-function water(d, days, note = '') {
+function water(d, days) {
   if (ecoliTested(d)) {
-    // The row keeps the figure's own band in any month; out of season it is marked † and the
-    // sentence says it does not set the level (levels.js, ecoliLevel).
-    const ds = days.filter(x => !nil(x.p_ecoli_gt900)), wq = ds.map(x => ecoliBand(d, x)).reduce(higher, null);
-    const off = ds.some(ecoliUntested);
+    // The figure's own band in season. From October to April nothing tests it and it does not set the
+    // level (levels.js, ecoliLevel), so its band is not given either: "Very high risk" under a "Low
+    // risk" answer read as a contradiction. The figure stays, marked †.
+    const ds = days.filter(x => !nil(x.p_ecoli_gt900)), off = ds.some(ecoliUntested);
+    const wq = off ? null : ds.map(x => ecoliBand(d, x)).reduce(higher, null);
     // The value is a risk, said so: beside "Water quality", a bare "Very high" read as very good water.
-    return factorRow('Water quality', wq, wq ? `${cap(wq)} risk` + (off ? '†' : '') : 'No data', !ds.length ? 'No rainfall forecast has arrived, so there is no estimate.'
+    return factorRow('Water quality', wq, !ds.length ? 'No data' : off ? 'Out of season†' : `${cap(wq)} risk`, !ds.length ? 'No rainfall forecast has arrived, so there is no estimate.'
       : `Chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml: ${ds.map(x => `<b>${Math.round(x.p_ecoli_gt900 * 100)}%</b> ${dayWord(x.date)}`).join(', ')}.`
-      + explain(`${note ? note + ' ' : ''}The minimum bathing-water standard lets about one sample in ten be over 900.${off ? ' † The EA takes no samples from October to April, so nothing tests this estimate now: it is shown, but it does not set the level above.' : ''} <a href="#about-ecoli">What this counts</a>`));
+      + explain('About this estimate', `The minimum bathing-water standard lets about one sample in ten be over 900.${off ? ' † The Environment Agency takes no samples from October to April, so nothing tests this estimate now: it is shown, but it does not set the level above.' : ''} <a href="#about-ecoli">What this counts</a>`));
   }
   if (d.error) return '';
   return factorRow('Water quality', null, 'Not estimated', (d.location || {}).mode === 'lake'
     ? 'The E.&nbsp;coli model showed no skill on lakes, so there is no daily estimate here.'
     : 'Estimated only on rivers with monitored overflows upstream, the case the model was tested on.');
 }
-// What holds on every day: the algae at the last check and the EA's rating.
-function standing(d) {
+// A water rated poor: the advice in view, in season with its first words in bold (levels.js, poorAdvice).
+const poorLine = iso => poorAdvice(iso).replace(/^Advice against bathing applies here/, '<b>$&</b>');
+// What holds on every day: the algae at the last check and the EA's rating, on the day picked (iso).
+function standing(d, iso) {
   const rows = [], c = classOf(d), cl = d.classification || {};
   const al = algaeLevel(d);
   if (al) rows.push(factorRow('Algae at the last check', al, `${cap(al)} risk`, `The EA sampler saw ${esc(d.algae.phrase)} on ${new Date(d.algae.date + 'T12:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'short'})}. Some algae are toxic; the check cannot tell which.`));
@@ -1022,8 +1018,8 @@ function standing(d) {
   const live = cl.url ? ` <a href="${esc(cl.url)}">The EA's page</a> has its latest samples and any short-term advice against bathing, after pollution or algae, which this page does not include.` : '';
   // The advice stays in view; how the rating is made, and the years before it, fold.
   if (c) rows.push(factorRow(`Environment Agency rating, ${cl.year}`, CLASS_LEVEL[c], cap(c),
-    ((c === 'poor' ? '<b>Advice against bathing applies here</b> while the rating is poor, and should be shown on signs at the water.' : '') + live).trim()
-    + explain(`From its lab samples over up to four seasons${ratingHistory(cl)}.`)));
+    ((c === 'poor' ? poorLine(iso) : '') + live).trim()
+    + explain('How it is rated', `From its lab samples over up to four seasons${ratingHistory(cl)}.`)));
   else if (d.classification) rows.push(factorRow('Environment Agency rating', null, 'Not yet rated', `A designated bathing water too new to have a rating.${live}`));
   return rows.join('');
 }
@@ -1044,16 +1040,16 @@ function ratingHistory(cl) {
 // A water-quality figure from October to April, when nothing tests it, is marked †.
 const untested = x => ecoliUntested(x) && !nil(x.p_ecoli_gt900);
 const anyUntested = d => ecoliTested(d) && d.days.slice(0, 5).some(untested);
-const UNTESTED_NOTE = '† Untested outside May to September, when the EA takes no samples, so it does not set the level.';
+const UNTESTED_NOTE = '† Untested outside May to September, when the Environment Agency takes no samples, so it does not set the level.';
 // Out of season the water-quality figure is not in the level, so a list row names it, marked †.
 const waterEst = s => { if (!ecoliTested(s)) return ''; const x = VIEW.day ? s.days.find(y => y.date === VIEW.day) : s.days[0];
-  return x && untested(x) ? `E.&nbsp;coli risk ${Math.round(x.p_ecoli_gt900 * 100)}%†` : ''; };
+  return x && untested(x) ? `E.&nbsp;coli estimate ${Math.round(x.p_ecoli_gt900 * 100)}%†` : ''; };
 // The week at a glance in a list row: one bar per day, coloured by level. Where no overflow can
 // reach the spot there is no level to colour, so the bars show the rain instead (40 mm fills one).
 const week = s => {
   if (!s.days || !s.days.length) return '';
   if (!daily(s)) { if (!s.days.some(x => !nil(x.rain_48h_mm))) return '';
-    return `<span class="week rain" aria-hidden="true" title="Rain in the 48 hours before each day">${s.days.slice(0, 5).map((x, i) =>
+    return `<span class="week rain" aria-hidden="true" title="Rain in the 48 hours to midday each day">${s.days.slice(0, 5).map((x, i) =>
       `<span class="wk${i ? '' : ' first'}"><i style="--h:${nil(x.rain_48h_mm) ? 3 : Math.round(3 + 21 * Math.min(1, x.rain_48h_mm / 40))}px"></i><b>${initial(x.date)}</b></span>`).join('')}</span>`; }
   if (ORDER[level(s)] === undefined) return '';
   return `<span class="week" aria-hidden="true">${s.days.slice(0, 5).map((x, i) => { const lv = risk(s, x).level;
@@ -1102,31 +1098,15 @@ function answerParts(d, iso = null) {
     const when = (iso === today() ? 'Today, ' : iso === addDays(today(), 1) ? 'Tomorrow, ' : '')
       + new Date(iso + 'T12:00:00').toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
     return { word: r.level ? cap(r.level) : null, tone: r.level ? tone(r.level) : 'na', head: 'No forecast for this day',
-      sub: !r.level ? '' : r.by === 'record' ? 'Rated poor: advice against bathing' : rank(r.level) > 0 ? cap(because(r)) : '', next: when };
+      sub: !r.level ? '' : r.by === 'record' ? `Rated poor: ${poorReason(iso)}` : rank(r.level) > 0 ? cap(because(r)) : '', next: when };
   }
   const l = level(d), [h, w] = headParts(d);
   if (ORDER[l] === undefined) return { word: null, tone: headTone(d), head: h, sub: w ? cap(w) : '', next: '' };
   // headParts gives the level, "risk" and when ("High risk today") and what set it, or a rating, or the week.
   const lead = `${cap(l)} risk`, when = h.startsWith(lead + ' ') ? h.slice(lead.length + 1) : '';
-  const sub = h === 'Rated poor' ? 'Rated poor: advice against bathing' : h.startsWith('Rated ') ? h
+  const sub = h === 'Rated poor' ? `Rated poor: ${w}` : h.startsWith('Rated ') ? h
     : h.startsWith('Low risk now') ? 'Today and tomorrow' : /^Low risk (for|on every)/.test(h) ? cap(when) : [w && cap(w), when].filter(Boolean).join(' ');
   return { word: cap(l), tone: tone(l), head: '', sub, next: weekNext(d) };
-}
-// Where the five days go from the answer, as Apple's high and low: the day a raised level falls to low
-// (or to its lowest), or the later day a low one rises.
-function weekNext(d) {
-  if (advisedAgainst(d)) return 'All season, while the rating is poor';
-  if (!daily(d)) return '';
-  const ds = d.days.slice(0, 5).filter(hasData).map(x => ({ x, l: risk(d, x).level })).filter(o => o.l), l0 = level(d);
-  if (!ds.length) return '';
-  if (rank(l0) >= 1) {
-    const after = ds.slice(Math.max(0, ds.findIndex(o => o.l === l0)) + 1);
-    const to = after.find(o => o.l === 'low') || after.reduce((a, b) => rank(b.l) < rank(a ? a.l : l0) ? b : a, null);
-    if (!to) return ds.every(o => o.l === l0) ? `${cap(l0)} risk on all five days` : '';
-    return `${cap(to.l)} risk ${to.x.date === addDays(today(), 1) ? 'tomorrow' : 'by ' + dayName(to.x.date)}`;
-  }
-  const later = laterDay(d);
-  return later ? `${cap(later[0].level)} risk on ${dayName(later[1].date)}` : '';
 }
 // The sentence over the five days, as Apple's over its hours: what the overflows upstream are expected
 // to do, not the headline again. A water rated poor says first that every day is at least high; a spot
@@ -1139,25 +1119,25 @@ function daysSentence(d) {
   const down = e.every((v, i) => !i || v <= e[i - 1] + .05), up = e.every((v, i) => !i || v >= e[i - 1] - .05);
   const trend = most < 1 || e.length < 2 ? '' : down ? ', fewer each day after' : up ? ', more each day after'
     : peak !== known[0] ? `, about ${Math.round(most)} ${dayWord(peak.date)}` : '';
-  return (advisedAgainst(d) ? 'Rated poor, so every day is at least high: advice against bathing applies all season. ' : '')
+  return (advisedAgainst(d) ? `Rated poor, so every day is at least high risk${inBathingSeason(today()) ? ': advice against bathing applies' : ''}. ` : '')
     + `${cap(spilling(known[0], total))} ${dayWord(known[0].date)}${trend}.`;
 }
 // A day's place on its bar, 0 to 1: four equal bands, the day in its level's band, placed in it by
-// what set the level: the spill exposure (bands at 15, 40 and 70 of 100), the E. coli chance where it
-// counts (10, 25 and 50%), the foot of high for a water rated poor, the algae. So the bar always agrees
+// what set the level: the exposure index (bands at SPILL_CUTS, 15, 40 and 70 of 100), the E. coli estimate
+// where it counts (ECOLI_CUTS, 10, 25 and 50%), the foot of high for a water rated poor, the algae. So the bar always agrees
 // with the word beside it; drawn from the spills alone, a water rated poor showed "High" by an empty bar.
 const inBand = (v, cuts) => { for (let i = 0; i < 4; i++) if (v < cuts[i + 1] || i === 3) return Math.min(1, (i + Math.max(0, Math.min(1, (v - cuts[i]) / (cuts[i + 1] - cuts[i])))) / 4); };
 function levelPlace(d, x) {
   if (!hasData(x)) return 0;
-  let p = inBand(x.risk * 100, [0, 15, 40, 70, 100]);
-  if (ecoliLevel(d, x)) p = Math.max(p, inBand(x.p_ecoli_gt900 * 100, [0, 10, 25, 50, 100]));
+  let p = inBand(x.risk, [0, ...SPILL_CUTS, 1]);
+  if (ecoliLevel(d, x)) p = Math.max(p, inBand(x.p_ecoli_gt900, [0, ...ECOLI_CUTS, 1]));
   if (advisedAgainst(d)) p = Math.max(p, .5);
   const al = algaeLevel(d); if (al) p = Math.max(p, ORDER[al] / 4);
   const r = rank(risk(d, x).level);
   return r < 0 ? p : Math.min((r + 1) / 4, Math.max(r / 4, p));
 }
 // The five days as Apple's ten-day rows: the day, its level, its bar. Where nothing upstream can spill,
-// the rain in the 48 h before, as the list's week shows it. A day you can pick is a button: it opens
+// the rain in the 48 h to midday, as the list's week shows it. A day you can pick is a button: it opens
 // the day under the rows (showDay).
 const dayRows = d => { const on = daily(d);
   return `<div class="drows"${on ? ' id="day-strip" role="group" aria-label="Pick a day"' : ''}>` + d.days.slice(0, 5).map(x => {
@@ -1188,7 +1168,7 @@ const overflowDots = d => { const n = d.now || {}, total = overflows(d), dis = M
   const quiet = Math.max(0, Math.min(total, n.monitored_upstream ?? total) - dis - rec), off = Math.max(0, total - dis - rec - quiet);
   return `<div class="odots" style="--sz:${total <= 70 ? 7 : total <= 130 ? 5 : 4}px" role="img" aria-label="${dis} discharging, ${rec} finished in the last ${d.assumptions.recent_spill_hours} hours, ${quiet} quiet, ${off} not reporting">`
     + '<i class="dis"></i>'.repeat(dis) + '<i class="rec"></i>'.repeat(rec) + '<i></i>'.repeat(quiet) + '<i class="off"></i>'.repeat(off) + '</div>'; };
-// Rain in the 48 h before each of the five days (40 mm fills a column, as the list's week).
+// Rain in the 48 h to midday on each of the five days (40 mm fills a column, as the list's week).
 const rainCols = d => `<div class="rcols" aria-hidden="true">${d.days.slice(0, 5).map(x =>
   `<span><i style="height:${nil(x.rain_48h_mm) ? 2 : Math.max(2, Math.round(36 * Math.min(1, x.rain_48h_mm / 40)))}px"></i><b>${initial(x.date)}</b></span>`).join('')}</div>`;
 // The sun over the day, as Apple's sunset tile: a curve that crosses the horizon at sunrise and sunset,
@@ -1208,7 +1188,9 @@ const tile = o => `<div class="tile${o.wide ? ' wide' : ''}"><h2 class="t-lab">$
   + (o.fig === undefined ? '' : `<p class="t-fig${o.figTone ? ' ' + o.figTone : ''}">${o.fig}${o.unit ? `<small>${o.unit}</small>` : ''}${o.word ? `<span class="t-word ${o.wordTone || ''}">${o.word}</span>` : ''}</p>`)
   + (o.vis || '') + (o.say ? `<p class="t-say">${o.say}</p>` : '')
   + (o.credit ? '<p class="t-credit"><a href="https://open-meteo.com/">Weather data by Open-Meteo.com</a></p>' : '')
-  + (o.more ? `<details class="t-more"><summary><span class="sr">What this means</span></summary><p>${o.more}</p></details>` : '') + '</div>';
+  + (o.more ? `<details class="t-more"><summary><span class="sr">${o.label}: what this means</span></summary><p>${o.more}</p></details>` : '') + '</div>';
+// "Low under 15, moderate 15 to 40, high 40 to 70, very high 70 or more", from the cut-offs (f writes one).
+const bandWords = (c, f) => `Low under ${f(c[0])}, moderate ${f(c[0])} to ${f(c[1])}, high ${f(c[1])} to ${f(c[2])}, very high ${f(c[2])} or more`;
 // What the level rests on, and what else a swimmer asks: the EA's rating first where there is one,
 // then the spills and the water (the pair the level comes from), right now, the algae, the river, the
 // rain and the weather. Today's figures; a picked day's are under the five days (dayDetail).
@@ -1219,19 +1201,20 @@ function facts(d) {
   if (c) out.push({ wide: true, icon: ICON.rating, label: `Environment Agency rating, ${cl.year}`, fig: cap(c), figTone: tone(CLASS_LEVEL[c]),
     vis: `<div class="seasons">${(cl.history && cl.history.length ? cl.history : [[cl.year, c]]).slice(0, 4).reverse()
       .map(([yr, k]) => `<span class="${tone(CLASS_LEVEL[k] || '')}"><i></i>${yr}<b>${cap(k)}</b></span>`).join('')}</div>`,
-    say: ((c === 'poor' ? '<b>Advice against bathing applies here</b> while the rating is poor, and should be shown on signs at the water.' : '') + ea).trim(),
+    say: ((c === 'poor' ? poorLine(today()) : '') + ea).trim(),
     more: `From its lab samples over up to four seasons${ratingHistory(cl)}.` });
   else if (d.classification) out.push({ wide: true, icon: ICON.rating, label: 'Environment Agency rating', fig: 'Not yet rated', say: `A designated bathing water too new to have a rating.${ea}` });
   if (!d.error && !total) out.push({ icon: ICON.spills, label: 'Sewage spills', fig: '0', unit: 'overflows upstream',
     say: `None monitored within ${d.assumptions.max_upstream_km}&nbsp;km upstream.`, more: 'Risk from farms, wildlife and unmonitored sources is not modelled.' });
   else if (!d.error && x0 && hasData(x0)) { const i = x0.risk * 100;
     out.push({ icon: ICON.spills, label: 'Sewage spills', fig: i > 0 && i < .5 ? '&lt;1' : Math.round(i), unit: 'of 100', word: `${cap(x0.label)} risk`, wordTone: tone(x0.label),
-      vis: scaleBar(x0.risk, [.15, .40, .70], x0.label, `Exposure index ${Math.round(i)} of 100: ${x0.label}`),
+      vis: scaleBar(x0.risk, SPILL_CUTS, x0.label, `Exposure index ${Math.round(i)} of 100: ${x0.label}`),
       say: `${cap(spilling(x0, total))} today.`,
-      more: 'The exposure index, 0 to 100: the modelled chance that a spill from an overflow upstream reaches the spot, after travel time, die-off and dilution. Low under 15, moderate 15 to 40, high 40 to 70, very high 70 or more. <a href="#about-exposure">What this counts</a>' }); }
-  if (!d.error && ecoliTested(d) && x0 && !nil(x0.p_ecoli_gt900)) { const b = ecoliBand(d, x0), off = untested(x0);
-    out.push({ icon: ICON.water, label: 'Water quality', fig: pct(x0.p_ecoli_gt900) + '%', word: `${cap(b)} risk${off ? '†' : ''}`, wordTone: tone(b),
-      vis: scaleBar(x0.p_ecoli_gt900, [.10, .25, .50], b, `${pct(x0.p_ecoli_gt900)}% chance: ${b} risk`),
+      more: `The exposure index, a 0–100 score of how likely sewage from upstream is to reach the spot, after travel time, die-off and dilution. ${bandWords(SPILL_CUTS, c => Math.round(c * 100))}. <a href="#about-exposure">What this counts</a>` }); }
+  // Out of season the figure stays but its band does not (water): it does not set the level.
+  if (!d.error && ecoliTested(d) && x0 && !nil(x0.p_ecoli_gt900)) { const off = untested(x0), b = off ? null : ecoliBand(d, x0);
+    out.push({ icon: ICON.water, label: 'Water quality', fig: pct(x0.p_ecoli_gt900) + '%', word: off ? 'Out of season†' : `${cap(b)} risk`, wordTone: off ? '' : tone(b),
+      vis: scaleBar(x0.p_ecoli_gt900, ECOLI_CUTS, b, `${pct(x0.p_ecoli_gt900)}% chance: ${off ? 'out of season, untested' : b + ' risk'}`),
       say: `Chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml today${x1 && !nil(x1.p_ecoli_gt900) ? `; ${pct(x1.p_ecoli_gt900)}% tomorrow` : ''}.${off ? ' ' + UNTESTED_NOTE : ''}`,
       more: 'The minimum bathing-water standard lets about one sample in ten be over 900. <a href="#about-ecoli">What this counts</a>' }); }
   else if (!d.error) out.push({ icon: ICON.water, label: 'Water quality', fig: '–', unit: ecoliTested(d) ? 'no estimate' : 'not estimated',
@@ -1243,24 +1226,35 @@ function facts(d) {
   const a = d.algae;
   if (a) { const thisYear = +today().slice(0, 4), age = (Date.parse(today()) - Date.parse(a.date)) / 864e5, season = a.season === thisYear ? 'this season' : `in the ${a.season} season`;
     const when = new Date(a.date + 'T12:00:00').toLocaleDateString('en-GB', a.season === thisYear ? { day: 'numeric', month: 'short' } : { day: 'numeric', month: 'short', year: 'numeric' });
-    out.push({ icon: ICON.algae, label: 'Algae at the last check', fig: cap(a.phrase), figTone: a.level >= 3 ? 'high' : '',
+    out.push({ icon: ICON.algae, label: 'Algae at the last check', fig: cap(a.phrase), figTone: algaeLevel(d) ? tone(algaeLevel(d)) : '',
       say: `The EA sampler's look, ${when}. ${a.n_seen ? `Seen at ${a.n_seen} of ${a.n_checks} checks ${season}${a.n_objectionable ? `, ${a.n_objectionable} of them enough to be objectionable` : ''}.`
         : `None seen at any of ${a.n_checks} check${a.n_checks === 1 ? '' : 's'} ${season}.`} It cannot tell blue-green algae, which can be toxic, from harmless kinds.`,
       more: `${age > 14 ? 'No check since: the EA checks bathing waters from May to September, and results take about a week to be published. ' : ''}A look at the water, not a lab test.` }); }
-  const rs = d.river_state;
-  if (rs && !nil(rs.level_m)) { const at = rs.observed_at ? new Date(rs.observed_at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-    out.push({ icon: ICON.level, label: 'River level', fig: fmt(rs.level_m, 2), unit: 'm', wordTone: rs.label === 'high' || rs.label === 'very high' ? 'veryhigh' : 'plain',
-      word: ({ low: 'Low', normal: 'Normal', high: 'High', 'very high': 'Very high' }[rs.label] || '') + (rs.label === 'very high' ? ', above its usual range' : ''),
-      vis: nil(rs.typical_low_m) || nil(rs.typical_high_m) ? '' : rangeBar(rs),
-      say: `Not part of the pollution level. Gauge at ${esc(rs.station)}${rs.river ? ` on the ${esc(rs.river)}` : ''}, ${rs.distance_km}&nbsp;km away${rs.same_river === false ? ', on a different watercourse' : ''}${at ? `, ${at}` : ''}.`,
-      more: `A high river runs faster and colder, and after rain it can rise quickly.${rs.rloi ? ` <a href="https://check-for-flooding.service.gov.uk/station/${encodeURIComponent(rs.rloi)}">The EA's page for this gauge</a> has the last five days.` : ''}` }); }
+  const rt = riverTile(d.river_state); if (rt) out.push(rt);
   if (!d.error && total && x0 && !nil(x0.rain_48h_mm)) { const wet = d.days.slice(0, 5).reduce((p, q) => (q.rain_48h_mm || 0) > (p.rain_48h_mm || 0) ? q : p);
     out.push({ icon: ICON.rain, label: 'Rain here', fig: Math.round(x0.rain_48h_mm), unit: 'mm', vis: rainCols(d),
-      say: `In the 48&nbsp;h before today.${wet !== x0 && wet.rain_48h_mm >= 1 ? ` Wettest ${dayName(wet.date)}, ${Math.round(wet.rain_48h_mm)}&nbsp;mm.` : ''}` }); }
+      say: `In the 48&nbsp;h to midday today.${wet !== x0 && wet.rain_48h_mm >= 1 ? ` Wettest ${dayName(wet.date)}, ${Math.round(wet.rain_48h_mm)}&nbsp;mm.` : ''}` }); }
   const wx = weatherOn(d, today());
   if (wx) out.push({ icon: ICON.sun, label: 'Weather', fig: nil(wx.tmax) ? '–' : `${wx.tmax}°`, unit: nil(wx.tmax) ? '' : 'high', vis: sunPath(wx),
     say: `Sunrise ${esc(wx.sunrise)}, sunset ${esc(wx.sunset)}.`, credit: true });
   return out;
+}
+// The River level tile, or null without a reading. A reading the build found over a day old (stale,
+// from attach_river_levels) is not the level now: the tile stays, so the gauge is still named and
+// linked, but with no figure, no word and no range, and says how old the last reading is.
+function riverTile(rs) {
+  if (!rs || (!rs.stale && nil(rs.level_m))) return null;
+  const at = rs.observed_at ? new Date(rs.observed_at).toLocaleString('en-GB', { weekday: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  const gauge = `Gauge at ${esc(rs.station)}${rs.river ? ` on the ${esc(rs.river)}` : ''}, ${rs.distance_km}&nbsp;km away${rs.same_river === false ? ', on a different watercourse' : ''}`;
+  const more = `A high river runs faster and colder, and after rain it can rise quickly.${rs.rloi ? ` <a href="https://check-for-flooding.service.gov.uk/station/${encodeURIComponent(rs.rloi)}">The Environment Agency's page for this gauge</a> has the last five days.` : ''}`;
+  if (rs.stale) { const h = rs.age_hours, n = nil(h) ? null : h <= 24 ? Math.round(h) : Math.round(h / 24), unit = nil(h) ? '' : h <= 24 ? 'hour' : 'day';
+    return { icon: ICON.level, label: 'River level', fig: '–', unit: 'no current reading',
+      say: `${n === null ? 'The last reading is old' : `Last reading ${n} ${unit}${n === 1 ? '' : 's'} ago`}, not shown as current. Not part of the pollution level. ${gauge}.`, more }; }
+  // Words of its own, in ink: "High" in a level's colour, on a page of pollution levels, read as one.
+  return { icon: ICON.level, label: 'River level', fig: fmt(rs.level_m, 2), unit: 'm', wordTone: 'plain',
+    word: ({ low: 'Low water', normal: 'Usual level', high: 'High water', 'very high': 'Very high water' }[rs.label] || '') + (rs.label === 'very high' ? ', above its usual range' : ''),
+    vis: nil(rs.typical_low_m) || nil(rs.typical_high_m) ? '' : rangeBar(rs),
+    say: `Not part of the pollution level. ${gauge}${at ? `, ${at}` : ''}.`, more };
 }
 // The answer's words, which a picked day fills again (showDay).
 const answerWords = (d, iso = null) => { const m = answerParts(d, iso);
@@ -1274,7 +1268,7 @@ const answerWords = (d, iso = null) => { const m = answerParts(d, iso);
 function bestDayNote(spots, yours = false) {
   const b = bestDay(spots, [0, 1, 2, 3, 4].map(k => addDays(today(), k)));
   if (!b || (yours ? b.known < 2 : !b.low)) return '';
-  return `Lowest pollution risk this week: <b>${dateLabel(b.date)}</b>${yours ? `, when ${b.low} of your ${b.known} spots ${b.low === 1 ? 'is' : 'are'} low.` : ''}`
+  return `Lowest pollution risk this week: <b>${dateLabel(b.date)}</b>${yours ? `, when ${b.low} of your ${b.known} spots ${b.low === 1 ? 'is' : 'are'} at low risk.` : ''}`
     + `<span class="pick"${VIEW.day === b.date ? ' hidden' : ''}>${yours ? ' ' : ' · '}<button type="button" class="linkbtn small" data-pick-day="${b.date}" aria-label="Show ${dateLabel(b.date)}">Show</button></span>`;
 }
 // The button, with the dot before it, shows while another day is picked: setMapDay keeps it in step.
@@ -1288,7 +1282,8 @@ const bindBestDay = () => document.querySelectorAll('[data-pick-day]').forEach(b
 // for the swimmer, and the way to say later how the water really was (the feedback link carries
 // the spot and the day).
 const SWIM_KEY = 'dipcast.swims';
-const swims = () => { try { return JSON.parse(localStorage.getItem(SWIM_KEY) || '[]'); } catch (e) { return []; } };
+const swims = () => { try { return storedList(localStorage.getItem(SWIM_KEY), x => !!x && typeof x.id === 'string' && typeof x.date === 'string'); }
+  catch (e) { return []; } };
 const storeSwims = list => { try { localStorage.setItem(SWIM_KEY, JSON.stringify(list.slice(-200))); return true; } catch (e) { return false; } };
 const swamOn = (id, iso) => swims().some(x => x.id === id && x.date === iso);
 function logSwim(d) { const l = dayLevel(d, today()), list = swims().filter(x => !(x.id === d.id && x.date === today()));
@@ -1354,17 +1349,19 @@ async function shareImage(d) {
   if (why) { g.fillStyle = v('--muted'); g.font = `600 36px ${F}`; y = wrapText(g, cap(why), 60, y + 6, W - 120, 46); }
   const days = d.days.slice(0, 5), on = daily(d), pct = ecoliTested(d), cw = (W - 120) / 5; y += 30;
   days.forEach((x, i) => { const lx = 60 + i * cw, dl = on ? risk(d, x).level : null;
-    if (i) { g.fillStyle = v('--line'); g.fillRect(lx, y, 2, 190); }
+    if (i) { g.fillStyle = v('--line'); g.fillRect(lx, y, 2, 230); }
     g.fillStyle = dl ? colour(dl) : v('--unknown'); g.fillRect(lx, y, cw, 12);
     g.textAlign = 'center'; g.fillStyle = v('--muted'); g.font = `600 30px ${F}`; g.fillText(shortDay(x.date), lx + cw / 2, y + 62);
+    // The level, with "risk" under it: "Very high" alone read as very high what.
     g.fillStyle = dl ? v(`--k-${tone(dl)}`) : v('--muted'); g.font = `700 32px ${F}`; g.fillText(!on ? '–' : dl ? cap(dl) : 'No data', lx + cw / 2, y + 112);
+    if (dl) g.fillText('risk', lx + cw / 2, y + 150);
     const r = pct ? (nil(x.p_ecoli_gt900) ? '–' : Math.round(x.p_ecoli_gt900 * 100) + '%' + (untested(x) ? '†' : '')) : nil(x.rain_48h_mm) ? '–' : Math.round(x.rain_48h_mm) + ' mm';
-    g.fillStyle = v('--muted'); g.font = `600 28px ${F}`; g.fillText(r, lx + cw / 2, y + 160); g.textAlign = 'left'; });
-  if (days.length) y += 190 + 40;
+    g.fillStyle = v('--muted'); g.font = `600 28px ${F}`; g.fillText(r, lx + cw / 2, y + 200); g.textAlign = 'left'; });
+  if (days.length) y += 230 + 40;
   g.fillStyle = v('--muted'); g.font = `500 28px ${F}`;
-  if (days.length) y = wrapText(g, (pct ? 'The level each day, and the chance a water sample would show E. coli over 900 per 100 ml' : on ? 'The level each day, and rain in the previous 48 h' : 'Rain in the previous 48 h')
+  if (days.length) y = wrapText(g, (pct ? 'Pollution risk each day, and the chance a water sample would show E. coli over 900 per 100 ml' : on ? 'Pollution risk each day, and rain in the 48 h to midday' : 'Rain in the 48 h to midday')
     + (anyUntested(d) ? '. † Untested outside May to September, so it does not set the level.' : '.'), 60, y, W - 120, 38);
-  y = wrapText(g, `Forecast issued ${new Date(DATA.generated_at).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. A forecast of sewage-overflow risk, not a water test: check the signs at the water.`, 60, y + 16, W - 120, 38);
+  y = wrapText(g, `Forecast issued ${new Date(DATA.generated_at).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}. A pollution risk forecast, not a water test: check the signs at the water.`, 60, y + 16, W - 120, 38);
   // Cut the canvas to its content, then the address along the bottom.
   const out = document.createElement('canvas'); out.width = W; out.height = Math.min(H, Math.max(900, Math.round(y + 120)));
   const o = out.getContext('2d'); o.drawImage(c, 0, 0);
@@ -1403,7 +1400,7 @@ function howSure(d, j) {
   if (!j || !k) return '';
   return factorRow('How far ahead', null, `${j} day${j === 1 ? '' : 's'}`, `In tests on past years, spill forecasts this far ahead were about ${r5(k.spill[j])} as good as same-day ones`
     + (ecoliTested(d) ? `, and water-quality ones about ${r5(k.water[j])}` : '') + '.'
-    + explain('The comparison goes by how much each beat a guess from the usual rates. The rain forecast behind it can still change.'));
+    + explain('How this was measured', 'The comparison goes by how much each beat a guess from the usual rates. The rain forecast behind it can still change.'));
 }
 function dayDetail(d, x) {
   const total = overflows(d), first = x.date === today(), rows = [], j = d.days.indexOf(x);
@@ -1420,12 +1417,11 @@ function dayDetail(d, x) {
   rows.push(weatherRow(d, x.date));
   rows.push(howSure(d, j));
   return `<div class="dd-head"><h2 class="dd-t">${when}</h2><button type="button" class="linkbtn" id="day-close">Close</button></div>`
-    + `<div class="factors">${rows.join('')}${standing(d)}</div>`;
+    + `<div class="factors">${rows.join('')}${standing(d, x.date)}</div>`;
 }
 // The open day is in the address (spot/<id>/#day=2026-10-01), so a link can open it. After the #,
 // so it never reaches a server; a day that has left the forecast opens the summary.
 const dayFromURL = () => { const m = location.hash.match(/^#day=(\d{4}-\d{2}-\d{2})$/); return m ? m[1] : null; };
-const dayName = iso => dayWord(iso).replace(/^on /, '');
 // Open a day in the spot's five days (iso), or the summary (null): the answer gives the day's level,
 // what set it and the date, and the day's rows open under the five days.
 function showDay(d, iso) {
@@ -1495,13 +1491,13 @@ async function loadOverflows() {
 // Offline the layer is not stored (6 MB): the map then shows the spots without it.
 map.on('moveend', () => loadOverflows().catch(() => { ovLayer.clearLayers(); ovKey(false); }));
 
-// The colour key: the map's legend, the six keys in one line. The list needs none: each row says its
-// level in words. The day the colours show is in the picker above. The overflows' key joins it while
+// The colour key: the map's legend, its title and the six keys in one line. The title is what lets the
+// keys be bare level words (docs/DESIGN.md, Words). The list needs none: each row says its level in words. The day the colours show is in the picker above. The overflows' key joins it while
 // overflows are on the map (loadOverflows), and not before, so the legend is one line until then.
 const KEY = [['low','Low'], ['moderate','Moderate'], ['high','High'], ['very high','Very high'], [NO_OVERFLOWS, 'No overflows upstream'], ['', 'No level']];
 const legend = L.control({ position: 'bottomleft' });
 legend.onAdd = () => { const el = L.DomUtil.create('div', 'map-legend');
-  el.innerHTML = `<div class="keys">${KEY.map(([l, t]) => `<span><span class="dot" style="background:${colour(l)}"></span>${t}</span>`).join('')}</div>`
+  el.innerHTML = `<div class="keys"><b>Pollution risk</b>${KEY.map(([l, t]) => `<span><span class="dot" style="background:${colour(l)}"></span>${t}</span>`).join('')}</div>`
     + `<div class="ovkey" hidden>Storm overflows: <span class="dot sm" style="background:${colourFor(1)}"></span>discharging<span class="dot sm" style="background:${colourFor(0)}"></span>not discharging<span class="dot sm" style="background:${colourFor(-1)}"></span>offline</div>`;
   L.DomEvent.disableClickPropagation(el); return el; };
 legend.addTo(map);
@@ -1514,9 +1510,9 @@ const MARKERS = new Map();
 const mapLevel = s => VIEW.day ? dayLevel(s, VIEW.day) : level(s);
 const mapWhen = () => VIEW.day ? dayWord(VIEW.day) : 'today and tomorrow';
 const lowLabel = () => 'Low risk';
-const lowListNote = () => `Low risk from pollution ${mapWhen()}, going by the forecasts and the EA's ratings. Not a safety check: look at the signs at the water before you swim.`;
-const markerTip = s => { const l = mapLevel(s);
-  return `${esc(s.name)}: ${!VIEW.day ? headline(s) : ORDER[l] !== undefined ? `${cap(l)} risk ${dayWord(VIEW.day)}` : `no level ${dayWord(VIEW.day)}`}`; };
+const lowListNote = () => `Low risk from pollution ${mapWhen()}, going by the forecasts and the Environment Agency's ratings. Not a safety check: look at the signs at the water before you swim.`;
+// A marker's tooltip: the name and the list row's headline, so the map and the list say the same.
+const markerTip = s => `${esc(s.name)}: ${listHeadline(s)}`;
 function styleMarkers() {
   for (const s of DATA.spots) {
     const m = MARKERS.get(s.id), lv = mapLevel(s), on = !VIEW.lowOnly || lv === 'low'; if (!m) continue;
@@ -1530,7 +1526,7 @@ function styleMarkers() {
   if (b) { b.setAttribute('aria-pressed', String(VIEW.lowOnly)); b.querySelector('.n').textContent = DATA.spots.filter(s => mapLevel(s) === 'low').length; }
   document.querySelectorAll('[data-low]').forEach(x => x.setAttribute('aria-pressed', String(VIEW.lowOnly)));
   document.querySelectorAll('[data-low-t]').forEach(x => { x.textContent = lowLabel(); });
-  document.getElementById('low-note').textContent = `Low risk ${mapWhen()} from pollution. Not a safety check: currents, cold water and the EA's short-term warnings are not included.`;
+  document.getElementById('low-note').textContent = `Low risk ${mapWhen()} from pollution. Not a safety check: currents, cold water and the Environment Agency's short-term warnings are not included.`;
 }
 function setMapDay(iso) {
   VIEW.day = iso || null;
@@ -1550,7 +1546,7 @@ const lowCtl = L.control({ position: 'topright' });
 lowCtl.onAdd = () => { const el = L.DomUtil.create('div', 'low-ctl');
   el.innerHTML = `<label class="sr" for="mapday">Day shown on the map</label><select id="mapday"><option value="">Today and tomorrow</option></select>`
     + `<button type="button" id="lowbtn" aria-pressed="false" aria-describedby="low-note"><span class="dot" style="background:${colour('low')}"></span>Low risk only <span class="n"></span></button>`
-    + `<p class="low-note" id="low-note">Low risk today and tomorrow from pollution. Not a safety check: currents, cold water and the EA's short-term warnings are not included.</p>`;
+    + `<p class="low-note" id="low-note">Low risk today and tomorrow from pollution. Not a safety check: currents, cold water and the Environment Agency's short-term warnings are not included.</p>`;
   L.DomEvent.disableClickPropagation(el);
   el.querySelector('button').addEventListener('click', () => setLowOnly(!VIEW.lowOnly));
   el.querySelector('select').addEventListener('change', e => setMapDay(e.target.value));
@@ -1600,13 +1596,13 @@ const SORTS = { risk: 'Highest risk', name: 'A–Z', near: 'Near me' };
 const BOOKMARK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>';
 const CHECK = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7"/></svg>';
 const saveLabel = on => BOOKMARK + (on ? 'Saved' : 'Save');
-const SEARCH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>';
+const SEARCH_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>';
 // The counts over the list, after when the forecast was issued: freshness where the list begins.
 function overview(spots) {
   const rated = spots.filter(s => ORDER[mapLevel(s)] !== undefined);
   const low = rated.filter(s => mapLevel(s) === 'low').length;
   const high = rated.filter(s => rank(mapLevel(s)) >= 2).length;
-  return `Updated ${issued()} · ${low} low · ${rated.length - low - high} moderate · ${high} high or very high · ${spots.length - rated.length} without a level. ${cap(mapWhen())}.`;
+  return `Updated ${issued()} · Pollution risk: ${low} low · ${rated.length - low - high} moderate · ${high} high or very high · ${spots.length - rated.length} without a level. ${cap(mapWhen())}.`;
 }
 // A chosen date must describe the same forecast in the list, on the map and in the detail link.
 const listHeadline = s => VIEW.day ? dayHeadline(s, VIEW.day) : headline(s);
@@ -1633,13 +1629,13 @@ function setView(v) {
 function renderList() {
   contribLayer.clearLayers(); selLayer.clearLayers(); current = null; shown = 'list';
   setView('list');
-  document.title = `${BRAND} · sewage-spill forecasts for swim spots`;
+  document.title = `${BRAND} · pollution risk forecasts for swim spots`;
   const saved = DATA.spots.filter(s => SAVED.has(s.id)), best = bestDayNote(DATA.spots);
   const sorts = Object.entries(SORTS).filter(([k]) => k !== 'near' || 'geolocation' in navigator);
   // The answer first: the intro and one row of controls, with one line under it (the caveat and the
   // week's best day), under the sky (.lead); then the saved spots, as cards on one tile, and all the
   // spots on another. The colour key went: each row says its level in words.
-  let h = `<div class="lead"><section class="intro"><h1>Check the water before you go</h1><p class="lede">Five-day pollution forecasts for ${DATA.spots.length} spots in England. <a href="#about">How it works</a></p>`
+  let h = `<div class="lead"><section class="intro"><h1>Check the water before you go</h1><p class="lede">Five-day pollution risk forecasts for ${DATA.spots.length} spots in England. <a href="#about">How it works</a></p>`
     + `<div class="search">${SEARCH_ICON}<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(VIEW.q)}"></div></section>`
     + `<div class="toolbar"><label class="sr" for="listday">When are you swimming?</label><select id="listday"><option value="">Today and tomorrow</option>${[0,1,2,3,4].map(k => addDays(today(), k)).map(iso => `<option value="${iso}"${VIEW.day === iso ? ' selected' : ''}>${dateLabel(iso)}</option>`).join('')}</select>`
     + `<button type="button" class="chip-btn low" data-low aria-pressed="${VIEW.lowOnly}" aria-describedby="low-note-list"><span class="dot" style="background:${colour('low')}"></span><span data-low-t>${lowLabel()}</span></button></div>`
@@ -1754,12 +1750,12 @@ function drawComparison() {
   const spots = COMPARE.ids.map(id => available.find(s => s.id === id));
   document.getElementById('compare-status').textContent = spots.length < 2 ? 'Choose at least two different saved spots.' : `${spots.length} spots · ${dateLabel(COMPARE.day)}. Scroll sideways to compare all columns.`;
   if (spots.length < 2) { box.innerHTML = ''; return; }
-  const rows = ['Forecast', 'Live spill feeds', 'EA rating', 'Water samples', 'Model limits', 'Algae observation', 'Local warnings'];
+  const rows = ['Forecast', 'Live spill feeds', 'Environment Agency rating', 'Water samples', 'Model limits', 'Algae observation', 'Local warnings'];
   const facts = spots.map(s => Object.fromEntries(evidenceRows(s,COMPARE.day,issued())));
   box.innerHTML = `<div class="compare-scroll" tabindex="0" role="region" aria-label="Spot comparison"><table class="compare-table"><caption>${dateLabel(COMPARE.day)} · issued ${issued()} (${ago(ageMin())} ago)</caption><thead><tr><th scope="col">Evidence</th>${spots.map(s => `<th scope="col"><a data-compare-spot="${esc(s.id)}" href="${esc(spotPath(s.id))}${daily(s) ? '#day='+COMPARE.day : ''}">${esc(s.name)}</a></th>`).join('')}</tr></thead><tbody>
     <tr><th scope="row">Pollution risk</th>${spots.map(s => `<td><b>${esc(dayHeadline(s,COMPARE.day))}</b></td>`).join('')}</tr>
     ${rows.map(label => `<tr><th scope="row">${label}</th>${facts.map(f => `<td>${esc(f[label])}</td>`).join('')}</tr>`).join('')}
-    <tr><th scope="row">Official advice</th>${spots.map(s => `<td>${s.classification?.url ? `<a href="${esc(s.classification.url)}">Check EA advice</a>` : 'Check local signs and the water manager; no EA bathing-water page linked.'}</td>`).join('')}</tr></tbody></table></div>`;
+    <tr><th scope="row">Official advice</th>${spots.map(s => `<td>${s.classification?.url ? `<a href="${esc(s.classification.url)}">Check Environment Agency advice</a>` : 'Check local signs and the water manager; no Environment Agency bathing-water page linked.'}</td>`).join('')}</tr></tbody></table></div>`;
   box.querySelectorAll('[data-compare-spot]').forEach(a => a.addEventListener('click', e => { if (!plainClick(e)) return; e.preventDefault(); select(a.dataset.compareSpot,true,true,COMPARE.day); }));
 }
 function refreshComparison() {
@@ -1779,7 +1775,7 @@ function renderSaved() {
   const spots = [...SAVED].map(id => DATA.spots.find(s => s.id === id)).filter(Boolean), gone = SAVED.size - spots.length;
   const offered = (INCOMING || []).map(id => DATA.spots.find(s => s.id === id)).filter(s => s && !SAVED.has(s.id));
   // The opening, under the sky (.lead), then the cards on the glass.
-  let h = `<div class="lead"><a href="${esc(ROOT.pathname)}" class="back" id="back">All spots</a><h1 class="page-h">Saved spots</h1>`
+  let h = `<div class="lead"><a href="${esc(ROOT.pathname)}" class="back" id="back">All spots</a><h1 class="page-h" tabindex="-1">Saved spots</h1>`
     + `<p class="lede">${spots.length ? `The next five days at ${spots.length === 1 ? 'your spot' : `your ${spots.length} spots`}` : 'Spots you save show here'}, `
     + `kept ${navigator.standalone ? 'in this Home Screen app, not in Safari' : 'in this browser'}.</p>`;
   if (offered.length) h += `<section class="offer" aria-labelledby="inc-h"><h2 class="sec-h" id="inc-h">A shared list</h2><p class="sub">Someone sent you ${offered.length === 1 ? 'a spot' : `${offered.length} spots`} to follow:</p>${listOf(offered)}`
@@ -1806,7 +1802,7 @@ function renderSaved() {
   setPanel(h);
   bindBack(); bindSavedPage(spots, offered); bindAlerts(); bindComparison(); bindBestDay(); bindSwims();
   for (const s of spots) L.circleMarker([s.lat, s.lon], { radius: 14, color: RING(), weight: 2.5, fill: false, interactive: false }).addTo(selLayer);
-  if (spots.length && !PHONE.matches) map.fitBounds(L.latLngBounds(spots.map(s => [s.lat, s.lon])), { padding: [60, 60], maxZoom: 11 });
+  if (spots.length && !PHONE.matches) map.fitBounds(L.latLngBounds(spots.map(s => [s.lat, s.lon])), { padding: [60, 60], maxZoom: 11, ...MOTION() });
   placeMap();
 }
 function bindSavedPage(spots, offered) {
@@ -1851,8 +1847,10 @@ function bindSavedPage(spots, offered) {
 }
 function openSaved() {
   if (mapMode()) setMapMode(false);
-  if (!onSavedPage()) { keepPlace(); history.pushState({ view: 'saved', from: shown }, '', savedPath()); }
+  const push = !onSavedPage();
+  if (push) { keepPlace(); history.pushState({ view: 'saved', from: shown }, '', savedPath()); }
   renderSaved(); scrollTop();
+  if (push) focusHeading();
 }
 document.getElementById('savedbtn').addEventListener('click', e => { if (!DATA || !plainClick(e)) return; e.preventDefault(); openSaved(); });
 
@@ -1876,10 +1874,15 @@ function select(id, fly=false, push=true, day=null) {
   L.circleMarker([s.lat, s.lon], { radius: 14, color: RING(), weight: 3, fill: false, interactive: false }).addTo(selLayer);
   // A phone's small map shows the spot with the overflows that matter most; a desktop's zooms in.
   const pts = [[s.lat, s.lon], ...(s.contributors || []).slice(0, 5).map(c => [c.lat, c.lon])];
-  if (PHONE.matches) map.fitBounds(L.latLngBounds(pts), { padding: [24, 24], maxZoom: 13 });
-  else if (fly) map.setView([s.lat, s.lon], Math.max(map.getZoom(), 12));
+  if (PHONE.matches) map.fitBounds(L.latLngBounds(pts), { padding: [24, 24], maxZoom: 13, ...MOTION() });
+  else if (fly) map.setView([s.lat, s.lon], Math.max(map.getZoom(), 12), MOTION());
   scrollTop();
+  // Opened from a link or a marker: the focus goes to the spot's name, not back to the top of the
+  // document, so a screen reader starts at the name and the next Tab goes on from it. (Back and
+  // Forward put the list's own focus back: restorePlace.)
+  if (push) focusHeading();
 }
+const focusHeading = () => { const h = document.querySelector('#result h1'); if (h) h.focus({ preventScroll: true }); };
 // Back (or Forward): the list or the Saved page where it was left, and the full map again if a spot
 // was opened from it here. The page on screen is still the one being left, so its place is kept
 // first; the view is read first too, since opening the spot below closes the map.
@@ -1902,8 +1905,8 @@ function bindSave(d) {
     const on = !SAVED.has(d.id), kept = setSaved(on ? [...SAVED, d.id] : [...SAVED].filter(x => x !== d.id));
     b.setAttribute('aria-pressed', String(on)); b.innerHTML = saveLabel(on);
     const m = document.getElementById('share-msg');
-    if (m) m.textContent = !kept ? 'This browser is not keeping site data, so the star lasts only for this visit.'
-      : on ? 'Saved on this device. All your saved spots are under Saved, top right.' : 'Removed from your saved spots.';
+    if (m) m.textContent = !kept ? 'This browser is not keeping site data, so this spot stays saved only for this visit.'
+      : on ? `Saved on this device. Your saved spots are under Saved, ${PHONE.matches ? 'in the bar at the bottom' : 'at the top of the page'}.` : 'Removed from your saved spots.';
   });
 }
 function actions(d) {
@@ -1939,30 +1942,31 @@ function tech(d) {
     ['Spill model', a.model], ['Lead-time calibration', a.lead_calibration === undefined ? null : a.lead_calibration ? 'on' : 'off'],
     ['E. coli model', e.n_samples ? `${e.target}, fitted on ${e.n_samples.toLocaleString()} samples` : null],
     ['Version', a.version]].filter(r => r[1] !== null && r[1] !== undefined && r[1] !== '');
-  return rows.length ? `<details class="more small"><summary>Technical details</summary><dl class="tech">${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl></details>` : '';
+  return rows.length ? `<details class="more small"><summary>Technical details</summary><dl class="tech">${rows.map(([k, v]) => `<dt>${k}</dt><dd${k === 'Version' ? ' class="mono"' : ''}>${esc(v)}</dd>`).join('')}</dl></details>` : '';
 }
 // Day by day, with the exposure index and the E. coli figure: folded away, one tap to open.
 function dayTable(d, total, isLake, scope) {
   let h = `<details class="tile fold"><summary><span class="t-lab">${ICON.table}<span>Day-by-day numbers</span></span></summary>`
-    + `<table><tr><th>Day</th><th class="num">Exposure</th><th>Risk</th><th class="num">E.&nbsp;coli &gt;900</th><th class="num">Rain 48&nbsp;h</th></tr>`;
+    + `<table><tr><th>Day</th><th class="num">Exposure</th><th>Risk</th><th class="num">E.&nbsp;coli estimate</th><th class="num">Rain 48&nbsp;h</th></tr>`;
   let anyNoData = false, anyOffSeason = false;
   for (const day of d.days) {
     const noData = !hasData(day); anyNoData = anyNoData || noData;
-    const off = day.in_validated_season === false; anyOffSeason = anyOffSeason || off;
-    const pe = day.p_ecoli_gt900;
+    const pe = day.p_ecoli_gt900, off = !isLake && !nil(pe) && day.in_validated_season === false;   // a cell with a †
+    anyOffSeason = anyOffSeason || off;
     const ecoli = isLake ? '<span class="muted" title="Not validated on lakes">n/a</span>' : (pe === null || pe === undefined) ? '–' : Math.round(pe*100) + '%' + (off ? '<sup>†</sup>' : '');
     // No overflow upstream: the exposure is zero whatever the weather, so show a dash, not "Low".
     const exp = !total ? '–' : noData ? '<span class="muted" title="' + esc(day.data_status) + '">no data</span>' : Math.round(day.risk*100);
-    const badge = !total ? '' : `<span class="badge ${noData ? 'b-na' : cls(day.label)}">${noData ? 'No data' : cap(day.label)}</span>`;
+    const lv = total ? risk(d, day).level : null;   // the rows' level (a water rated poor is high on a day of low spills)
+    const badge = !total ? '' : `<span class="badge ${lv ? cls(lv) : 'b-na'}">${lv ? cap(lv) : 'No data'}</span>`;
     h += `<tr><td>${dateLabel(day.date)}</td><td class="num">${exp}</td><td>${badge}</td><td class="num">${ecoli}</td><td class="num">${day.rain_48h_mm === null || day.rain_48h_mm === undefined ? '–' : fmt(day.rain_48h_mm,0) + '&nbsp;mm'}</td></tr>`;
   }
   h += `</table>`;
   const notes = [];
   if (isLake) notes.push(`<b>E. coli not shown for lakes</b>: ${esc(scope.note || 'no ranking skill on lakes in the fitting data.')}`);
-  if (anyOffSeason) notes.push(`<sup>†</sup>Outside May to September, when the EA takes no samples: untested. <a href="#about-ecoli">What this means</a>`);
+  if (anyOffSeason) notes.push(`<sup>†</sup>Outside May to September, when the Environment Agency takes no samples: untested. <a href="#about-ecoli">What this means</a>`);
   if (anyNoData) notes.push(`<b>No data</b>: the rainfall forecast for that day did not arrive; no figure is shown rather than one computed as if it were dry.`);
   if (notes.length) h += `<div class="small muted msg">${notes.join(' ')}</div>`;
-  return h + `<p class="small muted msg">Exposure index (0–100): modelled chance that an upstream spill reaches here, from Open-Meteo rainfall through a spill model trained on 743,735 United Utilities discharge events (2023–25) and verified on a held-out year, then travel time, die-off and dilution. An index, not a probability. <b>E. coli &gt; 900</b>: estimated probability that a midday sample would exceed 900 cfu/100 ml, from rain at the spot in the previous 48 h, the exposure index, and season. Daily resolution. <a href="#levels">What the levels mean</a> · <a href="verification.html">How accurate is it?</a></p></details>`;
+  return h + `<p class="small muted msg"><b>Exposure index</b>: a 0–100 score of how likely sewage from upstream is to reach the spot, from Open-Meteo rainfall through a spill model trained on 743,735 United Utilities discharge events (2023–25) and verified on a held-out year, then travel time, die-off and dilution. Not a probability. <b>E. coli estimate</b>: the estimated chance that a midday sample would show over 900 E. coli per 100 ml, from rain at the spot in the 48 h to midday, the exposure index, and season. Daily resolution. <a href="#levels">What the levels mean</a> · <a href="verification.html">How accurate is it?</a></p></details>`;
 }
 // The overflows that matter most, as rows, each with its reach drawn: on a phone a five-column table
 // was too tight to read. Their circles go on the map, a bigger one for more reach.
@@ -1977,7 +1981,7 @@ function overflowTile(d, total) {
       + `<div class="ov-reach"><b>${reach}%<small> reach</small></b><span aria-hidden="true"><i style="width:${reach}%"></i></span><small>spill ${Math.round(c.p_spill_today * 100)}% today</small></div></li>`; }).join('');
   return `<div class="tile"><h2 class="t-lab">${ICON.spills}<span>Overflows that matter most</span></h2><ul class="ovs" id="contrib">${rows}</ul>`
     + (n > SHOW ? `<button type="button" class="btn quiet" id="more-contrib" aria-controls="contrib" aria-expanded="false">Show all ${n}</button>` : '')
-    + `<details class="t-more"><summary><span class="sr">What this means</span></summary><p>Live status, and today's modelled chance of a spill${total > n ? `: the ${n} with the most reach of ${total} upstream` : ''}. `
+    + `<details class="t-more"><summary><span class="sr">Overflows that matter most: what this means</span></summary><p>Live status, and today's modelled chance of a spill${total > n ? `: the ${n} with the most reach of ${total} upstream` : ''}. `
     + 'Reach: the chance a spill there affects this spot, from die-off over the travel time and dilution by the size of the river network upstream.</p></details></div>';
 }
 // "Nearby": up to three other spots within 40 km, nearest first, each opening on the day shown (DAY,
@@ -2008,7 +2012,7 @@ function render(d) {
   serverToday = DATA.generated_at.slice(0, 10);
   contribLayer.clearLayers();
   setView('spot');
-  document.title = `${d.name}: sewage-spill forecast · ${BRAND}`;   // as on the spot's own page
+  document.title = `${d.name}: pollution risk forecast · ${BRAND}`;   // as on the spot's own page
   const loc = d.location || {}, total = overflows(d);
   const tags = [cap(d.kind), d.source === 'designated' ? 'Environment Agency designated bathing water' : null,
     loc.watercourse ? esc(loc.watercourse) : null, loc.lake_area_km2 ? `${loc.lake_area_km2} km²` : null,
@@ -2017,9 +2021,9 @@ function render(d) {
   // back to either), or all the spots. Save sits opposite it.
   const from = (history.state || {}).from;
   let h = `<div class="top-row"><a href="${esc(from === 'saved' ? savedPath() : ROOT.pathname)}" class="back" id="back">${from === 'saved' ? 'Saved spots' : from === 'map' ? 'Map' : 'All spots'}</a>${saveButton(d)}</div>`;
-  if (!d.error) h += notices();
+  h += notices();
   // The answer, under the sky: the place, its name, then its words (answerWords).
-  h += `<section class="answer" id="risk-hero" aria-labelledby="risk-headline"><p class="kind">${tags.join(' · ')}</p><h1 class="spot-name">${esc(d.name)}</h1>`
+  h += `<section class="answer" id="risk-hero" aria-labelledby="risk-headline"><p class="kind">${tags.join(' · ')}</p><h1 class="spot-name" tabindex="-1">${esc(d.name)}</h1>`
     + `<div id="answer-words">${answerWords(d)}</div></section>`;
   // Then the tiles, the five days first. A phone's small map of where the spot is comes after them:
   // above, on a small phone, it pushed the level below the fold.
@@ -2089,6 +2093,7 @@ async function main() {
     MARKERS.set(s.id, L.circleMarker([s.lat, s.lon], { radius: 9 })
       .bindTooltip('').on('click', () => select(s.id, false, true, VIEW.day)).addTo(spotLayer));
   }
+  const kept = keptView();
   fillMapDays(); styleMarkers(); setHeaderHeight(); readIncoming(); savedBadge(); syncSoon();
   const q = spotFromURL(), day = dayFromURL();
   if (q && DATA.spots.some(s => s.id === q)) {
@@ -2097,16 +2102,34 @@ async function main() {
     select(q, true, false, day);
   } else {
     if (!PHONE.matches) fitAll();   // a phone's map is hidden (0 x 0) until Map is pressed, and fits then
-    if (onSavedPage()) renderSaved(); else renderList();
+    if (onSavedPage()) renderSaved(); else { renderList(); if (kept.y) scrollTop(kept.y); }
   }
+}
+// What reload() kept, once, into VIEW: only known values, and a day still in the new forecast.
+function keptView() {
+  let v = null; try { v = JSON.parse(sessionStorage.getItem(VIEW_KEY) || 'null'); sessionStorage.removeItem(VIEW_KEY); } catch (e) { /* none */ }
+  if (!v || typeof v !== 'object') return {};
+  if (typeof v.q === 'string') VIEW.q = v.q;
+  if (FILTERS[v.filter]) VIEW.filter = v.filter;
+  if (SORTS[v.sort] && v.sort !== 'near') VIEW.sort = v.sort;
+  VIEW.lowOnly = v.lowOnly === true;
+  VIEW.day = [0, 1, 2, 3, 4].map(k => addDays(today(), k)).includes(v.day) ? v.day : null;
+  return { y: Number(v.y) || 0 };
 }
 main().catch(e => { document.getElementById('result').innerHTML = `<p class="notice">Could not load forecasts: ${esc(e.message)}${navigator.onLine ? '' : '. You are offline, and this device has no saved copy yet.'}</p>`; });
 // Opened from the home screen there is no reload button, and a phone keeps the page for days:
 // coming back to it after half an hour fetches the latest forecast (the same spot stays open).
-const LOADED = Date.now();
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - LOADED > 30 * 60 * 1000) location.reload(); });
+// The list's search, kind, sort, day and Low risk survive the reload (keptView), and so does its
+// scroll; your position does not, since it is kept nowhere, so Near me goes back to Highest risk.
+const LOADED = Date.now(), VIEW_KEY = 'dipcast.view';
+function reload() {
+  const { here, geoMsg, ...rest } = VIEW;
+  try { sessionStorage.setItem(VIEW_KEY, JSON.stringify({ ...rest, sort: rest.sort === 'near' ? 'risk' : rest.sort, y: shown === 'list' ? scrollPos() : 0 })); } catch (e) { /* starts afresh */ }
+  location.reload();
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - LOADED > 30 * 60 * 1000) reload(); });
 // Back online after opening the page offline: fetch the current forecast.
-if (!navigator.onLine) window.addEventListener('online', () => location.reload(), { once: true });
+if (!navigator.onLine) window.addEventListener('online', reload, { once: true });
 // Add to Home Screen. Browsers that offer an install prompt (Chrome, Edge, Samsung Internet) get a
 // button, and the prompt only when it is pressed; Safari and Firefox have none, so the steps stay.
 let INSTALL = null;

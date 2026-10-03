@@ -117,7 +117,7 @@ test('two spots rising for one subscriber make one combined push', async () => {
   const t = await setup({ state: { generated_at: T1, ranks: { a: 0, b: 1 } }, users: { ann: ['a', 'b', 'c'] } });
   await t.run(alertsJson(T2, [spot('a', 2, 'Aston'), spot('b', 3, 'Bray'), spot('c', 0)]));
   assert.equal(t.pushes.length, 1);
-  assert.deepEqual(t.pushes[0].payload, { title: '2 of your saved spots are high', body: 'Aston, Bray', url: `${SITE}saved/`, tag: 'dipspot-saved' });
+  assert.deepEqual(t.pushes[0].payload, { title: '2 of your saved spots are at high or very high risk', body: 'Aston, Bray', url: `${SITE}saved/`, tag: 'dipspot-saved' });
 });
 
 test('a combined body is cut to 200 characters', async () => {
@@ -125,7 +125,7 @@ test('a combined body is cut to 200 characters', async () => {
   const t = await setup({ state: { generated_at: T1, ranks: {} }, users: { ann: ids } });
   await t.run(alertsJson(T2, ids.map((id) => spot(id, 2, `A fairly long swim spot name ${id}`))));
   const { payload } = t.pushes[0];
-  assert.equal(payload.title, '12 of your saved spots are high');
+  assert.equal(payload.title, '12 of your saved spots are at high or very high risk');
   assert.equal(payload.body.length, 200);
   assert.ok(payload.body.startsWith('A fairly long swim spot name s0, A fairly long swim spot name s1'));
 });

@@ -501,7 +501,7 @@ def spot_page(template: str, spot: dict, root: str) -> str:
     <head>, and its name in the body for crawlers and for the moment before the script runs."""
     url = f"{root}spot/{spot['id']}/"
     blurb = spot_blurb(spot)
-    page = PAGE_META.sub(lambda m: page_meta(f"{spot['name']}: sewage-spill forecast · {BRAND}", blurb, url, root,
+    page = PAGE_META.sub(lambda m: page_meta(f"{spot['name']}: pollution risk forecast · {BRAND}", blurb, url, root,
                                              base="../../"), template, count=1)
     return page.replace(LOADING, f'<div id="result"><h2 class="spot-name">{escape(spot["name"])}</h2>'
                                  f'<p class="muted">{escape(blurb)} Loading the forecast…</p></div>', 1)

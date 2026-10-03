@@ -370,7 +370,7 @@ export function alertPayload(ids, spots, siteUrl) {
   }
   const names = ids.map((id) => spots[id].name ?? id).join(', ');
   return {
-    title: `${ids.length} of your saved spots are high`,
+    title: `${ids.length} of your saved spots are at high or very high risk`,
     body: names.length > 200 ? names.slice(0, 199) + '…' : names,
     url: `${siteUrl}saved/`,
     tag: 'dipspot-saved',

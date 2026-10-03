@@ -79,7 +79,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--name", default="SwimSignal")
     ap.add_argument("--tagline", default="Check the water before you go")
-    ap.add_argument("--line", default="Five-day sewage-spill forecasts for river and lake swim spots in England")
+    ap.add_argument("--line", default="Five-day pollution risk forecasts for river and lake swim spots in England")
     ap.add_argument("--display", default=SYSTEM_SERIF, help="serif TTF for the name (Source Serif 4)")
     ap.add_argument("--font", default=SYSTEM_SANS, help="sans TTF for the rest (Source Sans 3)")
     a = ap.parse_args()
