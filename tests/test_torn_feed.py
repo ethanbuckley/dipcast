@@ -7,7 +7,6 @@ repeated overflow upstream of a spot made spill_probabilities' pivot fail."""
 
 import numpy as np
 import pandas as pd
-import pytest
 
 IDS = ["S1", "S2", "S3", "S4", "S5", "S6"]
 REWRITTEN = ["S3", "S1", "S5", "S2", "S6", "S4"]   # the same overflows after the layer is rewritten
@@ -78,8 +77,9 @@ def _overflows(live_rows: pd.DataFrame) -> pd.DataFrame:
     return live_rows.assign(lta_spills=20.0, spill_hours=100.0, edm_operational_pct=95.0)
 
 
-def test_spill_probabilities_needs_one_row_per_overflow(monkeypatch):
-    """The failure itself, and that the snapshot fetch_live now gives forecasts again."""
+def test_spill_probabilities_with_a_torn_snapshot(monkeypatch):
+    """The torn snapshot that failed the pivot now gives one row of probabilities per row, and the
+    snapshot fetch_live now gives has one row per overflow."""
     from dipcast import arcgis
     from dipcast.ingest import live
     from dipcast.model import forecast
@@ -94,8 +94,10 @@ def test_spill_probabilities_needs_one_row_per_overflow(monkeypatch):
         m.setattr(live, "one_row_per_site", lambda df: df)
         torn = live.fetch_live({"Severn Trent Water": "https://x/0"})
     assert sorted(torn["site_id"]) == ["S1", "S2", "S3", "S4", "S4", "S6"]
-    with pytest.raises(ValueError, match="Index contains duplicate entries"):
-        forecast.spill_probabilities(_overflows(torn), days, None)
+    # Until spill_probabilities computed a repeated id once, this raised "Index contains duplicate entries".
+    p, ok = forecast.spill_probabilities(_overflows(torn), days, None)
+    s4 = np.flatnonzero(torn["site_id"].to_numpy() == "S4")
+    assert p.shape == (6, 5) and ok.all() and np.isfinite(p).all() and (p[s4[0]] == p[s4[1]]).all()
 
     _torn_layer(monkeypatch)
     monkeypatch.setattr(live, "fetch_all", lambda url, **kw: real(url, page=PAGE, key=kw["key"]))
