@@ -58,11 +58,12 @@ REWRITES = [('href="/feedback"', 'href="feedback.html"'), ('href="/feedback?type
             ('href="/static/fonts/SourceSerif4-latin.woff2"', 'href="fonts/SourceSerif4-latin.woff2"'),
             ("fetch('/api/verification')", "fetch('data/verification.json')")]
 BRAND = "SwimSignal"
-HOME_TITLE = f"{BRAND} · sewage-spill forecasts for swim spots"
-DESCRIPTION = ("Sewage-pollution risk forecasts for river and lake swim spots in England, from live storm-overflow "
+# The home page leads with the name, for search; every other page is "Page · SwimSignal" (docs/DESIGN.md, Words).
+HOME_TITLE = f"{BRAND} · pollution risk forecasts for swim spots"
+DESCRIPTION = ("Five-day pollution risk forecasts for river and lake swim spots in England, from live sewage-overflow "
                "data, rainfall forecasts and the river network.")
 SAVED_TITLE = f"Saved spots · {BRAND}"
-SAVED_DESCRIPTION = "A list of river and lake swim spots, each with its five-day sewage-spill forecast."
+SAVED_DESCRIPTION = "A list of river and lake swim spots, each with its five-day pollution risk forecast."
 # Spot ids that get a page of their own at spot/<id>/; index.html uses the same rule. Any other
 # id keeps its ?spot= address: one odd row in spots.csv must not stop the build.
 SPOT_ID = re.compile(r"[A-Za-z0-9_-]+")
@@ -81,8 +82,8 @@ SITE_URL_ENV = "DIPCAST_SITE_URL"
 # string is the privacy notice's own lead, so the terms page's date is not touched.
 COUNTER_TOKEN_ENV = "DIPCAST_CF_BEACON_TOKEN"
 COUNTER_JS = TEMPLATE.parent / "counter.js"
-NO_COUNTER = ("and what it does not. Last updated 1 October 2026.", "There is no analytics script and no third-party tracking.")
-WITH_COUNTER = ("and what it does not. Last updated 1 October 2026 (page-view counter).",
+NO_COUNTER = ("and what it does not. Last updated 2 October 2026.", "There is no analytics script and no third-party tracking.")
+WITH_COUNTER = ("and what it does not. Last updated 2 October 2026 (page-view counter).",
                 ("Page views are counted with Cloudflare Web Analytics. Cloudflare states that it sets no cookies, "
                  "uses no local storage and does not fingerprint visitors. It sees your IP address when the counter "
                  "loads, as any web server would, and its "
@@ -160,13 +161,15 @@ PUSH_PRIVACY = (
     "saved spots, and nothing else: no name, email address or location. It uses them only to send a notification "
     "when one of those spots' forecast turns high. Each notification passes through your browser maker's push "
     "service, encrypted so that the push service cannot read it; that company is responsible for its own service. "
-    "Your browser also keeps a note of what it last sent, so that an unchanged list is not sent again. The basis is "
+    "Your browser also keeps a note of what it last sent, so that an unchanged list is sent again only about once a "
+    "week. The basis is "
     "your consent: you turn alerts on, and you can turn them off on the Saved page at any time, which withdraws it. "
     "An alert can be late or not come at all, so no alert does not mean the water is clean. The record is kept "
     "until you turn alerts off, remove all your saved spots or turn off the offline copy (alerts need it), or until "
     "your browser's push service says the address no longer works; then it is deleted. The alert service runs on "
     "Cloudflare Workers, which may handle the record outside the UK under its own safeguards, and which sees your "
-    "IP address when you turn alerts on or off or change your saved spots, as any web server would; "
+    "IP address when you turn alerts on or off or change your saved spots, and about once a week when you open the "
+    "site, as any web server would; "
     '<a href="https://www.cloudflare.com/privacypolicy/">Cloudflare\'s privacy policy</a> applies to that.</p>')
 
 
@@ -319,11 +322,15 @@ def data_credits(root: str) -> dict:
         "attribution": (
             "Storm overflow status from Anglian Water Services, Northumbrian Water, Severn Trent Water, South West Water, "
             "Southern Water (© 2026), Thames Water, United Utilities, Wessex Water (© 2024) and Yorkshire Water, via the "
-            "National Storm Overflow Hub, CC BY 4.0. Environment Agency data © Environment Agency copyright and/or "
+            "National Storm Overflow Hub, CC BY 4.0; overflow identifiers matched with the Stream ID lookup, via Stream, "
+            "CC BY 4.0. Environment Agency data © Environment Agency copyright and/or "
             "database right, OGL v3.0; river levels: this uses Environment Agency flood and river level data from the "
             "real-time data API (Beta). Contains OS data © Crown copyright and database right 2026. Weather data by "
             "Open-Meteo.com, CC BY 4.0, from Met Office forecasts © Crown copyright, CC BY-SA 4.0: rainfall figures "
-            "stay under CC BY-SA 4.0."),
+            "stay under CC BY-SA 4.0. The models were trained on ERA5-Land reanalysis (doi:10.24381/cds.e2161bac): "
+            "contains modified Copernicus "
+            "Climate Change Service information 2026; neither the European Commission nor ECMWF is responsible for any "
+            "use that may be made of the Copernicus information or data it contains."),
         "modified": ("Combined, filtered and modelled by SwimSignal. The forecasts, levels and scores are SwimSignal's own "
                      "estimates, not the data providers'. None of the providers endorses SwimSignal."),
         "licences": LICENCES,
@@ -477,7 +484,7 @@ def page_meta(title: str, description: str, url: str, root: str, base: str | Non
         f'<meta property="og:image" content="{escape(root)}icons/og.png">',
         '<meta property="og:image:width" content="1200">',
         '<meta property="og:image:height" content="630">',
-        f'<meta property="og:image:alt" content="{escape(BRAND)}: sewage-spill forecasts for river and lake swim spots">',
+        f'<meta property="og:image:alt" content="{escape(BRAND)}: pollution risk forecasts for river and lake swim spots">',
         '<meta name="twitter:card" content="summary_large_image">',
     ])
 
@@ -490,9 +497,9 @@ def spot_blurb(spot: dict) -> str:
     if spot.get("error") and not str(spot["error"]).startswith("forecast failed"):
         return f"{name}: no monitored storm overflow can reach this {kind} along the river network, so {BRAND} has no spill forecast for it."
     if n == 0:
-        return f"{name}: no monitored storm overflows upstream. {BRAND} forecasts sewage-spill exposure for river and lake swim spots in England."
+        return f"{name}: no monitored storm overflows upstream. {BRAND} gives pollution risk forecasts for river and lake swim spots in England."
     upstream = f" from the {n} monitored storm overflow{'' if n == 1 else 's'} upstream," if n else ""
-    return (f"Five-day sewage-spill forecast for {name},{upstream} using live overflow status, rainfall forecasts "
+    return (f"Five-day pollution risk forecast for {name},{upstream} using live overflow status, rainfall forecasts "
             f"and the river network. Updated several times a day.")
 
 
@@ -518,9 +525,11 @@ def saved_page(template: str, root: str) -> str:
 
 
 def with_counts(html: str, results: list[dict]) -> str:
-    """The About page's spot counts, from this build's spots, so they cannot go stale."""
+    """The About page's spot counts, from this build's spots, and how far upstream the tracing
+    goes, from the config, so they cannot go stale."""
     n_bw = sum(r.get("source") == "designated" for r in results)
     html = re.sub(r'(<span id="n-spots">)\d+(</span>)', rf"\g<1>{len(results)}\g<2>", html, count=1)
+    html = re.sub(r'(<span id="max-km">)\d+(</span>)', rf"\g<1>{config.MAX_UPSTREAM_KM:g}\g<2>", html, count=1)
     return re.sub(r'(<span id="n-bw">)\d+(</span>)', rf"\g<1>{n_bw}\g<2>", html, count=1)
 
 
@@ -542,7 +551,7 @@ def not_found_page(root: str) -> str:
         '<p class="lead">A spot changes address when it is renamed or removed, and a link can be copied or typed wrongly.</p>\n'
         f'<ul><li><a href="{r}">All spots</a>, each with its five-day forecast</li><li><a href="{r}saved/">Your saved spots</a></li>'
         f'<li><a href="{r}feedback.html?type=spot">Ask for a spot to be added</a></li></ul></main>\n'
-        f'<footer class="site-foot"><div class="rule"><p>{BRAND} is a free, non-commercial forecast of sewage-overflow risk at river and lake swim spots in England, run by Ethan Buckley. A forecast, not a water test.</p>'
+        f'<footer class="site-foot"><div class="rule"><p>{BRAND} is a free, non-commercial pollution risk forecast for river and lake swim spots in England, run by Ethan Buckley. A forecast, not a water test.</p>'
         f'<p><a href="{r}terms.html">Terms of use</a> · <a href="{r}privacy.html">Privacy</a> · <a href="{r}feedback.html">Feedback</a></p></div></footer></body></html>\n')
 
 

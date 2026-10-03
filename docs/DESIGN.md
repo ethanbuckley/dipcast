@@ -126,7 +126,28 @@ anywhere.
   data credits in the foot, and every sentence of the terms and the privacy notice. Consent text
   (the alerts) folds under what it is about, before the button, and keeps every sentence.
 - Names agree everywhere: the home page is **Explore**, the verification page is **Accuracy**.
-  Page titles are "Page · SwimSignal".
+  Page titles are "Page · SwimSignal", where the page's name leaves out the brand its heading may
+  carry: "About SwimSignal" is "About · SwimSignal", "Testing SwimSignal this winter" is "Testing
+  this winter · SwimSignal". A spot's page is "Name: pollution risk forecast · SwimSignal". One
+  exception, kept for search: the home page is "SwimSignal · pollution risk forecasts for swim
+  spots", so a search result starts with the name.
+- One name for each thing (2 October 2026). Before this the product went by four descriptions, the
+  E. coli figure by six names and the spill score by four.
+  - The product is a **pollution risk forecast**, in titles, descriptions, the manifest, the foot
+    and the About page. Not "sewage-spill forecast" or "sewage-overflow risk": the level also
+    takes in water quality and the bathing-water rating, and the strip already says "Pollution
+    risk". "Sewage" stays where a sentence is about the overflows themselves.
+  - The spill score is the **exposure index**, defined where it is explained (About, Accuracy,
+    Testing) as "a 0–100 score of how likely sewage from upstream is to reach the spot". Not
+    "spill risk", "overflow exposure" or "the modelled chance", and not called a probability.
+    Its tile and rows keep their labels, "Sewage spills" and "Sewage spills upstream".
+  - The E. coli figure is the **E. coli estimate** in prose, and its tile is **Water quality**.
+    Not "E. coli chance", "E. coli risk", "E. coli > 900" or "water-quality estimate".
+  - **Dŵr Cymru Welsh Water**, with the circumflex, in prose.
+- Abbreviations are spelled out where a reader meets them: "Environment Agency" in full before
+  "EA" on any page; "WwTW", "STW", "CSO" and "SPS" in overflow names are explained on the About
+  page; "lead calibration" is defined under the live table on Accuracy. "cfu" is not used: the
+  threshold is "900 E. coli per 100 ml".
 - A part that cannot be used yet is not shown: Compare appears on the Saved page once two spots
   are saved. A picked day's details begin with its rows, because the hero's headline already
   gives that day's level and why.
@@ -294,10 +315,10 @@ What makes Apple's page clean, and what was taken from it:
 - **A sentence over the days**, as Apple's over its hours, saying something the headline does not:
   "About 13 of the 60 overflows upstream are expected to spill today, fewer each day after."
 - **Data drawn.** The five days are rows with a bar of four bands, filled into the day's band and
-  placed in it by what set the level (the spill exposure, the E. coli chance where it counts, the
+  placed in it by what set the level (the exposure index, the E. coli estimate where it counts, the
   foot of high for a water rated poor), so the bar always agrees with the word beside it. Drawn
   from the spills alone, a water rated poor showed "High" beside an almost empty bar. The tiles draw
-  the exposure and the E. coli chance on stepped scales, the river's level on its usual range, every
+  the exposure index and the E. coli estimate on stepped scales, the river's level on its usual range, every
   overflow upstream as a dot, the rain as columns and the sun's path over the day.
 - **One anatomy.** Every tile is a label with its icon, one figure, one drawing, one sentence, and
   the rest of the explanation behind a chevron in its corner: Sewage spills, Water quality, Right
