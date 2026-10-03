@@ -55,6 +55,9 @@ lines at its top. The MIT licence covers the code, not the data.
 `LICENSE-DATA.md` says which files are under the ODbL (`spots-osm.csv` and the
 candidate list it came from) and why `spots.csv` must never take OpenStreetMap rows.
 
+The JSON files under `data/anypoint/` also carry the credits; each square's
+link list links to them.
+
 Dwr Cymru (Wales) publishes no live feed to ArcGIS; its 128 overflows appear with
 annual spill history only and no "right now" status. Every English company is live.
 
@@ -718,6 +721,28 @@ natural river and lake spots the public can reach into `spots-osm.csv`, with
 `river` typed for each river spot. The build reads both files, runs
 `placement_check` on both, and credits OpenStreetMap on the terms page, in
 `credits.spot_locations` and on each such spot's page.
+
+**Any other point (October 2026).** A click on the map away from a listed spot
+gets a forecast too, worked out in the browser (`src/dipcast/site/anypoint.js`)
+from files the build writes under `data/anypoint/`
+(`scripts/build_any_point.py`, whose docstring lists them): every river
+link's upstream overflows, in a form that gives the API's distances and
+dilutions for a click anywhere along the link; a packed index of the links,
+by 0.25° square, for snapping a click; the WFD lakes with their inlets; and
+every overflow's spill probability for each day. The page then does what the
+API does with `gauge=False`: the same placement (lake polygon, nearest link
+within 1.5 km, a side channel traced as the main river), the same transport,
+calibration and combination, and the same card, marked "Unlisted point: not
+hand-checked", without the E. coli estimate (it needs rain at the spot
+itself, which only listed spots get). Squares with no overflow data, which
+is most of Wales and Scotland, get no forecast. The tracing runs once per
+network release and is cached in the state directory (`anypoint_links.pkl`);
+only links downstream of an overflow that moved are traced again. Rain for
+all overflows is about 1,600 Open-Meteo cells against the spots' 300, and on
+3 Oct 2026 Open-Meteo refused this build after 600 locations in one minute,
+so each build fetches at most 300 more cells, oldest first, and uses cached
+ones up to 24 hours old; an overflow with neither counts as having no rain
+data, and the card says when its rain is older than the issue time.
 
 Each spot has its own page, `spot/<id>/`, written by `build_site.write_pages`:
 the same map page with the spot's name, a one-line description and absolute
