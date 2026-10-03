@@ -387,3 +387,96 @@ def test_the_api_server_sends_its_home_page_to_the_site_and_keeps_the_prose_page
     finally:
         monkeypatch.undo()
         importlib.reload(api)   # as the environment has it, for any later test
+
+
+def test_the_data_page_lists_every_file_in_data_with_its_size(tmp_path):
+    # data.html describes the files the build publishes; the build fills in their sizes and lists
+    # any file in data/ the page does not describe, so the list is always every file published.
+    bs = _build_site()
+    data = tmp_path / "data"
+    (data / "links").mkdir(parents=True)
+    (data / "spots.json").write_bytes(b"x" * 626_076)
+    (data / "overflows.geojson").write_bytes(b"x" * 5_947_289)
+    (data / "verification.json").write_bytes(b"x" * 400)
+    (data / "new.csv").write_text("a,b\n")   # a file nobody has described yet
+    (data / "links" / "a.json").write_bytes(b"x" * 1500)
+    (data / "links" / "b.json").write_bytes(b"x" * 1500)
+    bs.write_pages(tmp_path, SPOTS[:1], token="abcdefghij0123456789", root="https://example.org/")
+    page = (tmp_path / "data.html").read_text()
+    row = lambda name: re.search(rf'<tr data-file="{re.escape(name)}">(.*?)</tr>', page).group(1)
+    assert row("spots.json").endswith('<td class="num">626 kB</td>') and 'href="data/spots.json"' in row("spots.json")
+    assert row("overflows.geojson").endswith(">5.9 MB</td>") and row("verification.json").endswith(">1 kB</td>")
+    assert row("alerts.json").endswith(">Not in this build</td>")   # described, but this build wrote none
+    assert row("new.csv") == '<td><a href="data/new.csv">new.csv</a></td><td>Not described here yet.</td><td class="num">1 kB</td>'
+    assert row("links/") == '<td>links/</td><td>Not described here yet.</td><td class="num">3 kB</td>'   # a folder, whole
+    assert bs.with_data_files((bs.STATIC / "data.html").read_text(), data)[1] == ["links/", "new.csv"]
+    # The four files every build writes each have a section of their own.
+    for name in ("spots.json", "alerts.json", "overflows.geojson", "verification.json"):
+        assert f'<h2 id="{name.replace(".", "-")}">{name}</h2>' in page, name
+    # A prose page like the others: the shared head and foot, flat links, and the counter when it is on.
+    assert "<title>Data files · SwimSignal</title>" in page and 'href="page.css"' in page and 'href="/' not in page
+    assert 'href="terms.html#data"' in page and 'href="about.html#embed"' in page and "cloudflareinsights" in page
+    assert 'href="data.html">Data files</a>' in (tmp_path / "about.html").read_text()
+    # An empty data/ (write_pages over a fresh folder): every described row says so, and nothing breaks.
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    assert bs.write_data_page(empty) == [] and (empty / "data.html").read_text().count("Not in this build") == 4
+
+
+def test_the_embed_is_written_beside_the_app_with_its_scripts_versioned(tmp_path):
+    bs = _build_site()
+    bs.write_pages(tmp_path, SPOTS[:1], token="abcdefghij0123456789", root="https://example.org/")
+    page = (tmp_path / "embed.html").read_text()
+    v = re.search(r'<script src="levels\.js\?v=([0-9a-f]{8})"></script>', page).group(1)
+    assert f'<script src="embed.js?v={v}"></script>' in page and v == bs.write_embed(tmp_path)
+    for f in ("embed.js", "levels.js", "page.css", "fonts/SourceSans3-latin.woff2", "fonts/SourceSerif4-latin.woff2", "icons/icon.svg"):
+        assert (tmp_path / f).exists(), f
+    assert '<meta name="robots" content="noindex">' in page and 'name="viewport" content="width=device-width, initial-scale=1"' in page
+    # No page-view counter in someone else's page: it could not see a visitor's choice not to be counted.
+    assert "cloudflareinsights" not in page and "page-counter" not in page
+    assert 'id="card"' in page and "<noscript>" in page
+
+
+def test_the_embed_fits_a_column_320_px_wide():
+    # What the card lays out at a fixed size must leave the day's bar room at 320 px: the frame's
+    # border and padding, and the rows' day and level columns and their gaps. The rest is fluid
+    # (checked in headless Chrome on 3 Oct 2026: no spot's card overflowed at 320, 375 or 480 px).
+    css = "\n".join(re.findall(r"<style>(.*?)</style>", (ROOT / "src" / "dipcast" / "site" / "embed.html").read_text(), re.DOTALL))
+    card = re.search(r"\.card \{([^}]*)\}", css).group(1)
+    pad = [int(x) for x in re.search(r"padding:(\d+)px (\d+)px", card).groups()]
+    border = int(re.search(r"border:(\d+)px", card).group(1))
+    drow = re.search(r"\.drow \{([^}]*)\}", css).group(1)
+    cols = [int(x) for x in re.search(r"grid-template-columns:(\d+)px (\d+)px minmax\(0, 1fr\)", drow).groups()]
+    gap = int(re.search(r"gap:(\d+)px", drow).group(1))
+    bar = 320 - 2 * border - 2 * pad[1] - sum(cols) - 2 * gap
+    assert bar >= 100, bar
+    assert not re.search(r"(?<![-\w])(min-)?width\s*:\s*(3[2-9]\d|[4-9]\d\d|\d{4,})px", css)   # nothing wider than the frame
+    assert "max-width:480px" in card.replace(" ", "")
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="needs Node")
+def test_the_embed_card_rules():
+    # embed.js runs in a browser, so its tests are JavaScript; here so that the build's test step runs them.
+    r = subprocess.run(["node", "--test", str(ROOT / "tests" / "site_embed.test.cjs")], capture_output=True, text=True, timeout=60, check=False)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_about_documents_the_data_page_and_the_embed_and_the_terms_allow_it(tmp_path):
+    bs = _build_site()
+    bs.write_pages(tmp_path, SPOTS[:1], root="https://example.org/")
+    about = (tmp_path / "about.html").read_text()
+    snippet = re.search(r'<h2 id="embed">.*?<pre><code>(.*?)</code></pre>', about, re.DOTALL).group(1)
+    assert snippet.startswith("&lt;iframe src=\"https://swimsignal.co.uk/embed.html?spot=wharfe-burnsall\"") and 'title="' in snippet
+    assert 'href="embed.html?spot=wharfe-burnsall"' in about and (tmp_path / "embed.html").exists()
+    terms = (tmp_path / "terms.html").read_text()
+    allow = re.search(r"<li>You may show a spot's forecast on your own website.*?</li>", terms).group(0)
+    assert "embed.html" in allow and "credits intact" in allow and 'href="about.html#embed"' in allow
+    assert 'href="data.html"' in terms
+
+
+def test_the_api_server_serves_the_data_page():
+    from fastapi.testclient import TestClient
+
+    from dipcast.api import app as api
+    r = TestClient(api.app).get("/data")
+    assert r.status_code == 200 and "<h1>Data files</h1>" in r.text

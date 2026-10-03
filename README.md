@@ -779,6 +779,15 @@ own, and a token changed in one must be changed in the other. The prose pages'
 favicon and Home Screen icon are copies of the site's icons, kept in
 `src/dipcast/api/static/icons/` so that the API server's pages get them too.
 
+**Data files and the embed** (3 Oct 2026). `data.html` lists every file under `data/`, what it
+holds, its fields and its licence. Its words are `src/dipcast/api/static/data.html`;
+`build_site.write_data_page` fills in each file's size and adds a row, with a build warning, for any
+file in `data/` the page does not describe, so a file added to the build belongs on that page too.
+`embed.html?spot=<id>` is one spot's card (headline, five days, caveat, issue time, a link back and
+the credits) for a club's or a council's site to show in an iframe. `embed.js` draws it with
+`levels.js`, so it says what the spot's page says. The About page gives the snippet, and the terms
+allow it with the credits intact.
+
 `.github/workflows/site.yml` is scheduled every 30 minutes and also runs on
 every push. GitHub starts scheduled runs when it can: the 113 builds of 13-28
 Sep 2026 were a median 2.9 h apart and at most 8.1 h, so no step depends on a

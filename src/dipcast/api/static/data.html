@@ -1,0 +1,92 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data files · SwimSignal</title>
+<meta name="description" content="The files behind SwimSignal's pollution risk forecasts: every spot's forecast, the storm overflows and the accuracy scores, what each holds, and their licences and credits.">
+<meta name="theme-color" content="#3d5b5d">
+<link rel="icon" href="/static/icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icons/apple-touch-icon.png">
+<link rel="stylesheet" href="/static/page.css">
+<link rel="preload" href="/static/fonts/SourceSans3-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/static/fonts/SourceSerif4-latin.woff2" as="font" type="font/woff2" crossorigin></head><body>
+<header class="top"><a class="brand" href="/"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#0f5a61"/><path d="M430-20C330 110 470 230 300 290S110 380 190 540" fill="none" stroke="#5CC2B5" stroke-width="70" stroke-linecap="round"/><circle cx="318" cy="138" r="38" fill="#F08A4B"/><circle cx="165" cy="358" r="46" fill="none" stroke="#fff" stroke-width="22"/></svg>SwimSignal</a>
+<nav aria-label="Site"><a href="/">Explore</a><a href="/verification">Accuracy</a><a href="/about">About</a><a href="/feedback">Feedback</a></nav></header>
+<main class="doc">
+<h1>Data files</h1>
+<p class="lead">The files the site is built from are public: every spot's forecast, the storm overflows on the map and the accuracy scores. This page lists each one, what it holds and the licence it is under.</p>
+
+<div class="summary"><h2>In short</h2><ul>
+<li>The files are in the site's <code>data/</code> folder, in JSON and GeoJSON, and the table below links each one. Each build of the site writes them again, several times a day at irregular times.</li>
+<li>Each file has a <code>credits</code> field. Keep it, or the <a href="/terms#data">credits on the terms page</a>, with anything you publish from the files.</li>
+<li>The data from the water companies, the Environment Agency and the other providers keeps its own licence. SwimSignal's own forecasts, levels and scores may be reused for non-commercial purposes with credit; ask first about any other use.</li>
+<li>The levels are forecasts, not water tests.</li>
+</ul></div>
+
+<h2>The files</h2>
+<!-- One row a file, in the order of the sections below. scripts/build_site.py (write_data_page)
+     fills in the sizes and adds a row at "more files" for any file in data/ this page does not describe. -->
+<div class="tw"><table id="data-files"><thead><tr><th scope="col">File</th><th scope="col">What it holds</th><th scope="col" class="num">Size</th></tr></thead><tbody>
+<tr data-file="spots.json"><td><a href="data/spots.json">spots.json</a></td><td>Every spot's five-day forecast and what it rests on</td><td class="num">–</td></tr>
+<tr data-file="alerts.json"><td><a href="data/alerts.json">alerts.json</a></td><td>Each spot's level and headline, as the alerts send them</td><td class="num">–</td></tr>
+<tr data-file="overflows.geojson"><td><a href="data/overflows.geojson">overflows.geojson</a></td><td>Every storm overflow on the map, and what it is doing now</td><td class="num">–</td></tr>
+<tr data-file="verification.json"><td><a href="data/verification.json">verification.json</a></td><td>The scores on the Accuracy page</td><td class="num">–</td></tr>
+<!-- more files --></tbody></table></div>
+<p class="small muted">Sizes are this build's, before compression. The site's host, GitHub Pages, sends the files compressed.</p>
+
+<h2 id="spots-json">spots.json</h2>
+<p>Every spot's forecast, as the map and the spot pages show it. A spot's level (low, moderate, high or very high) is worked out from these fields by the page's own rules, <a href="https://github.com/ethanbuckley/swimsignal/blob/main/src/dipcast/site/levels.js">levels.js</a>: the worst of the spill forecast, the E. coli estimate from May to September, a "poor" rating and an algae check from the last 14 days. A day's <code>label</code> is the spill forecast's level alone.</p>
+<dl class="fields">
+<dt><code>generated_at</code></dt><dd>When the forecast was issued, UK time with its offset (ISO 8601)</dd>
+<dt><code>build</code></dt><dd>The build's own checks: how many spots got a forecast, how many rows each water company's live feed returned, and any warnings</dd>
+<dt><code>lead_skill</code></dt><dd>How good a forecast for each of the five days has been, as a share of the same-day forecast's skill: <code>spill</code> and <code>water</code>, five numbers each</dd>
+<dt><code>credits</code></dt><dd>The data credits (below)</dd>
+<dt><code>spots</code></dt><dd>One entry for each spot, with the fields that follow</dd>
+<dt><code>id</code>, <code>name</code>, <code>kind</code>, <code>river</code>, <code>source</code>, <code>lat</code>, <code>lon</code></dt><dd>From the spot list: its id (its page is <code>spot/&lt;id&gt;/</code>), its name, <code>river</code> or <code>lake</code>, the river's name, <code>designated</code> for an Environment Agency bathing water, and where it is, in degrees (WGS84)</dd>
+<dt><code>days</code></dt><dd>One entry for each day: <code>date</code>; <code>risk</code>, the exposure index as a fraction (0.4 is 40 on the site's 0–100 scale), and <code>label</code>, its level; <code>expected_spilling_overflows</code>, how many of the overflows upstream are expected to spill; <code>p_ecoli_gt900</code>, the E. coli estimate, the chance a sample would show over 900 E. coli per 100 ml; <code>in_validated_season</code>, false from October to April, when that estimate is untested; <code>rain_48h_mm</code>, the rain at the spot in the 48 hours to midday; <code>data_status</code>, whether the rain forecast was complete</dd>
+<dt><code>now</code></dt><dd>Right now, from the live feeds: how many overflows upstream are discharging (<code>discharging_upstream</code>), stopped lately (<code>recent_upstream</code>; how lately is <code>assumptions.recent_spill_hours</code>) and report live (<code>monitored_upstream</code>), and any company feed that is down</dd>
+<dt><code>upstream_summary</code></dt><dd>How many monitored overflows can reach the spot (<code>overflows</code>) and how many of them report live</dd>
+<dt><code>contributors</code></dt><dd>Up to 10 of those overflows, the ones that matter most to the spot: the company's id and name for it, its distance and travel time, <code>weight</code>, the chance that a spill there affects the spot after travel time, die-off and dilution, and its chance of spilling on each day (<code>p_spill_days</code>)</dd>
+<dt><code>location</code></dt><dd>Where the spot sits on the river network: the watercourse, whether it is treated as a river or a lake, and how far it was moved to reach the network</dd>
+<dt><code>classification</code>, <code>algae</code></dt><dd>At bathing waters: the Environment Agency's rating, with earlier years and a link to its page, and its sampler's latest algae check</dd>
+<dt><code>river_state</code></dt><dd>The nearest Environment Agency level gauge: its latest reading, its usual range and how old the reading is. Not part of the level</dd>
+<dt><code>weather</code></dt><dd>Each day's high, sunrise and sunset, from Open-Meteo</dd>
+<dt><code>error</code></dt><dd>Instead of a forecast, where there is none: the reason</dd>
+</dl>
+<p><b>Licence.</b> SwimSignal's forecasts, made from all the sources the credits list. The ratings, algae checks and river levels are the Environment Agency's (OGL v3.0); the rainfall figures stay under CC BY-SA 4.0.</p>
+
+<h2 id="alerts-json">alerts.json</h2>
+<p>Each spot's level and headline, worked out by the same rules as the page, for the alert service. The smallest file, for anyone who wants only the answer.</p>
+<dl class="fields">
+<dt><code>generated_at</code>, <code>credits</code></dt><dd>As in spots.json</dd>
+<dt><code>spots</code></dt><dd>Keyed by spot id: <code>name</code>; <code>level</code>, one of low, moderate, high and very high, or "no overflows", "not covered" or "no forecast"; <code>rank</code>, 0 for low to 3 for very high and −1 without a level; <code>headline</code>, as the list shows it ("High risk today: sewage spills"); <code>url</code>, the spot's page</dd>
+</dl>
+<p><b>Licence.</b> SwimSignal's levels and headlines, made from the same sources as spots.json.</p>
+
+<h2 id="overflows-geojson">overflows.geojson</h2>
+<p>Every storm overflow on the map, as a GeoJSON point (longitude, latitude), with what its water company's live feed last said about it. The largest file.</p>
+<dl class="fields">
+<dt><code>site_id</code>, <code>company</code>, <code>site_name</code></dt><dd>The water company's id and name for the overflow</dd>
+<dt><code>receiving_watercourse</code></dt><dd>The river or stream it discharges into, as the company names it</dd>
+<dt><code>status</code></dt><dd>1 discharging; 0 not discharging; −1 monitor offline; −2 no live feed: the overflow is in the Environment Agency's annual returns but in no company's live feed, as all of Dŵr Cymru Welsh Water's are; −3 unknown, because the company's feed returned nothing at the last poll (the spill times are from the poll before)</dd>
+<dt><code>has_live</code></dt><dd>Whether the overflow is in its company's live feed</dd>
+<dt><code>latest_event_start</code>, <code>latest_event_end</code></dt><dd>Its latest spill, as the company's feed gives it (UTC)</dd>
+<dt><code>lta_spills</code></dt><dd>Its long-term average number of spills a year, from the Environment Agency's annual returns</dd>
+</dl>
+<p><b>Licence.</b> The water companies' data, CC BY 4.0, via the National Storm Overflow Hub, with the Environment Agency's annual returns (OGL v3.0), combined by SwimSignal.</p>
+
+<h2 id="verification-json">verification.json</h2>
+<p>Everything on the <a href="/verification">Accuracy page</a>, which explains each table: <code>live</code>, the scores of the forecasts this site has issued, against what the overflows then did and, for the E. coli estimate, against the Environment Agency's samples (<code>live.ecoli_live</code>); <code>holdout</code>, <code>leads</code> and <code>reliability</code>, the test on a held-out year, 2025; <code>lead_calibration</code>; <code>ecoli</code>, <code>ecoli_combined</code> and <code>ecoli_model</code>, the E. coli estimate's tests; <code>sampling_plan</code>; and <code>credits</code>.</p>
+<p><b>Licence.</b> SwimSignal's scores, made against the water companies' discharge records (CC BY 4.0) and the Environment Agency's samples (OGL v3.0).</p>
+
+<h2 id="credits">The credits field</h2>
+<p>Every file carries the same <code>credits</code>: <code>attribution</code>, the notices each provider asks for; <code>modified</code>, which says that SwimSignal combined and modelled the data and that no provider endorses it; <code>licences</code>, each licence's name and address; and <code>full</code>, the address of the full credits on the <a href="/terms#data">terms page</a>. The MIT licence of the <a href="https://github.com/ethanbuckley/swimsignal">source code</a> covers the code, not the data.</p>
+
+<h2>Using the files</h2>
+<ul>
+<li>A web page on another site can read the files: GitHub Pages sends the header that allows it (<code>Access-Control-Allow-Origin: *</code>, checked on 3 October 2026).</li>
+<li>Browsers may keep a copy for 10 minutes, and the scheduled rebuild runs at most every 30 minutes, so asking more often gains nothing. <code>generated_at</code> in spots.json says when the forecast was issued.</li>
+<li>The fields can change when the site does, without notice. This page describes the current ones; the <a href="https://github.com/ethanbuckley/swimsignal/blob/main/scripts/build_site.py">build script</a> writes them.</li>
+<li>To show one spot's forecast on your own site, there is a ready-made card: see <a href="/about#embed">About</a>.</li>
+</ul>
+</main>
+<footer class="site-foot"><div class="rule"><p>SwimSignal is a free, non-commercial pollution risk forecast for river and lake swim spots in England, run by Ethan Buckley. A forecast, not a water test: check the signs at the water before you swim.</p>
+<p><a href="/terms">Terms of use</a> · <a href="/privacy">Privacy</a> · <a href="/feedback">Feedback</a> · <a href="/terms#data">Data credits</a> · <a href="https://github.com/ethanbuckley/swimsignal">Source code</a> (MIT)</p></div></footer>
+</body></html>

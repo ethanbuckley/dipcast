@@ -99,7 +99,8 @@ def test_the_app_and_the_prose_pages_share_one_set_of_tokens():
 
 
 def test_rules_use_the_tokens():
-    sheets = {"index.html": app_css(), "page.css": CSS.read_text(), "verification.html": styles(STATIC / "verification.html")}
+    sheets = {"index.html": app_css(), "page.css": CSS.read_text(), "verification.html": styles(STATIC / "verification.html"),
+              "embed.html": styles(APP.parent / "embed.html")}
     for name, css in sheets.items():
         body = rules(css)
         # One radius (and the mark's and a link's focus ring, as tokens); circles and round badges.
