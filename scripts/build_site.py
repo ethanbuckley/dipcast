@@ -491,6 +491,47 @@ def attach_weather(results: list[dict], request=None, batch: int = 50) -> int:
     return n
 
 
+def attach_water_temperature(results: list[dict], fetch=None, relate=None, now=None, max_km: float = 15.0) -> int:
+    """Beside attach_river_levels: the latest reading of the nearest Environment Agency water-temperature
+    sensor within `max_km` (straight line) on a river spot's own river (`same_river` on spots.csv's
+    `river`, else the snapped watercourse), with the distance, whether it is upstream or downstream and
+    how far along the river, and when it was read. Two Hydrology API requests for the whole build
+    (water_temperature.fetch_sensors); only readings under flows.MAX_READING_AGE_H old count, so a spot
+    whose nearest sensor has gone quiet gets the next one, or nothing. `relate(spot, sensor)` gives
+    (direction, km along the river), or None where the network does not join the two or only one is
+    tidal (water_temperature.river_relation); such a sensor is passed over for the next. Never an
+    estimate: a spot with no sensor gets no `water_temp`, and lakes get none, since a river sensor is
+    not the lake's water. Returns how many spots got one; nothing here can stop a build."""
+    from dipcast.ingest.water_temperature import fetch_sensors, river_relation, sensors_on_river
+    try:
+        sensors = (fetch or fetch_sensors)(now)
+    except Exception as e:  # noqa: BLE001 - an observation beside the forecast must not sink the build
+        log.warning("water temperature: %s", e)
+        return 0
+    relate = relate or (lambda r, s: river_relation(_net(), r["lat"], r["lon"], r.get("river"), s))
+    rivers = [r for r in results if r.get("kind") == "river" and not str(r.get("error") or "").startswith("forecast failed")]
+    n = 0
+    for r in rivers:
+        river = r.get("river") or (r.get("location") or {}).get("watercourse")
+        for s, km in sensors_on_river(sensors, r["lat"], r["lon"], river, max_km):
+            try:
+                rel = relate(r, s)
+            except Exception as e:  # noqa: BLE001 - a sensor the network cannot place is not shown
+                log.warning("water temperature for %s at %s: %s", r["name"], s.station_id, e)
+                rel = None
+            if rel is None:
+                continue
+            r["water_temp"] = {"temp_c": s.temp_c, "observed_at": s.observed_at, "age_hours": s.age_hours,
+                               "quality": s.quality, "station": s.place, "where": s.where, "river": s.river,
+                               "station_id": s.station_id, "url": s.url, "distance_km": round(km, 1),
+                               "direction": rel[0], "river_km": rel[1]}
+            n += 1
+            break
+    log.info("water temperature: %d of %d river spots have an EA sensor on their river within %.0f km "
+             "(%d sensors read in the last day)", n, len(rivers), max_km, len(sensors))
+    return n
+
+
 # What the offline copy (sw.js) stores, or decides what it stores: the files whose hash names its
 # cache. A file here changes, and so does sw.js, so browsers install the new worker and fill a new
 # cache from the server; nothing else (the forecast, a spot's page) changes the name. Directories
@@ -723,6 +764,8 @@ def build(refresh: bool = True) -> dict:
                         "notes": r.notes, "lat": float(r.lat), "lon": float(r.lon), **f})
     n_algae = attach_algae(results, fetch=refresh)
     n_classified = attach_classifications(results)
+    # Network only, like the levels, and before their burst of EA requests: two requests in all.
+    n_water_temp = attach_water_temperature(results) if refresh else 0
     n_levels = attach_river_levels(results) if refresh else 0   # observations beside the forecast, network only
     n_weather = attach_weather(results) if refresh else 0
     generated = pd.Timestamp.now(tz="Europe/London")
@@ -730,6 +773,7 @@ def build(refresh: bool = True) -> dict:
     health = build_health(results, samples_status(), load_poll_log() if refresh else None)
     health["algae_checks"], health["classifications"] = n_algae, n_classified
     health["river_levels"], health["weather"] = n_levels, n_weather
+    health["water_temperature"] = n_water_temp
     for w in health["warnings"]:
         announce(w)
     (SITE / "data").mkdir(parents=True, exist_ok=True)
