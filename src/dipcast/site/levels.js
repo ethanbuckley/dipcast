@@ -12,6 +12,7 @@ const setToday = iso => { serverToday = iso; };
 
 const ORDER = {low:0, moderate:1, high:2, 'very high':3};
 const NOT_COVERED = 'not covered', NO_FORECAST = 'no forecast', NO_OVERFLOWS = 'no overflows';
+const NO_RIVER = 'no river connection';   // an isolated lake: no river flows into it in the network
 const localISO = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const addDays = (iso, n) => { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + n); return localISO(d); };
 const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
@@ -51,9 +52,14 @@ const dayName = iso => dayWord(iso).replace(/^on /, '');
 //  - The EA sampler's latest look at a bathing water, if under 14 days old: algae "enough to be
 //    objectionable" makes the day at least high, "some at intervals" at least moderate. It cannot
 //    tell blue-green algae from harmless kinds, so it is a reason to look before going in.
-// Where there is no daily forecast (no overflows upstream, or no river connection) the rating is
-// the level: excellent or good low, sufficient moderate, poor high. With neither, no level: "low"
-// there would read as clean water. Not included: the EA's short-term advice against bathing after
+// Where there is no daily forecast (nothing monitored upstream, or no river connection) a rating or an
+// algae check sets the level only where it raises it: sufficient moderate, poor high, algae moderate
+// or high. Otherwise the level is a plain one of its own, which says what is true there: "No sewage
+// risk from monitored overflows" (the trace found none within its 60 km), or, for an isolated lake,
+// "No river connection: overflows cannot reach this lake". Before 3 Oct 2026 an excellent or good
+// rating made such a spot "low", the same word as a forecast that had looked and found nothing, and
+// without a rating the page named only what the forecast lacked, which a swimmer read as no
+// information. Not included: the EA's short-term advice against bathing after
 // an incident (Frensham Great Pond's algae warning since 19 Jun 2026, say). Its service refuses
 // the build's machines and does not answer other sites' pages, so a spot's page links to it.
 // The cut-offs between the four levels, as fractions: the spill exposure's (transport.risk_label,
@@ -68,6 +74,7 @@ const overflows = s => (s.upstream_summary || {}).overflows || 0;
 const classOf = s => s.classification && s.classification.class ? String(s.classification.class).toLowerCase() : null;
 const advisedAgainst = s => classOf(s) === 'poor';
 const daily = s => !s.error && overflows(s) > 0;   // a forecast that changes from day to day
+const isolated = s => String(s.error || '').startsWith('An isolated lake');   // forecast.py's words for it
 const ecoliTested = s => daily(s) && (s.location || {}).mode !== 'lake';
 // The figure's band, for its own row and cell, in any month.
 const ecoliBand = (s, x) => ecoliTested(s) && x && !nil(x.p_ecoli_gt900) ? ECOLI_BANDS.find(([t]) => x.p_ecoli_gt900 < t)[1] : null;
@@ -93,7 +100,9 @@ const worstNear = s => near(s).reduce((a, b) => rank(b[0].level) > rank(a[0].lev
 const worst = s => worstNear(s)[0].level;
 const level = s => {
   if (s.error && String(s.error).startsWith('forecast failed')) return NO_FORECAST;
-  if (!daily(s)) return higher(CLASS_LEVEL[classOf(s)] ?? null, algaeLevel(s)) || (s.error ? NOT_COVERED : NO_OVERFLOWS);
+  if (!daily(s)) { const raised = higher(CLASS_LEVEL[classOf(s)] ?? null, algaeLevel(s));
+    if (s.error && !isolated(s)) return raised || NOT_COVERED;   // no water within reach: the old rule
+    return rank(raised) >= 1 ? raised : isolated(s) ? NO_RIVER : NO_OVERFLOWS; }
   return worst(s) ?? NO_FORECAST;
 };
 // A later day (2 to 4 days ahead) worse than now, today and tomorrow: [its risk, the day].
@@ -116,12 +125,15 @@ const poorReason = iso => inBathingSeason(iso) ? 'advice against bathing' : 'adv
 const poorAdvice = iso => inBathingSeason(iso)
   ? 'Advice against bathing applies here while the rating is poor, and should be shown on signs at the water.'
   : 'The rating is poor, so the level stays at least high; advice against bathing applies 15 May to 30 September.';   // the council's, not the EA's (above)
-// The words for a spot without a level, the same wherever it is described (the headline, the
-// page's spills row, the comparison).
+// The words for a spot without a risk level, the same wherever it is described (the headline, so the
+// list row, the map's tooltip, the saved card and the alerts; the page's spills row; the comparison).
 const COVER = { [NO_FORECAST]: 'No forecast in this update', [NOT_COVERED]: 'Not covered by the forecast',
-  [NO_OVERFLOWS]: 'No monitored overflows upstream' };
-// A spot whose forecast could not be made (s.error): failed in this update, or out of the model's reach.
-const coverage = s => COVER[String(s.error).startsWith('forecast failed') ? NO_FORECAST : NOT_COVERED];
+  [NO_OVERFLOWS]: 'No sewage risk from monitored overflows', [NO_RIVER]: 'No river connection: overflows cannot reach this lake' };
+// The two plain levels, where the model has nothing to forecast: under the level, one line kept in view.
+const plainLevel = l => l === NO_OVERFLOWS || l === NO_RIVER;
+const OTHER_RISKS = 'Other risks apply: algae, wildlife, runoff and bathers. Check the signs at the water.';
+// A spot whose forecast could not be made (s.error): failed in this update, an isolated lake, or out of the model's reach.
+const coverage = s => COVER[String(s.error).startsWith('forecast failed') ? NO_FORECAST : isolated(s) ? NO_RIVER : NOT_COVERED];
 // The gist in a few words, for the list and the top of a spot's page: the worst of now, today and
 // tomorrow, when, and what set it; or, if those are all low, the first worse day after them.
 // [the level and when, what set it]; the list joins them, a spot's page puts them on two lines.
@@ -193,6 +205,6 @@ function bestDay(spots, dates) {
 }
 
 if (typeof module === 'object' && module.exports) {
-  module.exports = { ORDER, NOT_COVERED, NO_FORECAST, NO_OVERFLOWS, SPILL_CUTS, ECOLI_CUTS, setToday, today, dayWord, rank, risk,
-    level, dayLevel, headParts, headline, dayHeadline, weekNext, coverage, inBathingSeason, poorReason, poorAdvice, daily, ecoliBand, ecoliLevel, ecoliUntested, bestDay };
+  module.exports = { ORDER, NOT_COVERED, NO_FORECAST, NO_OVERFLOWS, NO_RIVER, OTHER_RISKS, SPILL_CUTS, ECOLI_CUTS, setToday, today, dayWord, rank, risk,
+    level, dayLevel, headParts, headline, dayHeadline, weekNext, coverage, COVER, plainLevel, inBathingSeason, poorReason, poorAdvice, daily, ecoliBand, ecoliLevel, ecoliUntested, bestDay };
 }
