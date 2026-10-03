@@ -1,0 +1,115 @@
+name: Answer a spot request
+
+# An issue from the "Request a swim spot" form (it carries the spot-request label) gets one comment:
+# where the spot lands on the river network and how far away, the monitored overflows upstream,
+# the build's placement check and a ready-to-paste spots.csv row (scripts/spot_request.py). Editing
+# the issue runs it again and updates that comment. A location the bot cannot read gets a request
+# for coordinates. Run it by hand from the Actions tab with the form's fields: the answer goes to
+# the run summary, and to an issue too when its number is given.
+#
+# The issue's text is untrusted. It reaches the script only through the event file, never through
+# a ${{ }} expression in a shell line.
+
+on:
+  issues:
+    types: [opened, edited]
+  workflow_dispatch:
+    inputs:
+      name:
+        description: Spot name, e.g. "River Wharfe, Bolton Abbey"
+        required: true
+        type: string
+      location:
+        description: Latitude and longitude, an OS grid reference, a what3words address or a description
+        required: true
+        type: string
+      kind:
+        description: Water body
+        required: true
+        type: choice
+        options: [river, lake]
+      notes:
+        description: Anything else (not used in the answer)
+        required: false
+        type: string
+      issue:
+        description: Issue number to post the answer on (blank = the run summary only)
+        required: false
+        type: string
+
+concurrency:
+  group: spot-request-${{ github.event.issue.number || inputs.issue || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read   # checkout, and the river network and overflow snapshot from the releases
+  issues: write    # the comment
+
+jobs:
+  answer:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.issue.state == 'open' && contains(github.event.issue.labels.*.name, 'spot-request'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DIPCAST_STATE: ${{ github.workspace }}/state
+      DIPCAST_CACHE: ${{ github.workspace }}/state/cache
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        run: uv sync --frozen
+
+      # A failed download is not the end: the script then writes a comment saying a maintainer will
+      # place the spot by hand, and the run fails so that it shows.
+      - name: Fetch the river network (113 MB) and the latest overflow snapshot
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download data-v1 -p river_network.pkl -D data/processed
+          mkdir -p state
+          gh release download state -p live_latest.parquet -D state
+
+      - name: Place the spot and write the answer
+        env:
+          W3W_API_KEY: ${{ secrets.W3W_API_KEY }}   # unset: a what3words address gets a request for coordinates
+          OS_API_KEY: ${{ secrets.OS_API_KEY }}     # unset: a place name gets a request for coordinates
+        run: uv run python scripts/spot_request.py --event "$GITHUB_EVENT_PATH" --out "$RUNNER_TEMP/comment.md"
+
+      - name: Post the answer, or update the earlier one
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ISSUE: ${{ github.event.issue.number || inputs.issue }}
+        run: |
+          body="$RUNNER_TEMP/comment.md"
+          if [ ! -s "$body" ]; then
+            echo "::error title=spot request::no answer was written"
+            exit 1
+          fi
+          cat "$body" >> "$GITHUB_STEP_SUMMARY"
+          if ! [[ "$ISSUE" =~ ^[0-9]+$ ]]; then
+            echo "No issue number: the answer is in the run summary only."
+            exit 0
+          fi
+          # The bot's earlier answer on this issue starts with the marker line; there is at most one.
+          ids=$(gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" --paginate \
+            --jq '.[] | select(.user.login == "github-actions[bot]" and (.body | startswith("<!-- swimsignal-spot-request -->"))) | .id')
+          id=${ids%%$'\n'*}
+          payload=$(jq -n --rawfile b "$body" '{body: $b}')
+          if [ -n "$id" ]; then
+            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" --input - <<<"$payload" >/dev/null
+            echo "Updated comment $id on #$ISSUE"
+          else
+            gh api "repos/$GITHUB_REPOSITORY/issues/$ISSUE/comments" --input - <<<"$payload" >/dev/null
+            echo "Commented on #$ISSUE"
+          fi

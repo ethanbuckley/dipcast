@@ -664,6 +664,22 @@ names its river in the `river` column (see Spot placement). Add one by pull
 request, or ask for one with the "Request a spot" issue template; it appears
 in the next run. Inclusion is not a statement that a spot is safe.
 
+A request made with that template gets one automatic comment
+(`.github/workflows/spot-request.yml` runs `scripts/spot_request.py`). The
+script reads the form's Location as latitude and longitude (decimal, degrees
+minutes and seconds, or a Google Maps address that holds them) or an OS grid
+reference, places the point with `locate_pin` as the build places a
+`spots.csv` row (a river named in the spot's name is the hint), counts the
+monitored overflows within 60 km upstream, runs `build_site.placement_check`
+and proposes a `spots.csv` row. A location it cannot read gets a request for
+coordinates, and editing the issue runs it again and updates the same
+comment. A what3words address or a place name is looked up only when the
+repository secret `W3W_API_KEY` (what3words) or `OS_API_KEY` (OS Names API)
+is set. The workflow answers only issues with the `spot-request` label, which
+the form adds only if that label exists in the repository. It can also be run
+from the Actions tab with the form's fields; the answer then goes to the run
+summary.
+
 Each spot has its own page, `spot/<id>/`, written by `build_site.write_pages`:
 the same map page with the spot's name, a one-line description and absolute
 share-preview tags in its head (today's level is left out, because messaging

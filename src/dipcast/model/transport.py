@@ -81,6 +81,8 @@ RIVER_FORMS = ("inlandRiver", "tidalRiver")
 def _names_match(cand: pd.DataFrame, want: frozenset[str]) -> pd.Series:
     """Which candidate links carry the wanted river's name, as their name or OS's alternative
     (Welsh links often have the English name there)."""
+    if cand.empty:   # an empty string column maps to an empty string column, which `|` cannot combine
+        return pd.Series(False, index=cand.index, dtype=bool)
     return (cand["watercourse_name"].map(lambda n: bool(river_words(n) & want) if isinstance(n, str) else False)
             | cand.get("watercourse_name_alternative", pd.Series(None, index=cand.index, dtype=object)).map(lambda n: bool(river_words(n) & want) if isinstance(n, str) else False))
 
