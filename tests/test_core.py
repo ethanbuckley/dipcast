@@ -135,8 +135,8 @@ def test_ecoli_live_scoring_round_trip(tmp_path, monkeypatch):
 
 
 def _repeated_overflow() -> pd.DataFrame:
-    """Three upstream rows for two overflows: ST1 is listed twice, as overflows from Severn Trent's and
-    Yorkshire Water's live feeds were in the 3 Oct 2026 12:06 UTC build."""
+    """Three upstream rows for two overflows: ST1 is listed twice. The ids repeated in the 3 Oct 2026
+    12:06 UTC build were not captured; they are inferred to be Severn Trent and Yorkshire Water rows."""
     return pd.DataFrame({
         "site_id": ["ST1", "ST2", "ST1"], "company": "Severn Trent Water", "site_name": ["Weir CSO", "Bridge SO", "Weir CSO"],
         "receiving_watercourse": "RIVER SEVERN", "lat": [52.71, 52.74, 52.71], "lon": [-2.75, -2.80, -2.75],
@@ -178,8 +178,8 @@ def test_a_repeated_overflow_id_does_not_fail_the_forecast(monkeypatch):
 
 
 def test_overflow_table_keeps_the_most_recent_row_of_a_repeated_id(caplog):
-    """The 3 Oct 2026 02:59 snapshot listed Anglian Water's AWS00528 twice; a row carried forward for a
-    feed that was down could share an id with a fresh one. One row each, the latest fetched_at."""
+    """The 3 Oct 2026 02:59 snapshot listed Anglian Water's AWS00528 twice. One row each, the latest
+    fetched_at (ST9 has an older row and a newer one)."""
     from dipcast.overflows import duplicate_site_ids, one_row_per_overflow
 
     t = pd.Timestamp("2026-10-03 02:59", tz="UTC")
@@ -207,3 +207,15 @@ def test_build_health_counts_repeated_overflow_ids():
     assert h["duplicate_overflow_ids"] == 0 and h["warnings"] == []
     h = build_site.build_health([good] * 5, duplicate_overflow_ids=["AWS00528"])
     assert h["duplicate_overflow_ids"] == 1 and len(h["warnings"]) == 1 and "AWS00528" in h["warnings"][0]
+
+
+def test_a_cached_overflow_table_with_a_repeated_id_loads_one_row_each(tmp_path, monkeypatch):
+    """--no-refresh reads the cached overflow table. One written before build_overflows dropped repeats
+    (the 3 Oct 2026 02:59 state lists AWS00528 twice) must not count that overflow twice."""
+    from dipcast import config, overflows
+
+    t = pd.Timestamp("2026-10-03 02:59", tz="UTC")
+    pd.DataFrame({"site_id": ["AWS00528", "X1", "AWS00528"], "weight": [0.5, 0.3, 0.5],
+                  "fetched_at": [t, t, t]}).to_parquet(tmp_path / overflows.NAME, index=False)
+    monkeypatch.setattr(config, "state_read", lambda name: tmp_path / name)
+    assert sorted(overflows.load_overflows()["site_id"]) == ["AWS00528", "X1"]
