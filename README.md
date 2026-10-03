@@ -43,7 +43,7 @@ part is the transport step: an overflow 2 km upstream on the same river and one
 | EA WFD Lake Water Bodies Cycle 3 | 564 lake polygons (lakes over 50 ha, 5 ha in protected areas), names and areas | OGL v3 |
 | EA flood-monitoring API | Near-real-time river levels and typical ranges; the API version only | OGL v3 |
 | EA Water Quality Archive (Water Quality Explorer) | E. coli results and the sampler's visual algae check at the 38 inland bathing waters | OGL v3 |
-| OpenStreetMap (Overpass API) | 16 river and lake swim spots chosen by hand from 115 candidates (`spots-osm.csv`) | ODbL 1.0, © OpenStreetMap contributors |
+| OpenStreetMap (Overpass API) | 16 river and lake swim spots chosen one by one from 115 candidates (`spots-osm.csv`) | ODbL 1.0, © OpenStreetMap contributors |
 
 The notices each provider asks for are on the site's terms page ("Data sources
 and credits"), and `data/spots.json`, `data/overflows.geojson` and
