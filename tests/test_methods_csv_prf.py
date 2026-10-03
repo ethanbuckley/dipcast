@@ -201,6 +201,12 @@ def test_the_published_csv_carries_the_credits_and_only_rows_that_match_the_scor
     ver.write_text(json.dumps({"live": {"n_scored": 3, "scored_csv": {"rows": 2}}}))
     assert bs.publish_scored_csv(site, credits, "https://example.org/") is None
     assert not (site / "data" / "verification_live.csv").exists()
+    assert "scored_csv" not in json.loads(ver.read_text())["live"]   # so the Accuracy page shows no link
+    # The scores name a file the state does not hold (a state restored without it): no link either.
+    ver.write_text(json.dumps({"live": {"n_scored": 2, "scored_csv": {"rows": 2}}}))
+    (config.STATE / SCORED_CSV).unlink()
+    assert bs.publish_scored_csv(site, credits, "https://example.org/") is None
+    assert json.loads(ver.read_text())["live"] == {"n_scored": 2}
     # A state from before the scorer wrote rows: nothing to publish, and no warning needed.
     ver.write_text(json.dumps({"live": {"n_scored": 2}}))
     assert bs.publish_scored_csv(site, credits, "https://example.org/") is None

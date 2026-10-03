@@ -414,21 +414,32 @@ def scored_csv_header(credits: dict, root: str) -> str:
 def publish_scored_csv(site: Path, credits: dict, root: str) -> int | None:
     """data/verification_live.csv: the live scorer's rows (forecast_log.SCORED_CSV in the state
     directory) under a header comment with the credits. Published only when its row count equals
-    n_scored in the verification.json this build has just written; otherwise any old copy is removed
-    and the build warns, so the page never links to rows that disagree with its scores. Returns the
+    n_scored in the verification.json this build has just written; otherwise any old copy is removed,
+    live.scored_csv is dropped from that verification.json and the build warns, so the page never
+    links to rows that disagree with its scores, or to no file. Returns the
     number of rows published, or None."""
     from dipcast.forecast_log import SCORED_CSV
     dst = site / "data" / "verification_live.csv"
-    live = json.loads((site / "data" / "verification.json").read_text()).get("live") or {}
+    ver = site / "data" / "verification.json"
+    live = json.loads(ver.read_text()).get("live") or {}
     src = config.state_read(SCORED_CSV)
-    if not live.get("scored_csv") or not src.exists():
+
+    def withdraw():
+        # The Accuracy page links the file whenever live.scored_csv is set, so drop it with the file.
         dst.unlink(missing_ok=True)
+        if live.get("scored_csv"):
+            d = json.loads(ver.read_text())
+            d["live"].pop("scored_csv", None)
+            ver.write_text(json.dumps(d, default=str))
+
+    if not live.get("scored_csv") or not src.exists():
+        withdraw()
         log.info("no scored rows to publish: the live scorer has not written %s yet", SCORED_CSV)
         return None
     body = src.read_text()
     n = max(body.count("\n") - 1, 0)   # rows after the column names; no field holds a line break
     if n != live.get("n_scored", 0):
-        dst.unlink(missing_ok=True)
+        withdraw()
         announce(f"{SCORED_CSV} has {n} rows but the live scores count {live.get('n_scored', 0)}: not published")
         return None
     dst.write_text(scored_csv_header(credits, root) + body)
