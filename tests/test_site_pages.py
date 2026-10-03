@@ -401,6 +401,9 @@ def test_the_data_page_lists_every_file_in_data_with_its_size(tmp_path):
     (data / "spots.json").write_bytes(b"x" * 626_076)
     (data / "overflows.geojson").write_bytes(b"x" * 5_947_289)
     (data / "verification.json").write_bytes(b"x" * 400)
+    (data / "verification_live.csv").write_text("# credits\noverflow_id,observed\n")
+    (data / "anypoint").mkdir()
+    (data / "anypoint" / "tiles.json").write_text("{}")
     (data / "new.csv").write_text("a,b\n")   # a file nobody has described yet
     (data / "links" / "a.json").write_bytes(b"x" * 1500)
     (data / "links" / "b.json").write_bytes(b"x" * 1500)
@@ -410,12 +413,16 @@ def test_the_data_page_lists_every_file_in_data_with_its_size(tmp_path):
     assert row("spots.json").endswith('<td class="num">626 kB</td>') and 'href="data/spots.json"' in row("spots.json")
     assert row("overflows.geojson").endswith(">5.9 MB</td>") and row("verification.json").endswith(">1 kB</td>")
     assert row("alerts.json").endswith(">Not in this build</td>")   # described, but this build wrote none
+    assert 'href="data/verification_live.csv"' in row("verification_live.csv")
+    assert 'href="data/anypoint/tiles.json"' in row("anypoint/")
+    assert "Not described here yet" not in row("anypoint/") + row("verification_live.csv")
     assert row("new.csv") == '<td><a href="data/new.csv">new.csv</a></td><td>Not described here yet.</td><td class="num">1 kB</td>'
     assert row("links/") == '<td>links/</td><td>Not described here yet.</td><td class="num">3 kB</td>'   # a folder, whole
     assert bs.with_data_files((bs.STATIC / "data.html").read_text(), data)[1] == ["links/", "new.csv"]
-    # The four files every build writes each have a section of their own.
-    for name in ("spots.json", "alerts.json", "overflows.geojson", "verification.json"):
-        assert f'<h2 id="{name.replace(".", "-")}">{name}</h2>' in page, name
+    # The documented files each have a section of their own.
+    for name in ("spots.json", "alerts.json", "overflows.geojson", "verification.json", "verification_live.csv"):
+        assert f'<h2 id="{name.replace(".", "-").replace("_", "-")}">{name}</h2>' in page, name
+    assert '<h2 id="anypoint">anypoint/</h2>' in page
     # A prose page like the others: the shared head and foot, flat links, and the counter when it is on.
     assert "<title>Data files · SwimSignal</title>" in page and 'href="page.css"' in page and 'href="/' not in page
     assert 'href="terms.html#data"' in page and 'href="about.html#embed"' in page and "cloudflareinsights" in page
@@ -423,7 +430,7 @@ def test_the_data_page_lists_every_file_in_data_with_its_size(tmp_path):
     # An empty data/ (write_pages over a fresh folder): every described row says so, and nothing breaks.
     empty = tmp_path / "empty"
     empty.mkdir()
-    assert bs.write_data_page(empty) == [] and (empty / "data.html").read_text().count("Not in this build") == 4
+    assert bs.write_data_page(empty) == [] and (empty / "data.html").read_text().count("Not in this build") == 6
 
 
 def test_the_embed_is_written_beside_the_app_with_its_scripts_versioned(tmp_path):
