@@ -54,10 +54,10 @@ test('a bathing water links the Environment Agency page, and a poor one says so 
 test('a spot without a daily forecast gets its words and no strip', () => {
   const none = {...river, id: 'semerwater', upstream_summary: {overflows: 0}, days: []};
   const h = Embed.card(none, DATA, NOW);
-  assert.ok(h.includes('<p class="hl clear">No monitored overflows upstream</p>') && !h.includes('drow'));
+  assert.ok(h.includes('<p class="hl clear">No sewage risk from monitored overflows</p>') && !h.includes('drow'));
   const isolated = {id: 'tarn', name: 'A Tarn', kind: 'lake', source: 'curated', days: [], error: 'An isolated lake with no river connection.'};
   const t = Embed.card(isolated, DATA, NOW);
-  assert.ok(t.includes('<p class="hl na">Not covered by the forecast</p>') && !t.includes('drow') && t.includes('All credits and licences'));
+  assert.ok(t.includes('<p class="hl na">No river connection: overflows cannot reach this lake</p>') && !t.includes('drow') && t.includes('All credits and licences'));
 });
 
 test('names are escaped, and an id the site gives no page keeps ?spot=', () => {
