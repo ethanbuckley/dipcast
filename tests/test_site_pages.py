@@ -281,13 +281,23 @@ def test_feedback_and_experience_are_built_for_nested_github_pages(tmp_path):
     assert 'href="/' not in feedback
     assert "hello@swimsignal.co.uk" in feedback and "Send by email" in feedback
     home = (tmp_path / "index.html").read_text()
-    assert '<script src="experience.js">' in home
+    stamp = bs.shell_stamp()
+    assert re.fullmatch(r"[0-9a-f]{8}", stamp)
+    # The page asks for its scripts at the build's stamp, as the offline copy stores them.
+    assert f'<script src="experience.js?v={stamp}">' in home and f'<script src="levels.js?v={stamp}">' in home
     assert (tmp_path / "experience.js").exists()
-    assert 'feedback.html' in (tmp_path / "sw.js").read_text()
+    sw = (tmp_path / "sw.js").read_text()
+    assert 'feedback.html' in sw and f"const BUILD = '{stamp}';" in sw and "const CACHE = `dipcast-${BUILD}`;" in sw
+    assert "`levels.js?v=${BUILD}`" in sw and "unpkg" not in sw and "unpkg" not in home
+    # The map library from this site, at the paths the page and the worker ask for.
+    for f in ("vendor/leaflet/leaflet.js", "vendor/leaflet/leaflet.css", "vendor/leaflet/LICENSE", "vendor/leaflet/images/layers.png"):
+        assert (tmp_path / f).exists(), f
+    assert 'href="vendor/leaflet/leaflet.css"' in home and 'src="vendor/leaflet/leaflet.js"' in home
     assert 'SwimSignal' in (tmp_path / "manifest.webmanifest").read_text()
-    # Rebranding preserves the installed application's URL and saved-spot storage.
+    # Rebranding preserves the installed application's URL and saved-spot storage; the cache keeps its
+    # dipcast- prefix, which the worker and the page's "Turn off the offline copy" clear by.
     assert '"start_url": "./"' in (tmp_path / "manifest.webmanifest").read_text()
-    assert "dipcast-v1" in (tmp_path / "sw.js").read_text()
+    assert "k.startsWith('dipcast-')" in sw
 
 
 def test_river_levels_are_an_observation_beside_the_forecast():
@@ -346,3 +356,31 @@ def test_weather_context_is_attached_per_spot_and_a_failed_call_leaves_none():
         raise RuntimeError("open-meteo request failed")
     fresh = [{"id": "a", "name": "A", "lat": 54.0, "lon": -2.0}]
     assert bs.attach_weather(fresh, request=broken) == 0 and "weather" not in fresh[0]
+
+
+def test_the_api_server_sends_its_home_page_to_the_site_and_keeps_the_prose_pages(monkeypatch):
+    # The API's own map page (static/index.html) was outside the design system and is gone: the
+    # map is the static site's. Without the lifespan (no `with`), nothing is warmed up or scheduled.
+    # SITE_URL is read when the module loads, so each setting is a reload.
+    import importlib
+
+    from fastapi.testclient import TestClient
+
+    from dipcast.api import app as api
+    try:
+        for env, want in [(None, "https://swimsignal.co.uk/"), ("http://localhost:8769", "http://localhost:8769/"),
+                          ("swimsignal.co.uk", "https://swimsignal.co.uk/")]:   # no scheme: not an address
+            if env is None:
+                monkeypatch.delenv("DIPCAST_SITE_URL", raising=False)
+            else:
+                monkeypatch.setenv("DIPCAST_SITE_URL", env)
+            importlib.reload(api)
+            r = TestClient(api.app).get("/", follow_redirects=False)
+            assert r.status_code == 307 and r.headers["location"] == want, env
+        c = TestClient(api.app)
+        assert not (api.STATIC / "index.html").exists()
+        for path in ("/about", "/verification", "/terms", "/privacy", "/feedback", "/testing", "/static/page.css", "/static/fonts/SourceSans3-latin.woff2"):
+            assert c.get(path).status_code == 200, path
+    finally:
+        monkeypatch.undo()
+        importlib.reload(api)   # as the environment has it, for any later test

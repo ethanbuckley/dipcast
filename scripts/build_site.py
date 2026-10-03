@@ -8,6 +8,7 @@ run of this script is the whole back end.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -70,7 +71,7 @@ SPOT_ID = re.compile(r"[A-Za-z0-9_-]+")
 PAGE_META = re.compile(r"<!-- page-meta.*?<!-- /page-meta -->", re.DOTALL)
 LOADING = '<div id="result"><p class="muted">Loading forecasts…</p></div>'
 # The brand mark, inline in every page's header (the static pages carry the same markup), so it needs no path.
-MARK = ('<svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#1a6871"/>'
+MARK = ('<svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#0f5a61"/>'
         '<path d="M430-20C330 110 470 230 300 290S110 380 190 540" fill="none" stroke="#5CC2B5" stroke-width="70" stroke-linecap="round"/>'
         '<circle cx="318" cy="138" r="38" fill="#F08A4B"/><circle cx="165" cy="358" r="46" fill="none" stroke="#fff" stroke-width="22"/></svg>')
 SITE_URL_ENV = "DIPCAST_SITE_URL"
@@ -437,14 +438,52 @@ def attach_weather(results: list[dict], request=None, batch: int = 50) -> int:
     return n
 
 
-def copy_app_files(site: Path) -> None:
+# What the offline copy (sw.js) stores, or decides what it stores: the files whose hash names its
+# cache. A file here changes, and so does sw.js, so browsers install the new worker and fill a new
+# cache from the server; nothing else (the forecast, a spot's page) changes the name. Directories
+# count whole.
+SHELL_SOURCES = [TEMPLATE, TEMPLATE.parent / "sw.js", TEMPLATE.parent / "levels.js", TEMPLATE.parent / "experience.js",
+                 TEMPLATE.parent / "manifest.webmanifest", TEMPLATE.parent / "icons", TEMPLATE.parent / "vendor",
+                 STATIC / "page.css", STATIC / "feedback.html", STATIC / "fonts"]
+# The worker's build line, and the page's scripts, which get ?v=<stamp> so a page and its scripts
+# always come from one build (sw.js explains). The page must keep these exact tags.
+SW_BUILD = "const BUILD = 'dev';"
+VERSIONED_SCRIPTS = ('<script src="experience.js"></script>', '<script src="levels.js"></script>')
+
+
+def shell_stamp() -> str:
+    """Eight hex digits of a hash over the shell's source files, their paths and their bytes."""
+    h = hashlib.sha256()
+    for src in SHELL_SOURCES:
+        for f in sorted(src.rglob("*")) if src.is_dir() else [src]:
+            if f.is_file() and f.name != ".DS_Store":
+                h.update(str(f.relative_to(ROOT)).encode() + b"\0" + f.read_bytes() + b"\0")
+    return h.hexdigest()[:8]
+
+
+def with_build(template: str, stamp: str) -> str:
+    """The app page with its scripts asked for at ?v=<stamp>, as the worker stores them."""
+    for tag in VERSIONED_SCRIPTS:
+        if tag not in template:
+            raise ValueError(f"index.html has lost {tag}, which the offline copy versions")
+        template = template.replace(tag, tag.replace('.js"', f'.js?v={stamp}"'), 1)
+    return template
+
+
+def copy_app_files(site: Path, stamp: str | None = None) -> None:
     """The web-app manifest and icons beside index.html: Add to Home Screen then gives an
-    icon, a name and a full-screen window."""
+    icon, a name and a full-screen window. The offline copy, sw.js, gets the build's stamp."""
+    stamp = stamp or shell_stamp()
     shutil.copy(TEMPLATE.parent / "manifest.webmanifest", site / "manifest.webmanifest")
-    shutil.copy(TEMPLATE.parent / "sw.js", site / "sw.js")   # the offline copy; see the file
+    sw = (TEMPLATE.parent / "sw.js").read_text()
+    if sw.count(SW_BUILD) != 1:
+        raise ValueError(f"sw.js has lost its line {SW_BUILD!r}, which the build stamps")
+    (site / "sw.js").write_text(sw.replace(SW_BUILD, f"const BUILD = '{stamp}';"))   # the offline copy; see the file
     shutil.copy(TEMPLATE.parent / "experience.js", site / "experience.js")
     shutil.copy(TEMPLATE.parent / "levels.js", site / "levels.js")   # the level rules, which the page loads
     shutil.copytree(TEMPLATE.parent / "icons", site / "icons", dirs_exist_ok=True)
+    # The map library, Leaflet, served from this site (vendor/leaflet/VERSION.txt) rather than a CDN.
+    shutil.copytree(TEMPLATE.parent / "vendor", site / "vendor", dirs_exist_ok=True)
 
 
 def site_url() -> str:
@@ -570,7 +609,8 @@ def write_pages(site: Path, results: list[dict], token: str | None = None, root:
     """Every HTML page, the sitemap and the app files. Returns the number of spot pages. A spot
     whose id is not letters, digits and hyphens gets no page of its own and keeps ?spot=."""
     root = root or site_url()
-    template = TEMPLATE.read_text()
+    stamp = shell_stamp()
+    template = with_build(TEMPLATE.read_text(), stamp)
     if not (PAGE_META.search(template) and LOADING in template):
         raise ValueError("index.html has lost its page-meta block or its loading placeholder")
     for name in ["about.html", "verification.html", "terms.html", "privacy.html", "feedback.html", "testing.html"]:
@@ -582,7 +622,7 @@ def write_pages(site: Path, results: list[dict], token: str | None = None, root:
         (site / name).write_text(with_counter(with_push(s, push) if name == "privacy.html" else s, token))
     shutil.copy(STATIC / "page.css", site / "page.css")
     shutil.copytree(STATIC / "fonts", site / "fonts", dirs_exist_ok=True)   # declared in page.css and index.html
-    copy_app_files(site)
+    copy_app_files(site, stamp)
     home = PAGE_META.sub(lambda m: page_meta(HOME_TITLE, DESCRIPTION, root, root, base="./"), template, count=1)
     (site / "index.html").write_text(with_counter(home, token))
     (site / "saved").mkdir(exist_ok=True)

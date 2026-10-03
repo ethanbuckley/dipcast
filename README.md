@@ -619,7 +619,8 @@ uv run python scripts/train.py 2025
 uv run uvicorn dipcast.api.app:app --port 8000
 ```
 
-Open http://localhost:8000. Live status refreshes in-process every
+The API answers at http://localhost:8000/api/forecast (and /docs); its / sends you to the
+site, whose map `scripts/build_site.py` builds. Live status refreshes in-process every
 `DIPCAST_REFRESH_MINUTES` (set it, e.g. `DIPCAST_REFRESH_MINUTES=20`); with it
 unset, run `scripts/refresh.py` on a schedule and call `POST /api/reload`
 (`deploy/com.ethanbuckley.dipcast.refresh.plist` does this on macOS). Mutable

@@ -35,8 +35,10 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="SwimSignal">
-<!-- Pinned by hash, so a changed file on the CDN is refused rather than run. -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<!-- The map library, Leaflet 1.9.4, served from this site (vendor/leaflet/, with its licence) so
+     that no third party receives a request for it, as for the fonts. Pinned by hash: a changed file
+     is refused rather than run (tests/test_design_tokens.py checks the hashes against the files). -->
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=">
 <style>
   /* The design system: docs/DESIGN.md. The tokens and the header are the same as page.css, the
      prose pages' stylesheet, repeated here so that the app paints before any stylesheet arrives
@@ -66,19 +68,23 @@
           --low:#3b7d4f; --moderate:#b7791f; --high:#c2552a; --veryhigh:#a32d2d; --unknown:#98a2aa; --clear:#4aa39a;
           --k-low:#326a43; --k-moderate:#855817; --k-high:#a04623; --k-veryhigh:#992a2a; --k-na:#4f5a62; --k-clear:#0f5a61;
           --control-low:#326a43; --focus:#0f5a61; --notice-bg:#fff6e8; --notice-line:#e5a53a;
-          --radius:8px;
+          /* One corner radius. The mark's 6 px corner and the 4 px of a focus ring round a link are their
+             own tokens, used for nothing else. */
+          --radius:8px; --radius-mark:6px; --radius-ring:4px;
+          /* White text and rules on a filled surface: the bar, the brand, a chosen control. */
+          --on-fill:#fff;
           /* Six type sizes: meta, notes, body, section headings, a figure or headline, titles and the
              answer's level (30 on phones). */
           --fs-meta:13px; --fs-note:15px; --fs-body:17px; --fs-head:20px; --fs-level:30px; --fs-title:36px;
           /* The app's own: the map, the controls that float on it, and the rain bars. The tiles are grey
              and the water a muted blue (#bccfd8), so the markers stay the only strong colours on the map.
              CSS cannot pick out one colour, so the filter is the SVG one at the top of <body>. */
-          --map-bg:#e4e2dc; --tile-filter:url(#tiles); --float:#fff; --veil:rgba(255,255,255,.9); --lift:0 1px 2px rgba(0,0,0,.12), 0 0 0 1px var(--hair);
+          --map-bg:#e4e2dc; --tile-filter:url(#tiles); --float:#fff; --veil:rgba(255,255,255,.9); --scrim:rgba(20,33,43,.55); --lift:0 1px 2px rgba(0,0,0,.12), 0 0 0 1px var(--hair);
           --rain:#3d8bd4; --header-h:56px;
           /* The sky and the glass: the picture's own top colour, which runs up to the header; a tile,
              three-quarters white; the empty part of a bar; an overflow quiet, and not reporting. */
           --sky:#dfe6e7; --glass:rgba(255,255,255,.76); --track:rgba(27,35,40,.13); --ov-quiet:#5b6470; --ov-off:#b3bac2;
-          --arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235a6166' stroke-width='2'/%3E%3C/svg%3E"); }
+          --arrow:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%235a6166' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
   * { box-sizing:border-box; }
   html { -webkit-text-size-adjust:100%; text-size-adjust:100%; font-optical-sizing:auto; }
   html, body { margin:0; }
@@ -86,7 +92,7 @@
   a { color:var(--link); text-decoration-thickness:1px; text-underline-offset:2px; }
   /* As in page.css: the bare pseudo-class is the weakest selector, so a control keeps its own corner
      on focus; the 4 px only rounds the ring round a link or a summary, which have none. */
-  :focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:4px; }
+  :focus-visible { outline:2px solid var(--focus); outline-offset:2px; border-radius:var(--radius-ring); }
   /* A little motion where something changes under the finger; none for anyone who asked for none. */
   .drow, .btn, .chip-btn, .hbtn, .save, a.row, .sortseg button, .bottom-nav a, .bottom-nav button, .low-ctl button, .f-v {
     transition:background-color .18s ease, color .18s ease, box-shadow .18s ease, border-color .18s ease; }
@@ -110,16 +116,16 @@
 
   /* The header, as on every page of the site: the slate bar, the mark, the wordmark and the links in
      white, the current page underlined in white. It frames the sky below it. */
-  .top { position:sticky; top:0; z-index:1100; display:flex; align-items:center; gap:10px; background:var(--bar); color:#fff;
+  .top { position:sticky; top:0; z-index:1100; display:flex; align-items:center; gap:10px; background:var(--bar); color:var(--on-fill);
          padding:calc(9px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 9px calc(16px + env(safe-area-inset-left)); }
-  .brand { display:inline-flex; align-items:center; gap:10px; padding:8px 0; margin:-8px 0; color:#fff; text-decoration:none; font:600 var(--fs-head)/1 var(--font-display); letter-spacing:-.005em; }   /* a 44 px target that moves nothing */
-  .brand svg { display:block; width:28px; height:28px; border-radius:6px; }
+  .brand { display:inline-flex; align-items:center; gap:10px; padding:8px 0; margin:-8px 0; color:var(--on-fill); text-decoration:none; font:600 var(--fs-head)/1 var(--font-display); }   /* a 44 px target that moves nothing */
+  .brand svg { display:block; width:28px; height:28px; border-radius:var(--radius-mark); }
   .top nav { margin-left:auto; display:flex; align-items:center; gap:4px; }
-  .top nav a, .hbtn { color:var(--bar-ink); text-decoration:none; font-size:var(--fs-note); font-weight:600; line-height:1.2; min-height:44px; display:inline-flex; align-items:center; padding:8px 10px; border-radius:6px; border:0; background:transparent; cursor:pointer; }
-  .top nav a:hover, .hbtn:hover { color:#fff; background:var(--bar-hover); }
-  .top .hbtn[aria-pressed=true], .top .hbtn[aria-current=page] { color:#fff; box-shadow:inset 0 -2px 0 #fff; border-radius:0; background:transparent; }
-  .top :focus-visible { outline-color:#fff; }
-  .hbtn .n { display:inline-block; min-width:20px; margin-left:6px; padding:0 6px; border-radius:999px; background:#fff; color:var(--bar); font-size:var(--fs-meta); font-weight:600; line-height:20px; text-align:center; vertical-align:1px; }
+  .top nav a, .hbtn { color:var(--bar-ink); text-decoration:none; font-size:var(--fs-note); font-weight:600; line-height:1.2; min-height:44px; display:inline-flex; align-items:center; padding:8px 10px; border-radius:var(--radius); border:0; background:transparent; cursor:pointer; }
+  .top nav a:hover, .hbtn:hover { color:var(--on-fill); background:var(--bar-hover); }
+  .top .hbtn[aria-pressed=true], .top .hbtn[aria-current=page] { color:var(--on-fill); box-shadow:inset 0 -2px 0 var(--on-fill); border-radius:0; background:transparent; }
+  .top :focus-visible { outline-color:var(--on-fill); }
+  .hbtn .n { display:inline-block; min-width:20px; margin-left:6px; padding:0 6px; border-radius:999px; background:var(--on-fill); color:var(--bar); font-size:var(--fs-meta); font-weight:600; line-height:20px; text-align:center; vertical-align:1px; }
   .hbtn .n[hidden] { display:none; }
 
   #app { position:relative; }
@@ -145,15 +151,15 @@
   .leaflet-container a.leaflet-popup-close-button:hover, .leaflet-container a.leaflet-popup-close-button:focus { color:var(--ink); }
   @media (pointer: coarse) { .leaflet-container .leaflet-bar a { width:44px; height:44px; line-height:44px; }
     .leaflet-container a.leaflet-popup-close-button { width:44px; height:44px; line-height:44px; } .leaflet-popup-content { margin-right:44px; } }
-  .leaflet-container .leaflet-control-attribution { font-size:var(--fs-meta); color:var(--muted); background:var(--veil); padding:2px 6px; border-radius:6px 0 0 0; }
+  .leaflet-container .leaflet-control-attribution { font-size:var(--fs-meta); color:var(--muted); background:var(--veil); padding:2px 6px; border-radius:var(--radius) 0 0 0; }
   .leaflet-popup-content-wrapper { border-radius:var(--radius); }
   .leaflet-popup-content-wrapper, .leaflet-popup-tip { background:var(--float); color:var(--ink); box-shadow:var(--lift); }
-  .leaflet-tooltip { padding:4px 8px; border-color:var(--float); border-radius:6px; background:var(--float); color:var(--ink); box-shadow:var(--lift); font-size:var(--fs-meta); }
+  .leaflet-tooltip { padding:4px 8px; border-color:var(--float); border-radius:var(--radius); background:var(--float); color:var(--ink); box-shadow:var(--lift); font-size:var(--fs-meta); }
   .leaflet-tooltip-top::before { border-top-color:var(--float); } .leaflet-tooltip-bottom::before { border-bottom-color:var(--float); }
   .leaflet-tooltip-left::before { border-left-color:var(--float); } .leaflet-tooltip-right::before { border-right-color:var(--float); }
   /* Touch screens: one finger scrolls the page and two move the map, so the map cannot trap the scroll. */
   .map-hint { position:absolute; inset:0; z-index:1000; display:flex; align-items:center; justify-content:center; padding:0 24px; text-align:center;
-              background:rgba(20,33,43,.55); color:#fff; font-weight:600; font-size:var(--fs-body); opacity:0; transition:opacity .25s; pointer-events:none; }
+              background:var(--scrim); color:var(--on-fill); font-weight:600; font-size:var(--fs-body); opacity:0; transition:opacity .25s; pointer-events:none; }
   .map-hint.show { opacity:1; }
   /* What floats on the map: white, a hairline and the one small lift that tiles need. The legend is
      the six keys in one line, and the overflows' key under them while overflows are on the map. */
@@ -161,18 +167,18 @@
   .map-legend .keys { display:flex; flex-wrap:wrap; gap:2px 12px; }
   .map-legend .ovkey { margin-top:4px; padding-top:4px; border-top:1px solid var(--line); color:var(--muted); }
   .map-legend .ovkey[hidden] { display:none; }
-  .dot { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:6px; vertical-align:-1px; box-shadow:0 0 0 1.5px #fff, 0 0 0 2.5px rgba(0,0,0,.18); }
+  .dot { display:inline-block; width:11px; height:11px; border-radius:50%; margin-right:6px; vertical-align:-1px; box-shadow:0 0 0 1.5px var(--card), 0 0 0 2.5px var(--track); }
   /* The map's "Low risk only" switch, and the list's chip for the same thing. */
   .low-ctl { display:flex; flex-direction:column; align-items:flex-end; }
   .low-ctl button { min-height:44px; display:flex; align-items:center; font-size:var(--fs-note); font-weight:600; line-height:1.2; padding:9px 12px; border:0; border-radius:var(--radius);
                     background:var(--float); color:var(--ink); box-shadow:var(--lift); cursor:pointer; }
-  .low-ctl button[aria-pressed=true], .chip-btn.low[aria-pressed=true] { background:var(--control-low); color:#fff; }
+  .low-ctl button[aria-pressed=true], .chip-btn.low[aria-pressed=true] { background:var(--control-low); color:var(--on-fill); }
   .low-ctl select { min-height:44px; margin:0 0 6px; font:inherit; font-size:var(--fs-body); font-weight:600; line-height:1.2; color:var(--ink); padding:8px 32px 8px 12px; border:0; border-radius:var(--radius);
                     background:var(--float) var(--arrow) no-repeat right 12px center; box-shadow:var(--lift); cursor:pointer; -webkit-appearance:none; appearance:none; }
-  .low-ctl .n { margin-left:6px; font-weight:600; color:var(--muted); } .low-ctl button[aria-pressed=true] .n { color:#fff; }
+  .low-ctl .n { margin-left:6px; font-weight:600; color:var(--muted); } .low-ctl button[aria-pressed=true] .n { color:var(--on-fill); }
   .chip-btn.low { display:inline-flex; align-items:center; }
   .chip-btn.low .dot { width:10px; height:10px; box-shadow:none; }
-  .low-ctl button[aria-pressed=true] .dot, .chip-btn.low[aria-pressed=true] .dot { background:#fff !important; }
+  .low-ctl button[aria-pressed=true] .dot, .chip-btn.low[aria-pressed=true] .dot { background:var(--on-fill) !important; }
   .low-note { display:none; max-width:230px; margin:6px 0 0 auto; padding:7px 10px; border-radius:var(--radius); background:var(--float);
               box-shadow:var(--lift); font-size:var(--fs-meta); line-height:1.4; color:var(--muted); }
   .low-ctl button[aria-pressed=true] + .low-note { display:block; }
@@ -180,7 +186,7 @@
   .dot.sm:first-of-type { margin-left:0; }   /* a key that starts a line, after a line break too */
 
   #panel { padding:16px 16px 32px; }
-  h1, h2, h3 { font-family:var(--font-display); font-weight:600; letter-spacing:-.005em; }
+  h1, h2, h3 { font-family:var(--font-display); font-weight:600; }
 
   /* The list, answer first: the intro, one row of controls (the day, low risk only) and a line under
      it, then the saved spots, then all the spots with their sort and their kinds. */
@@ -207,7 +213,7 @@
   /* Choices without a border round each: words in the text's weight, the one chosen filled. */
   .chip-btn { min-height:44px; flex:none; font-size:var(--fs-note); font-weight:600; padding:6px 12px; border-radius:var(--radius); border:0; background:transparent; color:var(--ink); cursor:pointer; }
   .chip-btn:hover { background:var(--hover); }
-  .chip-btn[aria-pressed=true] { background:var(--brand); color:#fff; }
+  .chip-btn[aria-pressed=true] { background:var(--brand); color:var(--on-fill); }
   .group { margin:32px 0 0; }
   .group-bar { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 12px; margin:0 0 8px; }
   .group-head { font-size:var(--fs-head); line-height:1.2; margin:0; }
@@ -245,7 +251,7 @@
 
   /* One spot */
   .back { min-height:44px; display:inline-flex; align-items:center; gap:2px; font-size:var(--fs-note); font-weight:600; text-decoration:none; padding:6px 0; }
-  .back::before { content:""; width:8px; height:8px; margin:0 6px 0 2px; border-left:2px solid currentColor; border-bottom:2px solid currentColor; transform:rotate(45deg); }
+  .back::before { content:""; width:8px; height:8px; margin:0 6px 0 2px; border-left:1.75px solid currentColor; border-bottom:1.75px solid currentColor; transform:rotate(45deg); }
   .spot-name { font-size:var(--fs-title); line-height:1.1; letter-spacing:-.01em; margin:0; overflow-wrap:anywhere; }   /* also the h2 a spot's built page shows before the script runs */
   .save { min-height:44px; flex:none; display:inline-flex; align-items:center; gap:6px; margin-top:2px; font-size:var(--fs-note); font-weight:600; padding:8px 12px; border-radius:var(--radius); border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
   .save[aria-pressed=true] { background:var(--brand-tint); border-color:var(--brand); color:var(--link); }
@@ -279,11 +285,13 @@
      2026). The picture hangs from the bottom of a view's opening words (.answer on a spot's page,
      .lead on the list and the Saved page): its sky ends there, its fells fill the band below them,
      and it is the paper 300 px further down, so nothing below that sits on it. Above it, its own sky
-     colour runs up to the header. Every view puts a tile first after the band. */
+     colour runs up to the header. Every view puts a tile first after the band. The picture is 500 by
+     600 CSS px; a view wider than that (a phone on its side, a small tablet) stretches it sideways to
+     the edges and keeps its height, so the sky still ends at the words and nothing moves up or down. */
   #panel { isolation:isolate; }
   .answer, .lead { position:relative; margin-bottom:128px; }
   .answer::before, .lead::before { content:""; position:absolute; z-index:-1; top:-600px; bottom:-310px; left:-24px; right:-24px; pointer-events:none;
-    background:var(--sky) url(icons/fells.webp) center bottom / auto 600px no-repeat; }
+    background:var(--sky) url(icons/fells.webp) center bottom / max(100%, 500px) 600px no-repeat; }
   /* A tile: frosted over the picture, near white over the paper further down. The one radius, no border
      or shadow. Plain white where a browser draws no blur, or the reader asked for less transparency. */
   .tile { position:relative; min-width:0; padding:12px 14px 14px; border-radius:var(--radius); background:var(--glass);
@@ -304,7 +312,7 @@
   .answer .kind { margin:0; font-size:var(--fs-meta); line-height:1.35; color:var(--muted); }
   .answer .spot-name { margin:6px auto 0; max-width:16em; text-wrap:balance; }
   .big { margin:12px 0 0; font:600 var(--fs-title)/1.1 var(--font-text); letter-spacing:-.01em; color:var(--k-na); }
-  .big-head { margin:14px auto 0; max-width:12em; font:700 var(--fs-level)/1.12 var(--font-text); letter-spacing:-.01em; color:var(--k-na); text-wrap:balance; }
+  .big-head { margin:14px auto 0; max-width:12em; font:700 var(--fs-level)/1.12 var(--font-text); color:var(--k-na); text-wrap:balance; }
   .big.low, .big-head.low { color:var(--k-low); } .big.moderate, .big-head.moderate { color:var(--k-moderate); } .big.high, .big-head.high { color:var(--k-high); }
   .big.veryhigh, .big-head.veryhigh { color:var(--k-veryhigh); } .big.clear, .big-head.clear { color:var(--k-clear); }
   .answer .why { margin:8px 0 0; font-weight:600; line-height:1.35; }
@@ -312,12 +320,12 @@
   .answer .issued { margin:10px 0 0; }
   /* Every tile is built the same way: a label with its icon, one figure, one drawing, one sentence, and
      the rest of the explanation one tap away in its corner. */
-  .t-lab { display:flex; align-items:center; gap:6px; margin:0; padding-right:36px; font:600 var(--fs-meta)/1.3 var(--font-text); letter-spacing:0; color:var(--muted); }
+  .t-lab { display:flex; align-items:center; gap:6px; margin:0; padding-right:36px; font:600 var(--fs-meta)/1.3 var(--font-text); color:var(--muted); }
   .t-lab .ic { width:15px; height:15px; vertical-align:0; }
-  .t-fig { display:flex; flex-wrap:wrap; align-items:baseline; gap:0 5px; margin:8px 0 0; font:300 var(--fs-level)/1 var(--font-text); letter-spacing:-.01em; font-variant-numeric:tabular-nums lining-nums; }
-  .t-fig small { font:600 var(--fs-note)/1.2 var(--font-text); letter-spacing:0; color:var(--muted); }
+  .t-fig { display:flex; flex-wrap:wrap; align-items:baseline; gap:0 5px; margin:8px 0 0; font:300 var(--fs-level)/1 var(--font-text); font-variant-numeric:tabular-nums lining-nums; }
+  .t-fig small { font:600 var(--fs-note)/1.2 var(--font-text); color:var(--muted); }
   .t-fig.hot { color:var(--k-veryhigh); } .t-fig.low { color:var(--k-low); } .t-fig.moderate { color:var(--k-moderate); } .t-fig.high { color:var(--k-high); } .t-fig.veryhigh { color:var(--k-veryhigh); }
-  .t-word { flex-basis:100%; margin-top:5px; font:700 var(--fs-note)/1.2 var(--font-text); letter-spacing:0; color:var(--k-na); }
+  .t-word { flex-basis:100%; margin-top:5px; font:700 var(--fs-note)/1.2 var(--font-text); color:var(--k-na); }
   .t-word.low { color:var(--k-low); } .t-word.moderate { color:var(--k-moderate); } .t-word.high { color:var(--k-high); } .t-word.veryhigh { color:var(--k-veryhigh); } .t-word.plain { color:var(--ink); }
   .t-say { margin:10px 0 0; font-size:var(--fs-note); line-height:1.4; }
   .t-key { margin:8px 0 0; font-size:var(--fs-meta); color:var(--muted); }
@@ -407,7 +415,7 @@
   /* A phone's spot page: where the spot is, at a glance, under the answer. */
   .loc { position:relative; height:140px; margin:12px 0 0; border-radius:var(--radius); overflow:hidden; background:var(--map-bg); }
   #loc-map { position:absolute; inset:0; z-index:0; background:var(--map-bg); cursor:pointer; }
-  .loc-open { min-height:44px; position:absolute; top:10px; right:10px; z-index:1; font-size:var(--fs-note); font-weight:600; line-height:1.2; padding:7px 11px; border:0; border-radius:6px;
+  .loc-open { min-height:44px; position:absolute; top:10px; right:10px; z-index:1; font-size:var(--fs-note); font-weight:600; line-height:1.2; padding:7px 11px; border:0; border-radius:var(--radius);
               background:var(--float); color:var(--ink); box-shadow:var(--lift); cursor:pointer; }
   #spot-map { position:relative; height:260px; border-radius:var(--radius); overflow:hidden; margin:8px 0; }
   /* The overflows that matter most, each with its reach drawn. */
@@ -428,7 +436,7 @@
   .ov-reach b small { display:inline; font-weight:600; }
   .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; min-height:44px; font-size:var(--fs-note); font-weight:600; padding:8px 14px; border-radius:var(--radius); border:1px solid var(--line); background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
   .btn:hover { background:var(--hover); }
-  .btn.primary { background:var(--brand); border-color:var(--brand); color:#fff; }
+  .btn.primary { background:var(--brand); border-color:var(--brand); color:var(--on-fill); }
   .btn.primary:hover { background:var(--brand-deep); border-color:var(--brand-deep); }
   .btn[hidden] { display:none; }   /* display:inline-flex would otherwise show it */
   .btn.quiet { margin-top:8px; padding:6px 12px; }
@@ -440,7 +448,7 @@
      where an open section's sits: the target reaches up into the section's padding. */
   details.fold > summary, details.more > summary, details.comparison > summary { cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; }
   details.fold > summary::-webkit-details-marker, details.more > summary::-webkit-details-marker, details.comparison > summary::-webkit-details-marker { display:none; }
-  details.fold > summary::after, details.more > summary::after, details.comparison > summary::after { content:""; flex:none; width:8px; height:8px; margin-right:5px; border-right:2px solid var(--muted); border-bottom:2px solid var(--muted); transform:rotate(45deg); transition:transform .15s; }
+  details.fold > summary::after, details.more > summary::after, details.comparison > summary::after { content:""; flex:none; width:8px; height:8px; margin-right:5px; border-right:1.75px solid var(--muted); border-bottom:1.75px solid var(--muted); transform:rotate(45deg); transition:transform .15s; }
   details[open].fold > summary::after, details[open].more > summary::after, details[open].comparison > summary::after { transform:rotate(-135deg); }
   details.sec > summary { margin:-10px 0 0; }
   details.sec[open] > summary { margin-bottom:4px; }
@@ -456,6 +464,7 @@
   .b-low { color:var(--k-low); } .b-moderate { color:var(--k-moderate); } .b-high { color:var(--k-high); } .b-veryhigh { color:var(--k-veryhigh); } .b-na { color:var(--k-na); }
   dl.tech { display:grid; grid-template-columns:max-content 1fr; gap:3px 12px; margin:6px 0 0; font-size:var(--fs-meta); }
   dl.tech dt { color:var(--muted); } dl.tech dd { margin:0; overflow-wrap:anywhere; }
+  .mono { font-family:var(--font-mono); }   /* a model version string, and nothing else */
   .notice { border:1px solid var(--notice-line); background:var(--notice-bg); border-radius:var(--radius); padding:10px 14px; margin:12px 0; font-size:var(--fs-note); }
   .notice.quiet { border-color:var(--line); background:var(--card); }
   details.consent { margin:-4px 0 8px; } details.consent p { margin:0 0 8px; color:var(--muted); }
@@ -466,6 +475,9 @@
      and where the week goes, the week drawn small. The whole card opens the spot. On the list the saved
      spots are one tile, the heading in it, the cards between hairlines. */
   .page-h { font-size:var(--fs-title); line-height:1.1; letter-spacing:-.01em; margin:8px 0; }
+  /* A view's heading takes the focus when the view opens (tabindex=-1), for screen readers: no ring
+     round it, as nothing there can be used. */
+  .spot-name:focus, .page-h:focus { outline:none; }
   ul.places { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:8px; }
   .place { position:relative; }
   .place-top { display:flex; align-items:flex-start; gap:10px; }
@@ -478,7 +490,7 @@
   .unsave .ic { width:20px; height:20px; fill:currentColor; }
   .unsave:hover { background:var(--hover); }
   .place-mid { display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-top:8px; }
-  .place .big { margin:0; font-size:var(--fs-head); font-weight:700; letter-spacing:-.005em; }
+  .place .big { margin:0; font-size:var(--fs-head); font-weight:700; letter-spacing:0; }
   .place .big-head { margin:0; max-width:none; font-size:var(--fs-body); text-align:left; }
   .place-sub { margin:6px 0 0; font-size:var(--fs-note); line-height:1.35; }
   .place-sub:empty { display:none; }
@@ -540,7 +552,7 @@
   }
   /* Phones: the list first, the map one tap away; a spot's page carries its own small map. */
   @media (max-width: 800px) {
-    :root { --nav-h:calc(64px + env(safe-area-inset-bottom)); --fs-title:30px; }
+    :root { --nav-h:calc(64px + env(safe-area-inset-bottom)); }
     .answer::before, .lead::before { left:calc(-16px - env(safe-area-inset-left)); right:calc(-16px - env(safe-area-inset-right)); }
     .desk-only { display:none !important; }
     #map-wrap { display:none; }
@@ -558,13 +570,15 @@
       font:inherit; font-size:var(--fs-note); font-weight:600; background:none; color:var(--muted); text-decoration:none; cursor:pointer; }
     .bottom-nav svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:1.75; stroke-linecap:round; stroke-linejoin:round; }
     .bottom-nav [aria-current=page], .bottom-nav [aria-pressed=true] { background:var(--brand-tint); color:var(--link); }
-    .bottom-nav .n { min-width:20px; padding:0 6px; border-radius:999px; background:var(--brand); color:#fff; font-size:var(--fs-meta); line-height:20px; text-align:center; }
+    .bottom-nav .n { min-width:20px; padding:0 6px; border-radius:999px; background:var(--brand); color:var(--on-fill); font-size:var(--fs-meta); line-height:20px; text-align:center; }
     .bottom-nav .n[hidden] { display:none; }
     /* A spot's Upstream map: no legend, and none of the list's controls (the day, low risk only),
        which covered the ringed spot at the top of so small a map. */
     #spot-map .map-legend, #spot-map .low-ctl { display:none; }
     .map-legend { padding:5px 8px; }
   }
+  /* Phones (the phone layout, to 800 px): titles and the answer's level at 30 px. The same step in page.css. */
+  @media (max-width: 800px) { :root { --fs-title:30px; } }
   /* A map too narrow for the legend and the credit side by side (a phone, a narrow window): the legend
      sits above the credit's line rather than over it, and clear of the right edge. */
   @media (max-width: 1100px) { .leaflet-bottom.leaflet-left .map-legend { margin:0 10px 30px; } }
@@ -606,7 +620,7 @@
 </svg>
 <a class="skip" href="#panel">Skip to forecasts</a>
 <header class="top" id="top">
-  <a class="brand" href="./"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#1a6871"/><path d="M430-20C330 110 470 230 300 290S110 380 190 540" fill="none" stroke="#5CC2B5" stroke-width="70" stroke-linecap="round"/><circle cx="318" cy="138" r="38" fill="#F08A4B"/><circle cx="165" cy="358" r="46" fill="none" stroke="#fff" stroke-width="22"/></svg>SwimSignal</a>
+  <a class="brand" href="./"><svg viewBox="0 0 512 512" aria-hidden="true"><rect width="512" height="512" fill="#0f5a61"/><path d="M430-20C330 110 470 230 300 290S110 380 190 540" fill="none" stroke="#5CC2B5" stroke-width="70" stroke-linecap="round"/><circle cx="318" cy="138" r="38" fill="#F08A4B"/><circle cx="165" cy="358" r="46" fill="none" stroke="#fff" stroke-width="22"/></svg>SwimSignal</a>
   <!-- A phone shows none of these: Saved and Map are in the bar at the bottom, and About is linked from the list's intro. -->
   <nav aria-label="Site">
     <a href="saved/" class="hbtn" id="savedbtn" aria-label="Saved spots">Saved<span class="n" id="saved-n" hidden></span></a>
@@ -677,7 +691,7 @@
   <button type="button" id="nav-map" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 6-2 6 2 6-2v16l-6 2-6-2-6 2Zm6-2v16m6-14v16"/></svg>Map</button>
   <a href="saved/" id="nav-saved" aria-label="Saved spots"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>Saved<span class="n" id="nav-saved-n" hidden></span></a>
 </nav>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="vendor/leaflet/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="></script>
 <script src="experience.js"></script>
 <script src="levels.js"></script>   <!-- the levels and headlines: shared with the build and the alerts -->
 <script>

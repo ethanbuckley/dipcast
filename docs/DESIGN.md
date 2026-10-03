@@ -7,7 +7,8 @@ anyone changing how the site looks: what was wrong, what was decided, and the ru
 pages consistent. The stylesheet that carries the system is `src/dipcast/api/static/page.css`; the
 app page, `src/dipcast/site/index.html`, repeats the tokens and the header inline so that it paints
 before any stylesheet arrives and works offline on its own. A token changed in one must be changed
-in the other.
+in the other: `tests/test_design_tokens.py` fails the build when the two sets differ, or when a rule
+in either writes a colour, a font size or a radius instead of using a token.
 
 ## What was wrong
 
@@ -53,9 +54,13 @@ meta (used sparingly: a row's kind, the week's letters, a tile's label, the foot
 controls, a row's headline, a tile's sentence), 17 body (the app and the prose pages alike), 20
 section headings (and the wordmark, a prose page's lede and h2, a saved spot's level), 30 a figure
 (a tile's, a headline without a level), 36 the spot's name, page titles and the answer's level, 30
-on phones. A prose page's h3 is the body size in the serif. Line height 1.5 for text, 1.1 to 1.25
-for headings. No letter-spacing beyond −0.01em on the largest headings, and no uppercase labels
-anywhere.
+on phones (800 px wide or less, where the app's phone layout begins, and the same step on the prose
+pages; until 2 October the prose pages dropped it at 540 px). A prose page's h3 is the body size in the
+serif. Line height 1.5 for text (both files; `page.css` had 1.55), 1.1 to 1.25 for headings. No
+letter-spacing except −0.01em on the 36 px headings (`--fs-title`: page titles, the spot's name, the
+answer's level, the Accuracy figures), and no uppercase labels anywhere. (Until 2 October the
+wordmark and every h1 to h3 had −0.005em and the 30 px figures −0.01em, below what the eye can see at
+those sizes; they were taken off to keep the rule simple.)
 
 ### Colour
 
@@ -63,6 +68,16 @@ anywhere.
   the paper), hairlines `#e0dbd0`. Light only (fifth round): nothing is hard-coded in a rule.
 - Brand teal `#0f5a61` (the icon's), the one accent: the mark, links, the primary button, a chosen
   filter, focus rings. The low-risk filter uses the moss text shade `#326a43` with white text.
+  White on a fill (the bar, the brand, a chosen control) is `--on-fill`; the veil over the map
+  that says "two fingers to move" is `--scrim`.
+- The mark in every header is the icon's teal too. It was a lighter `#1a6871` from 1 October,
+  chosen to stand off the teal bar of the time; on the slate bar both shades are about 1.1:1 to it
+  (`#1a6871` 1.14, `#0f5a61` 1.07), so the lighter one no longer bought anything and the two marks
+  were unified on 2 October. The mark reads by its river, dot and ring, not by its square.
+- `--faint` (`#676b6e`, the week's letters, a placeholder) is 4.9:1 on the paper and 5.4:1 on
+  white, but 4.25:1 on the bare sky, under AA. It is for tiles, fields and the paper only: checked on
+  2 October at 375 and 1440 px, every piece of faint text on the list, a spot and the Saved page
+  sits on a tile.
 - The header is a slate bar, `#3d5b5d` (`--bar`, seventh round), a darker shade of the picture's
   nearest fells: white on it is 7.4:1, and the links' 86% white (`--bar-ink`) 5.6:1.
 - The four levels keep their meaning and are the only strong colours on a page, in one natural
@@ -87,8 +102,12 @@ anywhere.
 
 ### Shape and surface
 
-- One corner radius, 8 px, for the hero, inputs, buttons, a chosen chip and the maps. Count badges
-  and dots are round, because they are circles. Nothing else is a pill.
+- One corner radius, 8 px (`--radius`), for the hero, inputs, buttons, a chosen chip, the maps,
+  and the controls, tooltips and credit on the map. Count badges and dots are round, because they
+  are circles. Nothing else is a pill. Two small radii are tokens of their own and used for nothing
+  else: the mark's 6 px corner (`--radius-mark`) and the 4 px of a focus ring round a text link
+  (`--radius-ring`). A header link's hover, the map's credit, its tooltips and its "Map" button had
+  6 px until 2 October; they are 8 now. Bars are square, on the Accuracy page as in the app.
 - The answer has no box (seventh round): its words sit on the sky. Everything after it is a tile,
   frosted where the picture is behind it and near white on the paper below, with no border; inside
   a tile, hairlines. No shadows and no gradients, except a 1 px lift under the controls that sit on
@@ -112,7 +131,9 @@ anywhere.
   the hero's last line says to check the signs at the water. The rest of the explanation lives
   under "About these forecasts" and on the About and Accuracy pages.
 - A row says one sentence and folds the rest (fifth round): the hero's rows keep the sentence with
-  the figures in view and put the rest under "What this means", word for word. What the strip's
+  the figures in view and put the rest under a fold named for its tile, "What <label> means"
+  (one name per fold, so a screen reader's list of them tells them apart; until 2 October every
+  one was "What this means"), word for word. What the strip's
   cells show folds into the water row, or the spills row where there is no water estimate; under
   the strip only the † sentence stays, and only while a cell carries a †. The EA rating keeps its
   advice in view and folds how it is rated and the years before. A section's note under the answer
@@ -157,6 +178,8 @@ anywhere.
 One stroke set, 1.75 px, round caps: search, map, bookmark (Save and Saved), chevron (back links
 and folds), check (swim log), and since the seventh round one for each tile's label (`ICON`: the
 days, spills, water, right now, river level, rain, sun, rating, algae, map, nearby, the table).
+The chevrons drawn in CSS (back links, folds, a tile's corner) and a select's arrow (`--arrow`) use
+the same 1.75 px. The search icon (`SEARCH_ICON`) was still 2.2 on 2 October.
 Inline SVG, so they inherit `currentColor` and need no file. The brand mark is inlined in every
 header for the same reason: it needs no path to resolve at any depth.
 
@@ -202,7 +225,31 @@ absolute links, `noindex` and no description. The app page's head is its own, in
 adds the manifest and the Home Screen tags. The Home Screen app's status bar is
 `black-translucent`: the page draws under it, its white text sits on the slate, and the header's
 top padding takes in the safe area. (From the fifth round to the seventh it was `default`, dark
-text, over the paper header.)
+text, over the paper header.) Nothing in any head is fetched from another site: the app's map
+library is this site's own (below). The API server's `/` sends a visitor to the site
+(`DIPCAST_SITE_URL`, else swimsignal.co.uk); its own map page, `static/index.html`, which had the
+system font, uppercase pill badges and a palette of its own, was removed on 2 October.
+
+#### The map library and the offline copy
+
+Leaflet 1.9.4 is served from this site, `vendor/leaflet/` (from `src/dipcast/site/vendor/leaflet/`,
+which the build copies), with its BSD 2-Clause licence and a `VERSION.txt` beside it, for the same
+reason as the fonts: no third party receives a request when a page opens. Until 2 October it came
+from unpkg.com, which the privacy notice then had to list. The page still pins both files by hash
+(`integrity`), and a test checks the hashes against the files; an upgrade replaces the files and
+the two hashes together.
+
+The offline copy (`sw.js`) stores only this site's files. Its cache is named `dipcast-<stamp>`,
+where the stamp is a hash of the files it stores or that decide what it stores (`SHELL_SOURCES` in
+`scripts/build_site.py`: the page, the worker, the scripts, the stylesheet, the icons, the picture,
+the fonts, `vendor/`). The build writes the stamp into the worker, so a changed file changes
+`sw.js`, browsers install the new worker, and it fills a new cache from the server (`no-cache`),
+deleting the old one when it takes over. A hash of the files, not the commit, so a commit that
+touches neither (the model, the tests) does not make every visitor download the shell again. The
+page asks for `levels.js` and `experience.js` at `?v=<stamp>`, so a page and its level rules always
+come from one build, even when one of them loses the 4 s race to the network. A file added to the
+worker's `SHELL` belongs in `SHELL_SOURCES` too. The `dipcast-` prefix stays: the worker and the
+page's "Turn off the offline copy" clear caches by it.
 
 ### What a swimmer wants first (second round, 1 October 2026)
 
@@ -233,7 +280,7 @@ nearby" card after its answer: up to three spots within 40 km that are lower tha
 first, each opening on the same day, with one line under them saying a lower level is not clean
 water. A spot without a level is never offered, and nor is a water rated poor, because advice
 against bathing applies there whatever the level of the spot beside it. In the hero's rows the
-sentence with the figures stays in view and the explanation folds under "What this means"; the
+sentence with the figures stays in view and the explanation folds under "What <label> means"; the
 EA advice and "A forecast, not a water test" stay visible. The list's counts begin with the issue
 time. On the Saved page the cards come first and Compare below them. A redrawn view rises 4 px
 into place over 0.22 s, as a picked day does, and not at all for anyone who asked for less motion.
@@ -330,7 +377,9 @@ What makes Apple's page clean, and what was taken from it:
   128 px band below them, and it is the paper about 300 px further down. Its top rows are the
   `--sky` colour that runs on up to the header, so it has no edge. The weather data has only the
   day's high, sunrise and sunset, so the picture cannot follow the weather, as Apple's does. A
-  photograph would be a separate job, with sourcing and licences.
+  photograph would be a separate job, with sourcing and licences. The picture is 500 CSS px wide; from
+  2 October a view wider than that (a screen 501 to 800 px wide: a phone on its side, a small tablet) stretches it
+  sideways to both edges at the same 600 px height, where before its sides showed as hard vertical edges.
 - **Glass, light.** The tiles are frosted (`--glass`, a blur and 76% white). Measured on 2 October
   2026 over the darkest fell: the grey text and the level colours pass 4.5:1 at 76% and fail at
   64% (4.1 to 4.2), so the panes are three-quarters white and the picture shows through them only
@@ -366,7 +415,9 @@ how things look, not what the site says.
 ## Rules for changes
 
 1. Add a colour, size or radius only as a token in `page.css`, and mirror it in `index.html`. A
-   font size is one of the six `--fs-*` tokens, or it is a seventh size.
+   font size is one of the six `--fs-*` tokens, or it is a seventh size. The two sets must stay
+   equal (`tests/test_design_tokens.py`); only the app's layout and filter tokens (`--tile-filter`,
+   `--header-h`, `--nav-h`) live in `index.html` alone.
 2. Place names, page titles and section headings in the serif, 600; risk levels, a row's headline,
    controls and numbers in the sans. No uppercase labels, no tracking.
 3. No new radius, shadow or gradient. In the app the answer is unboxed and everything after it is a
@@ -382,6 +433,9 @@ how things look, not what the site says.
    `:where(main.doc) p`, with no specificity, so that a component's class sets its own spacing.
    Written as `main.doc p`, a default outranks a single class such as `.note`, and the
    component's spacing is silently lost.
+8. Nothing is fetched from another site but the map's tiles (and, when it is on, the page-view
+   counter). A library is copied into `src/dipcast/site/vendor/` with its licence and pinned by
+   hash.
 
 ## Review refinements
 
@@ -389,5 +443,9 @@ The PR review kept the editorial identity but made the decision easier to scan: 
 risk headlines, readable day cells with aligned levels, plain place metadata instead of decorative
 chips, a visible issue time, and 44 px controls. Secondary text and keyboard focus use shades that
 stay legible on the page. The accuracy figures sit on the page between rules, rather than in four
-more cards; their numbers use tabular sans-serif digits. Reliability bars use the link shade. On phones the prose header
+more cards; their numbers use tabular sans-serif digits. Reliability bars draw the forecast in the link shade and the
+observed in the muted grey (until 2 October the observed bar was the high level's rust, a level colour on something that is not a
+level; then briefly ink, which beside the teal read as two near-black strips). Teal and grey differ in hue more than
+in lightness (1.26:1; ink was 2.02:1), so the order, forecast above observed, and the key carry the difference too;
+the grey is 4.45:1 on the empty track. On phones the prose header
 gives all four navigation links a single full-width row.
