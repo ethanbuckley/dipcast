@@ -42,6 +42,7 @@ part is the transport step: an overflow 2 km upstream on the same river and one
 | OS Open Rivers | 193,040 directed watercourse links incl. lake traversals, BNG | OGL v3 |
 | EA WFD Lake Water Bodies Cycle 3 | 564 lake polygons (lakes over 50 ha, 5 ha in protected areas), names and areas | OGL v3 |
 | EA flood-monitoring API | Near-real-time river levels and typical ranges; the API version only | OGL v3 |
+| EA Hydrology API | Water temperature from water-quality sensors that reported in the last day, beside the forecast | OGL v3 |
 | EA Water Quality Archive (Water Quality Explorer) | E. coli results and the sampler's visual algae check at the 38 inland bathing waters | OGL v3 |
 
 The notices each provider asks for are on the site's terms page ("Data sources
@@ -834,6 +835,25 @@ only; the comparison's "Local warnings" row names the flood alert too. The page
 rise whose last reading is over 6 h old, or a build over 24 h old, so a stale
 reading never says "River high". The flood API is the same OGL service the
 river levels come from, already credited.
+
+**Water temperature (3 Oct 2026).** `build_site.attach_water_temperature`
+gives a river spot the latest reading of the nearest Environment Agency
+water-quality sensor within 15 km (straight line) whose river has the spot's
+river's name (`same_river`), that the network joins to the spot, on the same
+side of the tidal limit, read in the last 24 h (`ingest/water_temperature.py`).
+Two Hydrology API requests per build: the temperature readings since
+yesterday (about 1 MB) and the active temperature stations (about 0.5 MB). The
+sondes have no `riverName`; the river and the place come from the label
+("STOUR_BURES MILL_E_201704"). The API's times have no zone and are UTC (its
+Evesham level series matched the flood-monitoring API's Z times on 3 Oct).
+The page shows "Measured at Bures Mill on the Stour, 10.9 km downstream, 1 h
+ago" under the figure, with the age counted when the page is read; a spot with
+no sensor shows nothing, never an estimate, and lakes get none. In a local
+build on 3 Oct, 99 sensors had read in the last day and 2 of the 58 river spots
+got one (Friars Meadow and Dedham, both on the Stour); the six Thames sondes
+within 15 km of Ham and Kingston are all on tidal links and are passed over.
+A failed request leaves every spot without and does not stop the build; the
+build summary's `water_temperature` is the count.
 
 **Alerts** (`push/`, set up by hand: `push/README.md`). A Cloudflare Worker
 keeps, for each browser that turns alerts on from the Saved page, its push
