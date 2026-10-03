@@ -172,6 +172,14 @@ def spill_probabilities(ov: pd.DataFrame, days: pd.DatetimeIndex,
     rain["time"] = rain["time"].dt.tz_convert(LOCAL_TZ)   # local-midnight day boundaries
     daily = daily_rain_features(rain)
     sites = ov[["site_id", "lat", "lon", "company", "lta_spills", "spill_hours", "edm_operational_pct"]]
+    # The pivots below need one row per site_id ("Index contains duplicate entries, cannot reshape"
+    # failed four spots on 3 Oct 2026). A repeated id is computed once, from its first row; the
+    # reindex on ov["site_id"] still gives each of ov's rows its own row of the result.
+    repeated = sites["site_id"].duplicated()
+    if repeated.any():
+        log.warning("spill_probabilities: overflow id listed more than once, computed once: %s",
+                    ", ".join(map(str, sites.loc[repeated, "site_id"].unique())))
+        sites = sites[~repeated]
     sd = build_site_days(sites, daily, days)
     for f in ALL_FEATURES:
         sd[f] = sd[f].astype(np.float32)

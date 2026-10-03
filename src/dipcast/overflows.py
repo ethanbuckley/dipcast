@@ -72,8 +72,30 @@ def latest_annual_returns(ar: pd.DataFrame) -> pd.DataFrame:
                                                         "year": "ar_year", "company": "ar_company"})
 
 
+def duplicate_site_ids(df: pd.DataFrame) -> list[str]:
+    """The overflow ids on more than one row of `df`, sorted."""
+    return sorted(df.loc[df["site_id"].duplicated(), "site_id"].astype(str).unique())
+
+
+def one_row_per_overflow(live: pd.DataFrame) -> pd.DataFrame:
+    """The live snapshot with one row per site_id: the row with the latest `fetched_at`, then the
+    latest `last_updated`, then the last listed. The table keys on site_id, and a repeated id
+    upstream of a spot failed its forecast in the 3 Oct 2026 12:06 UTC build. The 02:59 poll
+    that day listed Anglian Water's AWS00528 twice. fetch_live has dropped repeats since PR #57,
+    so this guards snapshots and cached tables written before that."""
+    dups = duplicate_site_ids(live)
+    if not dups:
+        return live
+    more = f" and {len(dups) - 20} more" if len(dups) > 20 else ""
+    log.warning("live snapshot lists %d overflow id%s more than once; keeping the most recent row of each: %s%s",
+                len(dups), "" if len(dups) == 1 else "s", ", ".join(dups[:20]), more)
+    keys = [c for c in ("fetched_at", "last_updated") if c in live]
+    ranked = live.assign(_pos=np.arange(len(live))).sort_values([*keys, "_pos"], na_position="first")
+    return ranked.drop_duplicates("site_id", keep="last").sort_values("_pos").drop(columns="_pos")
+
+
 def build_overflows(net: RiverNetwork) -> pd.DataFrame:
-    live = pd.read_parquet(config.state_read("live_latest.parquet"))
+    live = one_row_per_overflow(pd.read_parquet(config.state_read("live_latest.parquet")))
     ar = latest_annual_returns(pd.read_parquet(config.PROCESSED / "annual_returns.parquet"))
     df = live.merge(ar, on="site_id", how="outer")
     df["company"] = df["company"].fillna(df["ar_company"])
@@ -106,7 +128,9 @@ def build_overflows(net: RiverNetwork) -> pd.DataFrame:
 def load_overflows(net: RiverNetwork | None = None, rebuild: bool = False) -> pd.DataFrame:
     path = config.state_read(NAME)
     if path.exists() and not rebuild:
-        return pd.read_parquet(path)
+        # A table cached before build_overflows dropped repeats can still list an id twice
+        # (AWS00528 in the 3 Oct 2026 02:59 state); its weight would then count twice upstream of a spot.
+        return one_row_per_overflow(pd.read_parquet(path))
     assert net is not None
     return build_overflows(net)
 
