@@ -5,7 +5,8 @@
 // or takes over 4 s (a slow answer still refreshes the stored copy when it arrives). Icons, the
 // picture behind the pages, the fonts and the map library (vendor/): the stored copy first,
 // refreshed in the background. Everything is this site's own: map tiles are OpenStreetMap's and
-// the page-view counter Cloudflare's, so neither is stored, nor is the 6 MB overflow layer.
+// the page-view counter Cloudflare's, so neither is stored, nor is the 6 MB overflow layer, nor
+// swimmers' photos (reviews/photos/), which would pile up on the device a spot at a time.
 //
 // BUILD is a hash of the files this worker stores, which scripts/build_site.py (shell_stamp) writes
 // in on every build. A changed font, icon or script therefore changes this file, the browser
@@ -22,7 +23,7 @@ const TIMEOUT_MS = 4000;
 const SHELL = ['./', `levels.js?v=${BUILD}`, `experience.js?v=${BUILD}`, 'feedback.html', 'page.css', 'data/spots.json', 'manifest.webmanifest',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/fells.webp',
   'fonts/SourceSans3-latin.woff2', 'fonts/SourceSans3-italic-latin.woff2', 'fonts/SourceSerif4-latin.woff2',
-  'vendor/leaflet/leaflet.css', 'vendor/leaflet/leaflet.js'];
+  'vendor/leaflet/leaflet.css', 'vendor/leaflet/leaflet.js', `reviews.js?v=${BUILD}`];
 
 self.addEventListener('install', e => {
   // One missing file must not stop the rest being stored. no-cache: a new build's cache is filled
@@ -43,7 +44,7 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url), here = url.origin === self.location.origin;
   if (!here) return;                                            // tiles, the page-view counter: not ours to keep
-  if (url.pathname.endsWith('/data/overflows.geojson')) return;
+  if (url.pathname.endsWith('/data/overflows.geojson') || url.pathname.includes('/reviews/photos/')) return;
   // The stylesheet changes with the pages; a library in vendor/ changes only with its version.
   const fresh = req.mode === 'navigate' || (/\.(html|json|js|css)$/.test(url.pathname) && !url.pathname.includes('/vendor/'));
   e.respondWith(fresh ? networkFirst(req) : storedFirst(req));

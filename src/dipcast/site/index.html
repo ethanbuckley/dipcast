@@ -596,6 +596,73 @@
   @media (max-width: 340px) {
     .toolbar .chip-btn .dot { display:none; }   /* room for "Today and tomorrow" at 17 px; iOS zooms a select under 16 */
   }
+
+  /* Swimmers' reviews (reviews.js; the service that takes them in is reviews/). A tile after the others,
+     built as they are: the share who would swim there again as its figure, drawn as a bar in ink (it is
+     not a level, so no level's colour), then each review between hairlines, its photos as 72 px squares
+     that open over the page, and the form in place of the button. */
+  .rv-bar { height:6px; margin:12px 0 0; background:var(--track); }
+  .rv-bar i { display:block; height:100%; background:var(--ink); }
+  #reviews:focus, .rv-said:focus { outline:none; }
+  #reviews { scroll-margin-top:calc(var(--header-h) + 8px); }   /* the score's link lands clear of a phone's sticky header */
+  ol.rv-list { list-style:none; margin:12px 0 0; padding:0; }
+  .rv { padding:12px 0 10px; border-top:1px solid var(--hair); }
+  .rv-v { margin:0; font-size:var(--fs-note); font-weight:700; line-height:1.3; }
+  .rv-meta { margin:2px 0 0; font-size:var(--fs-meta); line-height:1.35; color:var(--muted); }
+  .rv-text { margin:6px 0 0; font-size:var(--fs-note); line-height:1.45; white-space:pre-line; overflow-wrap:anywhere; }
+  ul.rv-pics, ul.rv-previews { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 0; padding:0; list-style:none; }
+  .rv-pic { display:block; padding:0; border:0; border-radius:var(--radius); overflow:hidden; background:var(--line); cursor:zoom-in; }
+  .rv-pic img, .rv-previews img { display:block; width:72px; height:72px; object-fit:cover; }
+  .rv-previews img { border-radius:var(--radius); }
+  .rv-previews li { display:flex; flex-direction:column; align-items:flex-start; }
+  /* Report and Delete: quiet, and 44 px to tap within the row's own height. */
+  .rv-acts { margin:6px 0 0; font-size:var(--fs-meta); line-height:1.4; color:var(--muted); }
+  .rv-acts .linkbtn { padding:12px 0; margin:-12px 0; font-size:var(--fs-meta); color:var(--muted); }
+  .rv-sure { color:var(--ink); }
+  .rv-write { margin:12px 0 0; padding-top:12px; border-top:1px solid var(--hair); }
+  .rv-write .t-key { margin-top:8px; }
+  .rv-said { margin:0 0 10px; font-size:var(--fs-note); font-weight:600; line-height:1.4; }
+  /* The form: a question to a field, in the order a swimmer answers them. Fields at the body size, or
+     iOS zooms in on them. The yes or no is a pair of radio buttons drawn as buttons, the chosen one
+     filled, as a chosen chip. */
+  .rv-q { display:block; margin:16px 0 6px; padding:0; font-size:var(--fs-note); font-weight:600; line-height:1.3; }
+  .rv-form fieldset { min-width:0; margin:0; padding:0; border:0; }
+  .rv-form fieldset .rv-q, .rv-report .rv-q { margin-top:4px; }
+  .rv-opt { font-weight:400; color:var(--muted); }
+  .rv-choice { display:grid; grid-template-columns:1fr 1fr; gap:8px; max-width:320px; }
+  .rv-choice label { position:relative; display:block; }
+  .rv-choice input { position:absolute; inset:0; width:100%; height:100%; margin:0; opacity:0; cursor:pointer; }
+  .rv-choice span { display:flex; align-items:center; justify-content:center; min-height:44px; border:1px solid var(--line); border-radius:var(--radius); background:var(--card); font-size:var(--fs-note); font-weight:600; }
+  .rv-choice input:checked + span { background:var(--brand); border-color:var(--brand); color:var(--on-fill); }
+  .rv-choice input:focus-visible + span { outline:2px solid var(--focus); outline-offset:2px; }
+  .rv-form input[type=date], .rv-form input[type=text], .rv-form textarea, .rv-report select { display:block; width:100%; min-height:44px; margin:0; padding:9px 12px;
+    font:inherit; font-size:var(--fs-body); color:var(--ink); background:var(--field); border:1px solid var(--line); border-radius:var(--radius); }
+  .rv-form input[type=date] { max-width:220px; }
+  .rv-form textarea { min-height:112px; line-height:1.45; resize:vertical; }
+  .rv-report select { padding-right:36px; background:var(--field) var(--arrow) no-repeat right 12px center; -webkit-appearance:none; appearance:none; }
+  .rv-add { position:relative; margin-top:8px; }
+  .rv-add[hidden], .rv-consent[hidden] { display:none; }
+  .rv-add:focus-within { outline:2px solid var(--focus); outline-offset:2px; }
+  .rv-file { position:absolute; inset:0; width:100%; height:100%; opacity:0; cursor:pointer; }
+  .rv-consent { display:flex; align-items:flex-start; gap:10px; margin:12px 0 0; font-size:var(--fs-note); line-height:1.4; cursor:pointer; }
+  .rv-consent input { flex:none; width:22px; height:22px; margin:0; accent-color:var(--brand); }
+  .rv-hp { position:absolute; left:-10000px; width:1px; height:1px; overflow:hidden; }
+  .rv-hint { margin:16px 0 0; font-size:var(--fs-meta); line-height:1.45; color:var(--muted); }
+  .rv-send { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 0; }
+  .rv-msg { margin:8px 0 0; font-size:var(--fs-note); line-height:1.4; }
+  .rv-msg:empty { display:none; }
+  .rv-msg.bad { font-weight:600; }
+  .rv-report { margin:4px 0 8px; }
+  /* A photo at full size over the page: the photo and its caption on one white card, the scrim behind,
+     and a round close button in the corner, a 44 px target. */
+  dialog.rv-view { max-width:calc(100vw - 24px); max-height:calc(100vh - 24px); max-height:calc(100dvh - 24px); margin:auto; padding:0; border:0; background:transparent; overflow:visible; }
+  dialog.rv-view::backdrop { background:var(--scrim); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px); }   /* the page behind recedes */
+  dialog.rv-view figure { margin:0; border-radius:var(--radius); overflow:hidden; background:var(--card); }
+  dialog.rv-view img { display:block; width:auto; height:auto; max-width:calc(100vw - 24px); max-height:calc(100vh - 112px); max-height:calc(100dvh - 112px); background:var(--line); }
+  dialog.rv-view figcaption { padding:8px 12px; font-size:var(--fs-meta); line-height:1.35; color:var(--muted); }
+  .rv-close { position:fixed; top:calc(8px + env(safe-area-inset-top)); right:calc(8px + env(safe-area-inset-right)); display:flex; align-items:center; justify-content:center;
+    width:44px; height:44px; padding:0; border:0; border-radius:50%; background:var(--float); color:var(--ink); cursor:pointer; }
+  .rv-close .ic { width:20px; height:20px; vertical-align:0; }
 </style>
 </head>
 <body class="view-list">
@@ -692,6 +759,7 @@
   <a href="saved/" id="nav-saved" aria-label="Saved spots"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4-6 4Z"/></svg>Saved<span class="n" id="nav-saved-n" hidden></span></a>
 </nav>
 <script src="vendor/leaflet/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="></script>
+<script src="reviews.js"></script>   <!-- swimmers' reviews on a spot's page (reviews/ takes them in) -->
 <script src="experience.js"></script>
 <script src="levels.js"></script>   <!-- the levels and headlines: shared with the build and the alerts -->
 <script>
@@ -2048,7 +2116,7 @@ function render(d) {
     if (dayFromURL()) history.replaceState(history.state, '', location.pathname + location.search);
     h += `<div class="stack"><div class="tile">${factors(d)}${check(d)}</div>${where}${tiles}`
       + `<div class="tile phone-only"><h2 class="t-lab">${ICON.map}<span>Where it is</span></h2><div id="spot-map"></div></div></div>` + actions(d);
-    setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); placeMap(); miniMap(d); return;
+    setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); placeMap(); miniMap(d); mountReviews(d); return;
   }
   h += `<div class="stack"><section class="tile" aria-labelledby="days-h"><h2 class="t-lab" id="days-h">${ICON.days}<span>Pollution risk, next five days</span></h2>`
     + `<p class="t-sent">${daysSentence(d)}</p>${dayRows(d)}<div id="day-view"></div>${check(d)}</section>${where}`
@@ -2059,7 +2127,7 @@ function render(d) {
   if (d.contributors.length) h += overflowTile(d, total);
   h += dayTable(d, total, loc.mode === 'lake', d.ecoli_scope || {}) + '</div>';
   h += actions(d) + tech(d);
-  setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); bindNearby(); bindDays(d); miniMap(d);
+  setPanel(h); bindBack(); bindSave(d); bindShare(d); bindShareImage(d); bindSwim(d); bindNearby(); bindDays(d); miniMap(d); mountReviews(d);
   const more = document.getElementById('more-contrib');
   if (more) more.addEventListener('click', () => { const t = document.getElementById('contrib'), all = t.classList.toggle('all');
     more.setAttribute('aria-expanded', String(all)); more.textContent = all ? `Show the top 3` : `Show all ${d.contributors.length}`; });
@@ -2141,7 +2209,9 @@ function reload() {
   try { sessionStorage.setItem(VIEW_KEY, JSON.stringify({ ...rest, sort: rest.sort === 'near' ? 'risk' : rest.sort, y: shown === 'list' ? scrollPos() : 0 })); } catch (e) { /* starts afresh */ }
   location.reload();
 }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - LOADED > 30 * 60 * 1000) reload(); });
+// Not while something being written would be lost (a review: data-keep-page).
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && Date.now() - LOADED > 30 * 60 * 1000
+  && !document.querySelector('[data-keep-page]')) reload(); });
 // Back online after opening the page offline: fetch the current forecast.
 if (!navigator.onLine) window.addEventListener('online', reload, { once: true });
 // Add to Home Screen. Browsers that offer an install prompt (Chrome, Edge, Samsung Internet) get a
