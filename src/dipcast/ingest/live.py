@@ -45,7 +45,7 @@ def fetch_live(companies: dict[str, str] | None = None) -> pd.DataFrame:
     frames = []
     for company, url in feeds.items():
         try:
-            rows = fetch_all(url, geometry=True)
+            rows = fetch_all(url, geometry=True, key="Id")   # key: re-read a torn multi-page read
         except Exception as e:  # noqa: BLE001 - one dead feed must not kill the poll
             log.error("live feed failed for %s: %s", company, e)
             continue
@@ -67,7 +67,22 @@ def fetch_live(companies: dict[str, str] | None = None) -> pd.DataFrame:
     df["status"] = pd.to_numeric(df["status"], errors="coerce").fillna(-1).astype(int)
     df["fetched_at"] = pd.Timestamp.now(tz="UTC")
     df = df.dropna(subset=["lat", "lon"])
-    return df[COLS]
+    return one_row_per_site(df[COLS])
+
+
+def one_row_per_site(df: pd.DataFrame) -> pd.DataFrame:
+    """The snapshot with one row per site_id, the most recently updated. A feed can
+    list an overflow twice (Anglian Water's AWS00528 on 3 Oct 2026, both rows the same),
+    and a torn read that fetch_all could not repair repeats rows. Every reader treats
+    site_id as a key: a repeated row is counted twice in coverage, and one upstream of a spot
+    failed its forecast with "Index contains duplicate entries, cannot reshape"."""
+    dup = df["site_id"].duplicated(keep=False)
+    if not dup.any():
+        return df
+    for c, n in df.loc[dup, "company"].value_counts().items():
+        log.warning("%s: %d rows share a site_id with another; keeping the most recently updated", c, n)
+    order = df["last_updated"].sort_values(na_position="first", kind="stable").index if "last_updated" in df else df.index
+    return df.loc[order].drop_duplicates("site_id", keep="last").sort_index()
 
 
 LOCAL_TZ = "Europe/London"
@@ -168,7 +183,7 @@ def carry_forward(df: pd.DataFrame, previous: pd.DataFrame | None,
     companies = list((feeds or config.LIVE_FEEDS).keys())
     present = set(df["company"].unique()) if len(df) else set()
     down = [c for c in companies if c not in present]
-    old = previous[previous["company"].isin(down)].copy()
+    old = one_row_per_site(previous[previous["company"].isin(down)]).copy()
     if old.empty:
         return out
     since = pd.to_datetime(old["fetched_at"], utc=True)
