@@ -47,7 +47,8 @@ part is the transport step: an overflow 2 km upstream on the same river and one
 The notices each provider asks for are on the site's terms page ("Data sources
 and credits"), and `data/spots.json`, `data/overflows.geojson` and
 `data/verification.json` carry them in a `credits` field (`data_credits` in
-`scripts/build_site.py`). The MIT licence covers the code, not the data.
+`scripts/build_site.py`), as do the JSON files under `data/anypoint/` (each
+square's link list carries the link to them). The MIT licence covers the code, not the data.
 
 Dwr Cymru (Wales) publishes no live feed to ArcGIS; its 128 overflows appear with
 annual spill history only and no "right now" status. Every English company is live.
@@ -663,6 +664,28 @@ bathing waters and about 50 well-known river and lake spots. A river spot
 names its river in the `river` column (see Spot placement). Add one by pull
 request, or ask for one with the "Request a spot" issue template; it appears
 in the next run. Inclusion is not a statement that a spot is safe.
+
+**Any other point (October 2026).** A click on the map away from a listed spot
+gets a forecast too, worked out in the browser (`src/dipcast/site/anypoint.js`)
+from files the build writes under `data/anypoint/`
+(`scripts/build_any_point.py`, whose docstring lists them): every river
+link's upstream overflows, in a form that gives the API's distances and
+dilutions for a click anywhere along the link; a packed index of the links,
+by 0.25° square, for snapping a click; the WFD lakes with their inlets; and
+every overflow's spill probability for each day. The page then does what the
+API does with `gauge=False`: the same placement (lake polygon, nearest link
+within 1.5 km, a side channel traced as the main river), the same transport,
+calibration and combination, and the same card, marked "Unlisted point: not
+hand-checked", without the E. coli estimate (it needs rain at the spot
+itself, which only listed spots get). Squares with no overflow data, which
+is most of Wales and Scotland, get no forecast. The tracing runs once per
+network release and is cached in the state directory (`anypoint_links.pkl`);
+only links downstream of an overflow that moved are traced again. Rain for
+all overflows is about 1,600 Open-Meteo cells against the spots' 300, and on
+3 Oct 2026 Open-Meteo refused this build after 600 locations in one minute,
+so each build fetches at most 300 more cells, oldest first, and uses cached
+ones up to 24 hours old; an overflow with neither counts as having no rain
+data, and the card says when its rain is older than the issue time.
 
 Each spot has its own page, `spot/<id>/`, written by `build_site.write_pages`:
 the same map page with the spot's name, a one-line description and absolute

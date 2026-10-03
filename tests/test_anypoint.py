@@ -208,3 +208,77 @@ def test_link_names_follow_the_api():
     net = _net(LINKS)
     names = bap.link_names(net, list(net.links.index))
     assert names == {lid: transport._link_name(net, lid) for lid in net.links.index}
+
+
+def test_the_page_loads_the_script_at_the_builds_stamp_and_the_offline_copy_keeps_it(tmp_path):
+    spec = importlib.util.spec_from_file_location("build_site", ROOT / "scripts" / "build_site.py")
+    bs = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(bs)
+    spot = {"id": "a", "name": "A river", "kind": "river", "lat": 54.0, "lon": -1.8, "days": [], "contributors": []}
+    bs.write_pages(tmp_path, [spot], root="https://example.org/")
+    stamp = bs.shell_stamp()
+    assert f'<script src="anypoint.js?v={stamp}" defer></script>' in (tmp_path / "index.html").read_text()
+    assert (tmp_path / "anypoint.js").read_text() == (ROOT / "src" / "dipcast" / "site" / "anypoint.js").read_text()
+    assert "`anypoint.js?v=${BUILD}`" in (tmp_path / "sw.js").read_text()   # in the worker's SHELL
+    assert ROOT / "src" / "dipcast" / "site" / "anypoint.js" in bs.SHELL_SOURCES   # a change to it renames the cache
+
+
+# ------------------------------------------------------------------ the page's fixture
+# tests/site_anypoint.test.cjs runs the page's placing (anypoint.js, place) on this network's
+# published files and compares it with what the API traced for the same clicks; both are kept in
+# tests/fixtures/anypoint_synthetic.json. UPDATE_FIXTURES=1 writes it again after a format change.
+FIXTURE = ROOT / "tests" / "fixtures" / "anypoint_synthetic.json"
+CLICKS_BNG = ([(lid, f) for lid in ["M1", "M2", "M3", "M4", "T1", "D1", "S1", "R1", "O1"] for f in (0.15, 0.5, 0.85)]
+              + [("in the lake", (419500, 455000)), ("beside the lake", (418700, 455000)),
+                 ("the lonely pool", (440500, 470500)), ("far from water", (412000, 456000))])
+
+
+def _page_fixture(world, tmp_path) -> dict:
+    import base64
+    bap = _bap()
+    net, lakes, ov = world
+    table, _ = bap.upstream_table(net, ov, lakes, "net0", "lakes0", None)
+    out = tmp_path / "anypoint"
+    meta = bap.write_files(out, net, ov, table, "net0")
+    files = {
+        "cfg": {"network": "net0", "tile_deg": bap.TILE_DEG, "tiles": meta["tiles"], "snap_m": transport.PIN_SNAP_M,
+                "lake_snap_m": transport.LAKE_SNAP_M, "lake_shore_m": transport.LAKE_SHORE_M, "lake_bias": transport.LAKE_BIAS},
+        "lakes": json.loads((out / "lakes.json").read_text()), "ids": meta["ids"],
+        "od": {"assumptions": {"max_upstream_km": 60.0, "l0_m": transport.L0_M, "lake_area_halving_km2": transport.LAKE_A0_KM2}},
+        "tiles": {t: {"index": base64.b64encode((out / "link_index" / f"{t}.bin").read_bytes()).decode(),
+                      "links": json.loads((out / "links" / f"{t}.json").read_text())["links"]} for t in meta["tiles"]},
+    }
+    clicks = []
+    for what, where in CLICKS_BNG:
+        if isinstance(where, float):
+            at = net.links.at[what, "geometry"].interpolate(where, normalized=True)
+            x, y, what = at.x, at.y, f"{what} at {where}"
+        else:
+            x, y = where
+        lon, lat = bng_to_lonlat(x, y)
+        pin, up = _api(net, ov, lon, lat)
+        clicks.append({"what": what, "lat": round(lat, 7), "lon": round(lon, 7), "mode": pin.mode, "watercourse": pin.watercourse,
+                       "adopted": bool(pin.adopted_main_channel),
+                       "rows": [{"site_id": r.site_id, "distance_m": round(float(r.distance_m), 2),
+                                 "lake_distance_m": round(float(r.lake_distance_m), 2), "dilution": round(float(r.dilution), 6)}
+                                for r in up.itertuples()]})
+    return {"note": "Made by tests/test_anypoint.py (_page_fixture); UPDATE_FIXTURES=1 writes it again.", "files": files, "clicks": clicks}
+
+
+def test_the_page_fixture_still_says_what_the_api_says(world, tmp_path):
+    import os
+    made = _page_fixture(world, tmp_path)
+    if os.environ.get("UPDATE_FIXTURES") == "1":
+        FIXTURE.write_text(json.dumps(made, separators=(",", ":")) + "\n")
+    kept = json.loads(FIXTURE.read_text())
+    assert [c["what"] for c in kept["clicks"]] == [c["what"] for c in made["clicks"]]
+    for k, m in zip(kept["clicks"], made["clicks"], strict=True):
+        assert (k["mode"], k["watercourse"], k["adopted"]) == (m["mode"], m["watercourse"], m["adopted"]), k["what"]
+        assert [r["site_id"] for r in k["rows"]] == [r["site_id"] for r in m["rows"]], k["what"]
+        for a, b in zip(k["rows"], m["rows"], strict=True):
+            assert a["distance_m"] == pytest.approx(b["distance_m"], abs=0.1) and a["dilution"] == pytest.approx(b["dilution"], abs=1e-5)
+    # The API, given no hint that the click is a lake, finds no river within 1.5 km of the lonely
+    # pool; the page says it is a lake with no river connection, as the API does for a lake spot.
+    assert {c["mode"] for c in kept["clicks"]} == {"river", "lake", "none"}
+    assert next(c for c in kept["clicks"] if c["what"] == "the lonely pool")["mode"] == "none"
+    assert sorted(kept["files"]["tiles"]) == sorted(made["files"]["tiles"])

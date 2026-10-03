@@ -694,6 +694,7 @@
 <script src="vendor/leaflet/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="></script>
 <script src="experience.js"></script>
 <script src="levels.js"></script>   <!-- the levels and headlines: shared with the build and the alerts -->
+<script src="anypoint.js" defer></script>   <!-- a forecast for any point clicked on the map; runs after this page's script -->
 <script>
 const BRAND = 'SwimSignal';
 const REPO = 'https://github.com/ethanbuckley/swimsignal';
@@ -1004,6 +1005,7 @@ const factors = d => `<div class="factors">${factorRow('Sewage spills', null, co
 // The calibrated number, over the days given: it counts bacteria from any source, so rain can
 // raise it when the spills are low. Rivers with overflows upstream only, the case it was tested on.
 function water(d, days) {
+  if (ecoliTested(d) && d.unlisted) return factorRow('Water quality', null, 'Not estimated', UNLISTED_ECOLI);
   if (ecoliTested(d)) {
     // The figure's own band in season. From October to April nothing tests it and it does not set the
     // level (levels.js, ecoliLevel), so its band is not given either: "Very high risk" under a "Low
@@ -1055,6 +1057,8 @@ function ratingHistory(cl) {
 const untested = x => ecoliUntested(x) && !nil(x.p_ecoli_gt900);
 const anyUntested = d => ecoliTested(d) && d.days.slice(0, 5).some(untested);
 const UNTESTED_NOTE = '† Untested outside May to September, when the Environment Agency takes no samples, so it does not set the level.';
+// A point clicked on the map (anypoint.js) has no E. coli estimate: the model needs the spot's own rain.
+const UNLISTED_ECOLI = 'Not estimated for a point off the list: the estimate needs a rain forecast for the spot itself, which only listed spots get.';
 // Out of season the water-quality figure is not in the level, so a list row names it, marked †.
 const waterEst = s => { if (!ecoliTested(s)) return ''; const x = VIEW.day ? s.days.find(y => y.date === VIEW.day) : s.days[0];
   return x && untested(x) ? `E.&nbsp;coli estimate ${Math.round(x.p_ecoli_gt900 * 100)}%†` : ''; };
@@ -1231,8 +1235,8 @@ function facts(d) {
       vis: scaleBar(x0.p_ecoli_gt900, ECOLI_CUTS, b, `${pct(x0.p_ecoli_gt900)}% chance: ${off ? 'out of season, untested' : b + ' risk'}`),
       say: `Chance a water sample would show E.&nbsp;coli over 900 per 100&nbsp;ml today${x1 && !nil(x1.p_ecoli_gt900) ? `; ${pct(x1.p_ecoli_gt900)}% tomorrow` : ''}.${off ? ' ' + UNTESTED_NOTE : ''}`,
       more: 'The minimum bathing-water standard lets about one sample in ten be over 900. <a href="#about-ecoli">What this counts</a>' }); }
-  else if (!d.error) out.push({ icon: ICON.water, label: 'Water quality', fig: '–', unit: ecoliTested(d) ? 'no estimate' : 'not estimated',
-    say: ecoliTested(d) ? 'No rainfall forecast has arrived, so there is no estimate.' : (d.location || {}).mode === 'lake'
+  else if (!d.error) out.push({ icon: ICON.water, label: 'Water quality', fig: '–', unit: ecoliTested(d) && !d.unlisted ? 'no estimate' : 'not estimated',
+    say: ecoliTested(d) && d.unlisted ? UNLISTED_ECOLI : ecoliTested(d) ? 'No rainfall forecast has arrived, so there is no estimate.' : (d.location || {}).mode === 'lake'
       ? 'The E.&nbsp;coli model showed no skill on lakes, so there is no daily estimate here.' : 'Estimated only on rivers with monitored overflows upstream, the case the model was tested on.' });
   if (!d.error && total) { const n = now.discharging_upstream || 0, mon = now.monitored_upstream ?? total;
     out.push({ icon: ICON.now, label: 'Right now', fig: n, unit: `of ${total} discharging`, figTone: n ? 'hot' : '', vis: overflowDots(d),
@@ -1413,7 +1417,7 @@ function howSure(d, j) {
   const k = DATA.lead_skill, r5 = x => Math.round(x * 20) * 5 + '%';
   if (!j || !k) return '';
   return factorRow('How far ahead', null, `${j} day${j === 1 ? '' : 's'}`, `In tests on past years, spill forecasts this far ahead were about ${r5(k.spill[j])} as good as same-day ones`
-    + (ecoliTested(d) ? `, and water-quality ones about ${r5(k.water[j])}` : '') + '.'
+    + (ecoliTested(d) && !d.unlisted ? `, and water-quality ones about ${r5(k.water[j])}` : '') + '.'
     + explain('How this was measured', 'The comparison goes by how much each beat a guess from the usual rates. The rain forecast behind it can still change.'));
 }
 function dayDetail(d, x) {
@@ -1649,7 +1653,7 @@ function renderList() {
   // The answer first: the intro and one row of controls, with one line under it (the caveat and the
   // week's best day), under the sky (.lead); then the saved spots, as cards on one tile, and all the
   // spots on another. The colour key went: each row says its level in words.
-  let h = `<div class="lead"><section class="intro"><h1>Check the water before you go</h1><p class="lede">Five-day pollution risk forecasts for ${DATA.spots.length} spots in England. <a href="#about">How it works</a></p>`
+  let h = `<div class="lead"><section class="intro"><h1>Check the water before you go</h1><p class="lede">Five-day pollution risk forecasts for ${DATA.spots.length} spots in England, or ${TOUCH ? 'tap' : 'click'} any river or lake on the map. <a href="#about">How it works</a></p>`
     + `<div class="search">${SEARCH_ICON}<label class="sr" for="q">Find a spot</label><input type="search" id="q" placeholder="Find a river or lake" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search" value="${esc(VIEW.q)}"></div></section>`
     + `<div class="toolbar"><label class="sr" for="listday">When are you swimming?</label><select id="listday"><option value="">Today and tomorrow</option>${[0,1,2,3,4].map(k => addDays(today(), k)).map(iso => `<option value="${iso}"${VIEW.day === iso ? ' selected' : ''}>${dateLabel(iso)}</option>`).join('')}</select>`
     + `<button type="button" class="chip-btn low" data-low aria-pressed="${VIEW.lowOnly}" aria-describedby="low-note-list"><span class="dot" style="background:${colour('low')}"></span><span data-low-t>${lowLabel()}</span></button></div>`
