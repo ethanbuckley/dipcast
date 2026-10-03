@@ -86,7 +86,8 @@ those sizes; they were taken off to keep the rule simple.)
   `#855817`, `#a04623`, `#992a2a`, which pass 4.5:1 on the paper and on white (5.6:1 or more on the
   paper). The ochre and rust marks are too light for text (3.3:1 and 4.1:1 on the paper), hence
   the two sets. A spot with no monitored overflow upstream is teal `#4aa39a`, not grey: it is a
-  calm answer, not a missing one. Grey `#98a2aa` means no level. An overflow discharging now is
+  calm answer, not a missing one. Grey `#98a2aa` means no level; an isolated lake, which no river
+  reaches, is grey too ("No river connection"). An overflow discharging now is
   the very-high brick.
 - The map: OpenStreetMap's tiles with the land in grey and the water (sea, lakes, rivers) in a
   muted blue, `#bccfd8`, about as light as the grey it replaced (L* 82 against 83; chroma 8). Its
@@ -127,6 +128,25 @@ those sizes; they were taken off to keep the rule simple.)
   tooltips, a picked day's rows. A bare "Very high" read as very high what. The word stands alone
   only under a heading that names it: the five days ("Pollution risk, next five days"), the
   day-by-day table's "Risk" column, the map's key.
+- Where the model has nothing to forecast, the level is a plain one that says what is true there
+  (3 October 2026), in the answer, on a saved card, in the list row, the map's tooltip and key,
+  and the alerts:
+  - **"No sewage risk from monitored overflows"**, in the clear teal, where the trace finds no
+    monitored overflow within 60 km upstream.
+  - **"No river connection: overflows cannot reach this lake"**, in the grey of no level, for an
+    isolated lake (the forecast's `error` begins "An isolated lake").
+  - Under either, one line kept in view: "Other risks apply: algae, wildlife, runoff and bathers.
+    Check the signs at the water." That line is the view's one "check the signs", so the caveat
+    in the tile under the answer drops its own. Then, where the forecast has it, the rain in the 48 hours
+    to midday today as a sentence: "12 mm of rain in the last two days".
+  - No E. coli estimate on these spots, in a tile, a day's cell or the table: the model was fitted
+    on sites with overflows upstream. The EA rating, the algae check and the river level stay as
+    tiles.
+  - A rating of sufficient or poor, or algae at the last check, still sets the level where it
+    raises it ("Rated poor: advice against bathing"). An excellent or good rating no longer makes
+    such a spot "low": that was the same word as a forecast that had looked and found nothing.
+  - Before this the page said "No monitored overflows upstream" or "Not covered by the
+    forecast", which a swimmer read as "no information".
 - One caveat per view, in the place it is read: the intro says "Forecasts, not water tests" once;
   the hero's last line says to check the signs at the water. The rest of the explanation lives
   under "About these forecasts" and on the About and Accuracy pages.
